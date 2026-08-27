@@ -4,7 +4,7 @@ import {
   SOCIAL_PLATFORMS,
   validateTargetUrl,
 } from '@link-profile/shared';
-import { buttons, socialIcons, users } from '@link-profile/shared/schema';
+import { buttons, layoutEnum, socialIcons, themeEnum, users } from '@link-profile/shared/schema';
 import { asc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -16,6 +16,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const profileBody = z.object({
   displayName: z.string().trim().max(60).optional(),
   bio: z.string().trim().max(300).optional(),
+  /** 布局只决定头像与头图区域的形状和占比，不决定配色 */
+  layout: z.enum(layoutEnum.enumValues).optional(),
+  theme: z.enum(themeEnum.enumValues).optional(),
 });
 
 const buttonInput = z.object({
@@ -89,6 +92,8 @@ export async function profileContentRoutes(app: FastifyInstance) {
       .set({
         ...(parsed.data.displayName !== undefined ? { displayName: parsed.data.displayName } : {}),
         ...(parsed.data.bio !== undefined ? { bio: parsed.data.bio } : {}),
+        ...(parsed.data.layout !== undefined ? { layout: parsed.data.layout } : {}),
+        ...(parsed.data.theme !== undefined ? { theme: parsed.data.theme } : {}),
         updatedAt: new Date(),
       })
       .where(eq(users.id, target));

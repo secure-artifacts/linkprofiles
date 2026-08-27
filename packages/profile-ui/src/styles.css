@@ -421,9 +421,21 @@
       inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent),
       0 0 0 3px color-mix(in srgb, var(--text) 22%, transparent);
   }
+  /*
+   * 铺满整块区域的那几个空位不描边：Hero 的整屏头图、Banner 的横幅、
+   * Cutout 的人像位，画一圈硬边框只会像个错位的方块。
+   */
   .hd-hero .av-empty,
   .hd-ban .bn.av-empty {
     box-shadow: none;
+  }
+  .hd-cut .av-empty {
+    box-shadow: none;
+    /* 顶部收成圆弧，读起来像一个待填的人像轮廓而不是一个方块 */
+    border-radius: 107px 107px 0 0;
+    background:
+      linear-gradient(to top, transparent 0%, color-mix(in srgb, var(--text) 7%, transparent) 100%),
+      var(--bg);
   }
 
   @media (prefers-reduced-motion: no-preference) {
