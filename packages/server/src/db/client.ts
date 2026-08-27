@@ -12,11 +12,14 @@ export interface CreateDbOptions {
    */
   searchPath?: string;
   max?: number;
+  /** 测试里用来吞掉 truncate / drop cascade 之类的 NOTICE。 */
+  onnotice?: (notice: unknown) => void;
 }
 
-export function createDb({ url, searchPath, max = 10 }: CreateDbOptions) {
+export function createDb({ url, searchPath, max = 10, onnotice }: CreateDbOptions) {
   const client = postgres(url, {
     max,
+    ...(onnotice ? { onnotice } : {}),
     ...(searchPath ? { connection: { search_path: searchPath } } : {}),
   });
   const db = drizzle(client, { schema, casing: 'snake_case' });

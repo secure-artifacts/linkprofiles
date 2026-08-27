@@ -36,7 +36,7 @@ export async function createTestContext(): Promise<TestContext> {
     await admin.end();
   }
 
-  const { db, client } = createDb({ url, searchPath: schema, max: 5 });
+  const { db, client } = createDb({ url, searchPath: schema, max: 5, onnotice: () => {} });
   await applyMigrations(client);
 
   const app = await buildApp({ db, sql: client });
