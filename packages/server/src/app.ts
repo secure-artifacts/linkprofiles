@@ -8,6 +8,7 @@ import { uploadsDir, UPLOADS_URL_PREFIX } from './media/storage.js';
 import { createGeoLookup, type GeoLookup } from './tracking/geo.js';
 import { authPlugin } from './auth/plugin.js';
 import { adminRoutes } from './routes/admins.js';
+import { analyticsRoutes } from './routes/analytics.js';
 import { authRoutes } from './routes/auth.js';
 import { bulkUserRoutes } from './routes/bulk-users.js';
 import { healthRoutes } from './routes/health.js';
@@ -74,6 +75,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(mediaRoutes, { prefix: '/_api' });
   await app.register(trackRoutes, { prefix: '/_api' });
   await app.register(settingsRoutes, { prefix: '/_api' });
+  await app.register(analyticsRoutes, { prefix: '/_api' });
   await app.register(ogImageRoutes, { prefix: '/_static' });
 
   // 个人页占据根路径，必须最后注册。
