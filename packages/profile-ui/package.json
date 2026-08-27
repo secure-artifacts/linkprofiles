@@ -24,6 +24,7 @@
     "react": "^19.2.0",
     "simple-icons": "^16.28.0",
     "tailwindcss": "^4.3.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "@ant-design/icons-svg": "^4.5.0"
   }
 }

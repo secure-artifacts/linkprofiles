@@ -24,6 +24,8 @@ const HOST_RULES: readonly [RegExp, SocialPlatformId][] = [
   [/(^|\.)threads\.(net|com)$/, 'threads'],
   [/(^|\.)snapchat\.com$/, 'snapchat'],
   [/(^|\.)pinterest\.(com|[a-z]{2})$/, 'pinterest'],
+  [/(^|\.)linkedin\.com$/, 'linkedin'],
+  [/(^|\.)lnkd\.in$/, 'linkedin'],
 ];
 
 export function inferPlatformFromUrl(url: string): SocialPlatformId | null {

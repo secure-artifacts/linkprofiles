@@ -26,6 +26,34 @@ describe('buildSocialUrl', () => {
     );
   });
 
+  test('不带协议整条粘贴也认得出来', () => {
+    // 用户很少只填用户名，更常见的是从地址栏整条复制，而且经常不带协议
+    expect(buildSocialUrl('instagram', 'instagram.com/mimnz')).toBe('https://instagram.com/mimnz');
+    expect(buildSocialUrl('instagram', 'www.instagram.com/mimnz/')).toBe(
+      'https://instagram.com/mimnz',
+    );
+  });
+
+  test('地址上的查询串与锚点被去掉，不会拼进用户名', () => {
+    expect(buildSocialUrl('youtube', 'youtube.com/@mimnz?si=abc123')).toBe(
+      'https://youtube.com/@mimnz',
+    );
+    expect(buildSocialUrl('instagram', 'instagram.com/mimnz#about')).toBe(
+      'https://instagram.com/mimnz',
+    );
+  });
+
+  test('LinkedIn 拼到 /in/ 下，整条粘贴也不会拼出 in/in/', () => {
+    expect(buildSocialUrl('linkedin', 'mimnz')).toBe('https://linkedin.com/in/mimnz');
+    expect(buildSocialUrl('linkedin', '@mimnz')).toBe('https://linkedin.com/in/mimnz');
+    expect(buildSocialUrl('linkedin', 'linkedin.com/in/mimnz')).toBe(
+      'https://linkedin.com/in/mimnz',
+    );
+    expect(buildSocialUrl('linkedin', 'https://www.linkedin.com/in/mimnz/')).toBe(
+      'https://linkedin.com/in/mimnz',
+    );
+  });
+
   test('不认识的平台与空值返回 null', () => {
     expect(buildSocialUrl('weixin', 'anything')).toBeNull();
     expect(buildSocialUrl('whatsapp', '   ')).toBeNull();
@@ -49,6 +77,7 @@ describe('buildSocialUrl', () => {
       youtube: false,
       tiktok: false,
       x: false,
+      linkedin: false,
     });
   });
 });
@@ -60,6 +89,8 @@ describe('inferPlatformFromUrl', () => {
     expect(inferPlatformFromUrl('mailto:hi@example.com')).toBe('email');
     expect(inferPlatformFromUrl('https://www.youtube.com/@mimnz')).toBe('youtube');
     expect(inferPlatformFromUrl('https://twitter.com/mimnz')).toBe('x');
+    expect(inferPlatformFromUrl('https://www.linkedin.com/in/mimnz')).toBe('linkedin');
+    expect(inferPlatformFromUrl('https://lnkd.in/abc123')).toBe('linkedin');
   });
 
   test('认不出来就返回 null，按钮照常可用', () => {

@@ -27,7 +27,7 @@
 - 按钮与社媒图标各用**一个整份列表的 PUT** 提交，不拆成逐项 CRUD 加一个单独的重排接口。理由：增、删、改、拖拽排序在编辑器里本来就是对同一个数组的操作，一次存下来简单，也不会有排序竞态。顺序即数组下标。
 - 按钮左侧的品牌图形**从目标地址反推**（`inferPlatformFromUrl`），用户不必为此多填一个字段：他填了 `wa.me/1555…`，页面上自然出现 WhatsApp 的图形；认不出来就不渲染图形，按钮照常可用。反推按主机名整段匹配，`evil-wa.me` 与 `wa.me.evil.com` 都不会被认成 WhatsApp，有测试守着。
 - 目标地址只放行 `http/https/mailto/tel/sms`，`javascript:` 与 `data:` 一律拒绝——公开页把这个值直接渲染进 href，放进去就是存储型 XSS。另有一条测试断言按钮文字里的尖括号被转义。
-- 品牌图形来自 simple-icons（CC0），构建期抽出清单里用到的十来枚生成 `src/generated/icons.ts`，不把三千多个图标拖进产物。**LinkedIn 不在 simple-icons 里**（上游因商标政策移除），因此内置清单里没有 LinkedIn——requirements 的默认 is_lead 举例提到过它。需要的话得单独找一份可用授权的图形再补进清单。
+- 品牌图形来自 simple-icons（CC0），构建期抽出清单里用到的十来枚生成 `src/generated/icons.ts`，不把三千多个图标拖进产物。**LinkedIn 补记（2026-08-27）**：已补进清单。simple-icons 上游因商标政策移除了它，改从 `@ant-design/icons-svg`（MIT，本就是 admin 的传递依赖）在构建期取。它的 viewBox 是 `64 64 896 896` 而不是 `0 0 24 24`，所以生成的图形数据现在逐个带上自己的 viewBox，渲染时按各自的值出图。品牌色补成 LinkedIn 现行的 #0A66C2。
 - 社媒图标的 `is_lead` 默认值按平台给（WhatsApp / Messenger / Telegram / Signal / email 为是，其余为否），保存时可逐条覆盖。
 - 清单外的平台 id 在接口层就拒绝，绕过后台直接调接口也塞不进大陆 app，有测试守着。
 - 已在 375px 视口人工核对：两级视觉分级、品牌图形、社媒图标行与设计稿一致。

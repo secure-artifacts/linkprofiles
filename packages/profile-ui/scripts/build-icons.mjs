@@ -4,10 +4,13 @@
 // 并保留各平台注册品牌色（商标归各自权利人所有）。
 //
 // 清单变了就重跑：pnpm --filter @link-profile/profile-ui build:icons
+import { createRequire } from 'node:module';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as si from 'simple-icons';
+
+const require = createRequire(import.meta.url);
 
 const pkgDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(pkgDir, 'src/generated/icons.ts');
@@ -28,6 +31,16 @@ const FROM_SIMPLE_ICONS = {
   pinterest: 'siPinterest',
 };
 
+/**
+ * LinkedIn 不在 simple-icons 里（上游因商标政策移除），改从
+ * `@ant-design/icons-svg`（MIT）取。它的 viewBox 是 64 64 896 896 而不是
+ * 0 0 24 24，所以生成的数据要带上各自的 viewBox。
+ * 图形本身是单色的，这里补上 LinkedIn 的注册品牌色。
+ */
+const FROM_ANT_DESIGN = {
+  linkedin: { module: '@ant-design/icons-svg/lib/asn/LinkedinFilled.js', hex: '0A66C2' },
+};
+
 // email 不是品牌，simple-icons 里没有；用设计稿里那枚描边信封。
 const HAND_DRAWN = {
   email: {
@@ -38,14 +51,41 @@ const HAND_DRAWN = {
   },
 };
 
+const DEFAULT_VIEW_BOX = '0 0 24 24';
+
 const entries = [];
 for (const [id, exportName] of Object.entries(FROM_SIMPLE_ICONS)) {
   const icon = si[exportName];
   if (!icon) throw new Error(`simple-icons 里没有 ${exportName}（${id}）`);
-  entries.push([id, { hex: `#${icon.hex}`, body: `<path fill="#${icon.hex}" d="${icon.path}"/>` }]);
+  entries.push([
+    id,
+    {
+      hex: `#${icon.hex}`,
+      viewBox: DEFAULT_VIEW_BOX,
+      body: `<path fill="#${icon.hex}" d="${icon.path}"/>`,
+    },
+  ]);
 }
+
+for (const [id, source] of Object.entries(FROM_ANT_DESIGN)) {
+  const loaded = require(source.module);
+  const definition = loaded.default ?? loaded;
+  const svg = definition.icon;
+  const paths = svg.children.filter((child) => child.tag === 'path');
+  if (paths.length === 0) throw new Error(`${source.module} 里没有 path（${id}）`);
+
+  entries.push([
+    id,
+    {
+      hex: `#${source.hex}`,
+      viewBox: svg.attrs.viewBox,
+      body: paths.map((child) => `<path fill="#${source.hex}" d="${child.attrs.d}"/>`).join(''),
+    },
+  ]);
+}
+
 for (const [id, icon] of Object.entries(HAND_DRAWN)) {
-  entries.push([id, { hex: `#${icon.hex}`, body: icon.body }]);
+  entries.push([id, { hex: `#${icon.hex}`, viewBox: DEFAULT_VIEW_BOX, body: icon.body }]);
 }
 
 // 链接右端那枚指向箭头，不属于任何品牌。
@@ -57,11 +97,13 @@ writeFileSync(
   out,
   [
     '// 由 scripts/build-icons.mjs 生成，请勿手改。',
-    '// 品牌图形取自 Simple Icons（CC0），商标归各自权利人所有。',
+    '// 品牌图形取自 Simple Icons（CC0）与 @ant-design/icons-svg（MIT），',
+    '// 商标归各自权利人所有。',
     '',
     'export interface BrandIcon {',
     '  hex: string;',
-    '  /** 24×24 viewBox 内的 SVG 内容 */',
+    '  /** 各来源的 viewBox 不一定相同，渲染时按这个值给 */',
+    '  viewBox: string;',
     '  body: string;',
     '}',
     '',

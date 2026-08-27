@@ -22,7 +22,8 @@ export type SocialPlatformId =
   | 'x'
   | 'threads'
   | 'snapchat'
-  | 'pinterest';
+  | 'pinterest'
+  | 'linkedin';
 
 /** 用户要填什么，决定后台给什么输入提示，也决定怎么归一化。 */
 export type SocialInputKind = 'phone' | 'email' | 'username';
@@ -43,13 +44,21 @@ function digitsOnly(value: string): string {
   return value.replace(/\D/g, '');
 }
 
-/** 用户名去掉 @ 前缀和整条 URL 前缀，只留标识本身。 */
+/**
+ * 只留标识本身。
+ *
+ * 用户很少老老实实只填用户名 —— 常见的是整条粘过来，而且经常不带协议：
+ * `@mimnz`、`instagram.com/mimnz`、`https://www.linkedin.com/in/mimnz/`、
+ * `youtube.com/@mimnz?si=xxx` 都要归到 `mimnz`。
+ *
+ * 这几个平台的标识都是路径的最后一段，所以做法是：去掉查询串与锚点、
+ * 去掉首尾的 @ 与斜杠，然后取最后一个非空路径段。
+ */
 function bareUsername(value: string): string {
-  return value
-    .trim()
-    .replace(/^https?:\/\/[^/]+\//i, '')
-    .replace(/^@+/, '')
-    .replace(/\/+$/, '');
+  const withoutQuery = value.trim().split(/[?#]/)[0] ?? '';
+  const segments = withoutQuery.split('/').filter((segment) => segment !== '');
+  const last = segments.at(-1) ?? '';
+  return last.replace(/^@+/, '');
 }
 
 export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
@@ -160,6 +169,15 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
     defaultIsLead: false,
     inputHint: 'Snapchat 用户名',
     buildUrl: (v) => `https://snapchat.com/add/${bareUsername(v)}`,
+  },
+  {
+    id: 'linkedin',
+    label: 'LinkedIn',
+    brandHex: '#0A66C2',
+    inputKind: 'username',
+    defaultIsLead: false,
+    inputHint: '个人主页的自定义地址，即 linkedin.com/in/ 后面那一段',
+    buildUrl: (v) => `https://linkedin.com/in/${bareUsername(v)}`,
   },
   {
     id: 'pinterest',

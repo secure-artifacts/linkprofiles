@@ -10,8 +10,13 @@ export function BrandIcon({ platform }: { platform: string }) {
   const icon = BRAND_ICONS[platform];
   if (!icon) return null;
 
+  // viewBox 逐个来源不同（Simple Icons 是 0 0 24 24，ant-design 是 64 64 896 896）
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: icon.body }} />
+    <svg
+      viewBox={icon.viewBox}
+      aria-hidden="true"
+      dangerouslySetInnerHTML={{ __html: icon.body }}
+    />
   );
 }
 
