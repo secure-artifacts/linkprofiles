@@ -32,10 +32,12 @@ beforeEach(async () => {
     account: 'admin',
     shortName: null,
   });
+  // 归属于上面这个管理员 —— 05 之后管理员只碰得到名下用户
   const user = await createLoginableUser(ctx.db, 'user-pass', {
     role: 'user',
     account: 'user',
     shortName: 'plain-user',
+    owningAdminId: admin.id,
   });
   adminId = admin.id;
   userId = user.id;

@@ -1,6 +1,6 @@
 import { users } from '@link-profile/shared/schema';
 import { shortNameSchema } from '@link-profile/shared';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { FORBIDDEN, loadTargetUser, requireCapability, UNAUTHORIZED } from '../auth/guards.js';
@@ -20,6 +20,11 @@ const createUserBody = z.object({
   displayName: z.string().trim().optional(),
 });
 
+const assignOwnerBody = z.object({
+  /** null 表示置为无归属 */
+  owningAdminId: z.string().uuid().nullable(),
+});
+
 const updateUserBody = z.object({
   label: z.string().trim().optional(),
   shortName: shortNameSchema.optional(),
@@ -36,15 +41,23 @@ const publicColumns = {
 };
 
 export async function userRoutes(app: FastifyInstance) {
-  app.get('/users', { onRequest: [requireCapability('user:list')] }, async (req) => {
-    const scope = visibleUsersFilter(req.currentUser!);
-    const rows = await app.db
-      .select(publicColumns)
-      .from(users)
-      .where(scope ? and(eq(users.role, 'user'), scope) : eq(users.role, 'user'))
-      .orderBy(users.createdAt);
-    return { users: rows };
-  });
+  app.get<{ Querystring: { owner?: string } }>(
+    '/users',
+    { onRequest: [requireCapability('user:list')] },
+    async (req) => {
+      const scope = visibleUsersFilter(req.currentUser!);
+      // `?owner=none` 单列无归属用户。可见范围仍然叠在上面，
+      // 因此只有超级管理员真的取得到东西。
+      const unowned = req.query.owner === 'none' ? isNull(users.owningAdminId) : undefined;
+
+      const rows = await app.db
+        .select(publicColumns)
+        .from(users)
+        .where(and(eq(users.role, 'user'), scope, unowned))
+        .orderBy(users.createdAt);
+      return { users: rows };
+    },
+  );
 
   app.get<{ Params: { id: string } }>('/users/:id', async (req, reply) => {
     if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
@@ -76,6 +89,8 @@ export async function userRoutes(app: FastifyInstance) {
         label,
         shortName,
         displayName: displayName || shortName,
+        // 创建者自动成为归属管理员，见 ADR-0005。
+        owningAdminId: req.currentUser!.id,
       })
       .returning(publicColumns);
 
@@ -113,6 +128,48 @@ export async function userRoutes(app: FastifyInstance) {
 
     return row;
   });
+
+  /**
+   * 重新指派归属管理员。只有超级管理员做得了，因此不走 loadTargetUser 的
+   * 可见范围过滤 —— 那条路径按定义看不见无归属用户，而这里要的正是它们。
+   */
+  app.put<{ Params: { id: string } }>(
+    '/users/:id/owner',
+    { onRequest: [requireCapability('user:assign')] },
+    async (req, reply) => {
+      if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
+
+      const parsed = assignOwnerBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      }
+
+      const [target] = await app.db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.id, req.params.id), eq(users.role, 'user')))
+        .limit(1);
+      if (!target) return reply.code(403).send(FORBIDDEN);
+
+      // 只能指派给真正的管理员，不能塞一个用户或超级管理员的 id 进去。
+      if (parsed.data.owningAdminId !== null) {
+        const [admin] = await app.db
+          .select({ id: users.id })
+          .from(users)
+          .where(and(eq(users.id, parsed.data.owningAdminId), eq(users.role, 'admin')))
+          .limit(1);
+        if (!admin) return reply.code(400).send({ error: 'not_an_admin' });
+      }
+
+      const [row] = await app.db
+        .update(users)
+        .set({ owningAdminId: parsed.data.owningAdminId, updatedAt: new Date() })
+        .where(eq(users.id, target.id))
+        .returning(publicColumns);
+
+      return row;
+    },
+  );
 
   app.delete<{ Params: { id: string } }>('/users/:id', async (req, reply) => {
     if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
