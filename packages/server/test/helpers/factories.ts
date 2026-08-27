@@ -22,3 +22,13 @@ export async function createUser(db: Db, overrides: Partial<NewUserRow> = {}) {
   if (!row) throw new Error('创建用户失败');
   return row;
 }
+
+/** 建一个能真正登录的账号：密码走 argon2，与生产同一条路径。 */
+export async function createLoginableUser(
+  db: Db,
+  password: string,
+  overrides: Partial<NewUserRow> = {},
+) {
+  const { hashPassword } = await import('../../src/auth/passwords.js');
+  return createUser(db, { ...overrides, passwordHash: await hashPassword(password) });
+}
