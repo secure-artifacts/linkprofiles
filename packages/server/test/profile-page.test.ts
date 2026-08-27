@@ -93,9 +93,16 @@ test('关键 CSS 内联进文档头', async () => {
 });
 
 test('系统路径不被个人页路由劫持', async () => {
-  const res = await ctx.app.inject({ method: 'GET', url: '/_admin' });
+  await createUser(ctx.db, { shortName: 'realuser', displayName: '真用户' });
 
-  expect(res.statusCode).toBe(404);
+  // 没有挂任何东西的系统路径直接 404，不去查库
+  const unmounted = await ctx.app.inject({ method: 'GET', url: '/_nothing-here' });
+  expect(unmounted.statusCode).toBe(404);
+  expect(unmounted.body).toContain('页面不存在');
+
+  // 挂了后台的话 /_admin 是后台自己的响应，无论如何不会是一张个人页
+  const admin = await ctx.app.inject({ method: 'GET', url: '/_admin' });
+  expect(admin.body).not.toContain('class="pp"');
 });
 
 test('管理员与超级管理员没有个人页', async () => {

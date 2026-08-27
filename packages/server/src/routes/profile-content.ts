@@ -10,6 +10,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { FORBIDDEN, loadTargetUser, UNAUTHORIZED } from '../auth/guards.js';
 import type { CurrentUser } from '../auth/sessions.js';
+import { loadMediaByIds, toMediaSource, toVideoSource } from '../profiles/media-view.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -232,6 +233,16 @@ async function loadEditableProfile(app: FastifyInstance, userId: string) {
     .where(eq(buttons.userId, userId))
     .orderBy(asc(buttons.position));
 
+  const mediaById = await loadMediaByIds(app.db, [
+    profile?.avatarMediaId ?? null,
+    profile?.backgroundMediaId ?? null,
+  ]);
+  const avatarRow = profile?.avatarMediaId ? mediaById.get(profile.avatarMediaId) : undefined;
+  const backgroundRow = profile?.backgroundMediaId
+    ? mediaById.get(profile.backgroundMediaId)
+    : undefined;
+  const video = toVideoSource(avatarRow, undefined);
+
   const iconRows = await app.db
     .select({
       id: socialIcons.id,
@@ -245,5 +256,17 @@ async function loadEditableProfile(app: FastifyInstance, userId: string) {
     .where(eq(socialIcons.userId, userId))
     .orderBy(asc(socialIcons.position));
 
-  return { profile, buttons: buttonRows, socialIcons: iconRows };
+  return {
+    profile: profile
+      ? {
+          ...profile,
+          // 编辑器要的是可直接放进 <img> 的地址，不是 mediaId
+          avatarUrl: video?.src ?? toMediaSource(avatarRow)?.src ?? null,
+          avatarIsVideo: video !== null,
+          backgroundUrl: toMediaSource(backgroundRow)?.src ?? null,
+        }
+      : profile,
+    buttons: buttonRows,
+    socialIcons: iconRows,
+  };
 }
