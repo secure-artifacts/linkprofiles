@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import postgres from 'postgres';
-import { buildApp } from '../../src/app.js';
+import { buildApp, type AppDeps } from '../../src/app.js';
 import { createDb, type Db } from '../../src/db/client.js';
 import { applyMigrations } from '../../src/db/migrate.js';
 
@@ -25,7 +25,7 @@ function baseUrl(): string {
  * 每个测试文件一个独立 schema：建 schema、灌迁移、把连接钉在上面，
  * 跑完 drop。真连数据库，不 mock ORM —— 否则测不出 SQL 层面的真错。
  */
-export async function createTestContext(): Promise<TestContext> {
+export async function createTestContext(deps: { geo?: AppDeps['geo'] } = {}): Promise<TestContext> {
   const url = baseUrl();
   const schema = `test_${randomBytes(6).toString('hex')}`;
 
@@ -39,7 +39,7 @@ export async function createTestContext(): Promise<TestContext> {
   const { db, client } = createDb({ url, searchPath: schema, max: 5, onnotice: () => {} });
   await applyMigrations(client);
 
-  const app = await buildApp({ db, sql: client });
+  const app = await buildApp({ db, sql: client, ...deps });
   await app.ready();
 
   return {

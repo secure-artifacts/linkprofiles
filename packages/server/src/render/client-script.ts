@@ -24,4 +24,18 @@ if(v){
   if('requestIdleCallback' in window){requestIdleCallback(start,{timeout:2000});}
   else{addEventListener('load',function(){setTimeout(start,200);});}
 }
+
+var src=new URLSearchParams(location.search).get('src');
+
+document.addEventListener('click',function(e){
+  var a=e.target.closest&&e.target.closest('a[data-track]');
+  if(!a)return;
+  var body=JSON.stringify({kind:a.getAttribute('data-track'),id:a.getAttribute('data-track-id'),src:src});
+  // sendBeacon 在页面跳走之后仍然会把请求发出去，不拦截这次点击
+  if(navigator.sendBeacon){
+    navigator.sendBeacon('/_api/track/click',new Blob([body],{type:'application/json'}));
+  }else{
+    fetch('/_api/track/click',{method:'POST',headers:{'content-type':'application/json'},body:body,keepalive:true}).catch(function(){});
+  }
+},true);
 })();`;
