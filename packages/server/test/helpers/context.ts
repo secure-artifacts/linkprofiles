@@ -29,7 +29,7 @@ export async function createTestContext(): Promise<TestContext> {
   const url = baseUrl();
   const schema = `test_${randomBytes(6).toString('hex')}`;
 
-  const admin = postgres(url, { max: 1 });
+  const admin = postgres(url, { max: 1, onnotice: () => {} });
   try {
     await admin.unsafe(`create schema "${schema}"`);
   } finally {
@@ -50,7 +50,7 @@ export async function createTestContext(): Promise<TestContext> {
     async close() {
       await app.close();
       await client.end();
-      const cleanup = postgres(url, { max: 1 });
+      const cleanup = postgres(url, { max: 1, onnotice: () => {} });
       try {
         await cleanup.unsafe(`drop schema "${schema}" cascade`);
       } finally {

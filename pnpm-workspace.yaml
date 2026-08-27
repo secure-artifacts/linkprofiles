@@ -1,11 +1,12 @@
 packages:
   - packages/*
 
-# 需要执行安装脚本的原生依赖：argon2 编译密码哈希、esbuild/sharp 落地平台二进制。
+# 需要执行安装脚本的原生依赖：argon2 编译密码哈希，其余落地平台二进制。
 allowBuilds:
   argon2: true
   esbuild: true
   sharp: true
+  '@parcel/watcher': true
 
 minimumReleaseAgeExclude:
   - isbot@5.2.2
