@@ -11,6 +11,20 @@ export interface MediaSource {
   height?: number;
 }
 
+/** 头像位放的短视频。封面先出，视频加载完才播。 */
+export interface VideoSource {
+  src: string;
+  /** 首帧封面。浏览器端 canvas 抽出来的，或用户手动上传的。 */
+  poster: string | null;
+}
+
+/** 背景图。上传后覆盖主题的背景渐变，按钮色与文字色仍生效。 */
+export interface BackgroundImage {
+  src: string;
+  /** 遮罩暗度 0–1，默认四成，保证文字对比度。 */
+  overlay: number;
+}
+
 /** 页面主体里的一个可点击条目。 */
 export interface ButtonView {
   id: string;
@@ -47,6 +61,9 @@ export interface ProfileView {
   theme: Theme;
   /** 头像位。Hero / Banner / Cutout 用它当头图。缺失时以主题渐变填充。 */
   avatar: MediaSource | null;
+  /** 头像位放视频时用它，与 avatar 互斥。 */
+  video: VideoSource | null;
+  background: BackgroundImage | null;
   socialIcons: readonly SocialIconView[];
   buttons: readonly ButtonView[];
 }

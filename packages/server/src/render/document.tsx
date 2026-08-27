@@ -1,5 +1,6 @@
 import { ProfilePage, profileCss, type ProfileView } from '@link-profile/profile-ui';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { CLIENT_SCRIPT } from './client-script.js';
 
 /**
  * 设计稿的展示字型。异步加载并带 swap，字体没到之前先用系统字体渲染，
@@ -30,9 +31,17 @@ export interface RenderProfileOptions {
 export function renderProfileDocument({ profile }: RenderProfileOptions): string {
   const body = renderToStaticMarkup(<ProfilePage profile={profile} priority />);
 
-  const preloadAvatar = profile.avatar
-    ? `<link rel="preload" as="image" href="${escapeHtml(profile.avatar.src)}" fetchpriority="high">`
-    : '';
+  // LCP 元素是头像位那张图：放视频时就是它的封面图，不是视频本身。
+  const lcpImage = profile.video?.poster ?? profile.avatar?.src ?? null;
+  const preloads = [
+    lcpImage
+      ? `<link rel="preload" as="image" href="${escapeHtml(lcpImage)}" fetchpriority="high">`
+      : '',
+    // 背景图铺满整屏，同样值得早点开始下载，但优先级低于头像位。
+    profile.background
+      ? `<link rel="preload" as="image" href="${escapeHtml(profile.background.src)}">`
+      : '',
+  ].join('');
 
   return [
     '<!doctype html>',
@@ -43,7 +52,7 @@ export function renderProfileDocument({ profile }: RenderProfileOptions): string
     `<title>${escapeHtml(profile.displayName)}</title>`,
     // 关键 CSS 内联进文档头，其余异步加载。
     `<style>${profileCss}</style>`,
-    preloadAvatar,
+    preloads,
     '<link rel="preconnect" href="https://fonts.googleapis.com">',
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
     `<link rel="stylesheet" href="${FONT_HREF}" media="print" onload="this.media='all'">`,
@@ -51,6 +60,8 @@ export function renderProfileDocument({ profile }: RenderProfileOptions): string
     '</head>',
     '<body>',
     body,
+    // 唯一的客户端脚本：内联、几百字节，不是 React runtime。
+    `<script>${CLIENT_SCRIPT}</script>`,
     '</body>',
     '</html>',
   ]

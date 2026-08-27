@@ -31,7 +31,14 @@ function Name({ profile }: { profile: ProfileView }) {
 }
 
 function Header({ profile, socials, priority }: HeaderProps) {
-  const avatar = <Avatar media={profile.avatar} priority={priority} alt={profile.displayName} />;
+  const avatar = (
+    <Avatar
+      media={profile.avatar}
+      video={profile.video}
+      priority={priority}
+      alt={profile.displayName}
+    />
+  );
 
   switch (profile.layout) {
     case 'hero':
@@ -48,7 +55,7 @@ function Header({ profile, socials, priority }: HeaderProps) {
     case 'banner':
       return (
         <div className="hd hd-ban">
-          <Avatar media={profile.avatar} priority={priority} className="bn" />
+          <Avatar media={profile.avatar} video={profile.video} priority={priority} className="bn" />
           <div className="row">
             {avatar}
             <div className="nm">
@@ -109,8 +116,19 @@ export function ProfilePage({ profile, priority = false }: ProfilePageProps) {
   const inHeader = SOCIALS_IN_HEADER[profile.layout] ?? true;
   const socials = profile.socialIcons.length ? <SocialIcons icons={profile.socialIcons} /> : null;
 
+  // 背景图覆盖主题渐变；遮罩暗度由用户调，样式规则在 styles.css 的 [data-bg-image] 上。
+  const backgroundProps = profile.background
+    ? {
+        'data-bg-image': '',
+        style: {
+          ['--bg-image' as string]: `url(${JSON.stringify(profile.background.src)})`,
+          ['--overlay' as string]: String(profile.background.overlay),
+        },
+      }
+    : {};
+
   return (
-    <div className="pp" data-t={profile.theme} data-l={profile.layout}>
+    <div className="pp" data-t={profile.theme} data-l={profile.layout} {...backgroundProps}>
       <div className="pp-shell">
         <Header profile={profile} priority={priority} socials={inHeader ? socials : null} />
         {!inHeader && socials ? <div className="hd">{socials}</div> : null}

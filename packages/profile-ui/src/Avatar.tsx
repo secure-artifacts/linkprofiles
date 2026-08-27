@@ -1,7 +1,8 @@
-import type { MediaSource } from './types.js';
+import type { MediaSource, VideoSource } from './types.js';
 
 interface AvatarProps {
   media: MediaSource | null;
+  video?: VideoSource | null;
   /** 头像位是 LCP 元素，直出时标记高优先级；预览里无所谓。 */
   priority?: boolean;
   className?: string;
@@ -11,8 +12,36 @@ interface AvatarProps {
 /**
  * 头像 / 头图。缺少素材时不回落到其他布局，只把该区域交给主题渐变填充，
  * 形状与占比仍由布局决定。
+ *
+ * 放视频时封面图先渲染、视频加载完成才播放：**视频不得成为 LCP 元素**。
+ * 靠 `poster` + `preload="none"` + 客户端那一小段脚本在 canplay 后才 play 实现，
+ * 见 12 的埋点脚本同处一段。
  */
-export function Avatar({ media, priority = false, className = 'av', alt = '' }: AvatarProps) {
+export function Avatar({
+  media,
+  video = null,
+  priority = false,
+  className = 'av',
+  alt = '',
+}: AvatarProps) {
+  if (video) {
+    return (
+      <div className={className}>
+        <video
+          src={video.src}
+          poster={video.poster ?? undefined}
+          muted
+          loop
+          playsInline
+          // 不自动开始下载，也不 autoplay：先把封面画出来
+          preload="none"
+          data-autoplay="1"
+          aria-label={alt}
+        />
+      </div>
+    );
+  }
+
   if (!media) {
     return <div className={`${className} av-empty`} aria-hidden="true" />;
   }

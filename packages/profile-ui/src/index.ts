@@ -4,10 +4,12 @@ export { BrandIcon, ChevronIcon, hasBrandIcon } from './Icon.js';
 export { ProfilePage, type ProfilePageProps } from './ProfilePage.js';
 export { profileCss } from './generated/css.js';
 export type {
+  BackgroundImage,
   ButtonView,
   Layout,
   MediaSource,
   ProfileView,
   SocialIconView,
   Theme,
+  VideoSource,
 } from './types.js';

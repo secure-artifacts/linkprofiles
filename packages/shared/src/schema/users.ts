@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
   index,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -43,6 +44,14 @@ export const users = pgTable(
 
     layout: layoutEnum().notNull().default('classic'),
     theme: themeEnum().notNull().default('dawn'),
+
+    /** 头像位：图片或短视频。视频时 `avatarPosterId` 是它的首帧封面。 */
+    avatarMediaId: uuid(),
+    avatarPosterId: uuid(),
+    /** 背景图。上传后覆盖主题的背景渐变，按钮色与文字色仍生效。 */
+    backgroundMediaId: uuid(),
+    /** 背景图上那层遮罩的暗度，0–1，默认四成，保证文字对比度。 */
+    backgroundOverlay: numeric({ precision: 3, scale: 2 }).notNull().default('0.40'),
 
     /**
      * 归属管理员。为空即「无归属」，仅超级管理员可见。见 ADR-0005。

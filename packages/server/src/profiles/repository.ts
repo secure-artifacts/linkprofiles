@@ -1,4 +1,5 @@
 import type { ButtonView, ProfileView, SocialIconView } from '@link-profile/profile-ui';
+import { loadMediaByIds, toMediaSource, toVideoSource } from './media-view.js';
 import { buildSocialUrl, findSocialPlatform, inferPlatformFromUrl } from '@link-profile/shared';
 import { buttons, socialIcons, users } from '@link-profile/shared/schema';
 import { and, asc, eq } from 'drizzle-orm';
@@ -31,12 +32,26 @@ export async function findProfileByShortName(
       bio: users.bio,
       layout: users.layout,
       theme: users.theme,
+      avatarMediaId: users.avatarMediaId,
+      avatarPosterId: users.avatarPosterId,
+      backgroundMediaId: users.backgroundMediaId,
+      backgroundOverlay: users.backgroundOverlay,
     })
     .from(users)
     .where(and(eq(users.shortName, normalizeShortName(shortName)), eq(users.role, 'user')))
     .limit(1);
 
   if (!row?.shortName) return null;
+
+  const mediaById = await loadMediaByIds(db, [
+    row.avatarMediaId,
+    row.avatarPosterId,
+    row.backgroundMediaId,
+  ]);
+  const avatarRow = row.avatarMediaId ? mediaById.get(row.avatarMediaId) : undefined;
+  const posterRow = row.avatarPosterId ? mediaById.get(row.avatarPosterId) : undefined;
+  const backgroundRow = row.backgroundMediaId ? mediaById.get(row.backgroundMediaId) : undefined;
+  const background = toMediaSource(backgroundRow);
 
   return {
     id: row.id,
@@ -46,7 +61,12 @@ export async function findProfileByShortName(
       bio: row.bio,
       layout: row.layout,
       theme: row.theme,
-      avatar: null,
+      // 头像位放的是图还是视频，二者互斥
+      avatar: toMediaSource(avatarRow),
+      video: toVideoSource(avatarRow, posterRow),
+      background: background
+        ? { src: background.src, overlay: Number(row.backgroundOverlay) }
+        : null,
       socialIcons: await loadSocialIcons(db, row.id),
       buttons: await loadButtons(db, row.id),
     },

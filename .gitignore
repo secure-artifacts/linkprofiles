@@ -23,3 +23,4 @@ logs/
 # 构建产物与本地上传目录
 packages/*/dist/
 packages/profile-ui/src/generated/profile.css
+uploads/
