@@ -8,8 +8,9 @@
   },
   "scripts": {
     "build:css": "node scripts/build-css.mjs",
-    "build": "node scripts/build-css.mjs && tsc -p tsconfig.json --noEmit",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "node scripts/build-icons.mjs && node scripts/build-css.mjs && tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build:icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
     "@link-profile/shared": "workspace:*"

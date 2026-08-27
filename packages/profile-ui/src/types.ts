@@ -11,6 +11,29 @@ export interface MediaSource {
   height?: number;
 }
 
+/** 页面主体里的一个可点击条目。 */
+export interface ButtonView {
+  id: string;
+  title: string;
+  /** 留空则不渲染副标题那一行 */
+  subtitle: string;
+  url: string;
+  /** 联系类渠道。决定两级视觉，也决定这次点击算不算线索。 */
+  isLead: boolean;
+  /** 有品牌图形时在左侧渲染一枚，取值为内置清单里的平台 id */
+  platform?: string | null;
+}
+
+/** 头部的图标式入口。 */
+export interface SocialIconView {
+  id: string;
+  platform: string;
+  /** 系统按平台拼好的目标地址 */
+  url: string;
+  label: string;
+  isLead: boolean;
+}
+
 /**
  * 渲染个人页所需要的全部数据。
  *
@@ -24,4 +47,6 @@ export interface ProfileView {
   theme: Theme;
   /** 头像位。Hero / Banner / Cutout 用它当头图。缺失时以主题渐变填充。 */
   avatar: MediaSource | null;
+  socialIcons: readonly SocialIconView[];
+  buttons: readonly ButtonView[];
 }

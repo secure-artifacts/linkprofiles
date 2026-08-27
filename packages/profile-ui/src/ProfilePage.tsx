@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Avatar } from './Avatar.js';
+import { ButtonList, SocialIcons } from './Buttons.js';
 import type { Layout, ProfileView } from './types.js';
 
 /**
@@ -98,23 +99,24 @@ export interface ProfilePageProps {
   profile: ProfileView;
   /** 服务端直出时为 true，头像位按 LCP 元素处理。 */
   priority?: boolean;
-  socials?: ReactNode;
-  children?: ReactNode;
 }
 
 /**
  * 个人页主体。同一批组件服务于服务端 `renderToString` 直出与后台 iframe 预览，
  * 因此不得依赖任何浏览器专有 API（见 ADR-0004）。
  */
-export function ProfilePage({ profile, priority = false, socials, children }: ProfilePageProps) {
+export function ProfilePage({ profile, priority = false }: ProfilePageProps) {
   const inHeader = SOCIALS_IN_HEADER[profile.layout] ?? true;
+  const socials = profile.socialIcons.length ? <SocialIcons icons={profile.socialIcons} /> : null;
 
   return (
     <div className="pp" data-t={profile.theme} data-l={profile.layout}>
       <div className="pp-shell">
         <Header profile={profile} priority={priority} socials={inHeader ? socials : null} />
         {!inHeader && socials ? <div className="hd">{socials}</div> : null}
-        <div className="pp-body">{children}</div>
+        <div className="pp-body">
+          <ButtonList buttons={profile.buttons} />
+        </div>
       </div>
     </div>
   );

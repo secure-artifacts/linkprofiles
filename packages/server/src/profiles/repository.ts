@@ -1,6 +1,7 @@
-import type { ProfileView } from '@link-profile/profile-ui';
-import { users } from '@link-profile/shared/schema';
-import { and, eq } from 'drizzle-orm';
+import type { ButtonView, ProfileView, SocialIconView } from '@link-profile/profile-ui';
+import { buildSocialUrl, findSocialPlatform, inferPlatformFromUrl } from '@link-profile/shared';
+import { buttons, socialIcons, users } from '@link-profile/shared/schema';
+import { and, asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 
 /**
@@ -46,6 +47,57 @@ export async function findProfileByShortName(
       layout: row.layout,
       theme: row.theme,
       avatar: null,
+      socialIcons: await loadSocialIcons(db, row.id),
+      buttons: await loadButtons(db, row.id),
     },
   };
+}
+
+export async function loadButtons(db: Db, userId: string): Promise<ButtonView[]> {
+  const rows = await db
+    .select({
+      id: buttons.id,
+      title: buttons.title,
+      subtitle: buttons.subtitle,
+      url: buttons.url,
+      isLead: buttons.isLead,
+    })
+    .from(buttons)
+    .where(eq(buttons.userId, userId))
+    .orderBy(asc(buttons.position));
+
+  // 品牌图形从目标地址认出来，用户不必为此多填一个字段。
+  return rows.map((r) => ({ ...r, platform: inferPlatformFromUrl(r.url) }));
+}
+
+/**
+ * 社媒图标存的是用户填的号码 / 邮箱 / 用户名，目标 URL 在这里按平台拼装。
+ * 平台不在内置清单里（例如清单调整后残留的旧行）就整条跳过，不渲染死链。
+ */
+export async function loadSocialIcons(db: Db, userId: string): Promise<SocialIconView[]> {
+  const rows = await db
+    .select({
+      id: socialIcons.id,
+      platform: socialIcons.platform,
+      value: socialIcons.value,
+      isLead: socialIcons.isLead,
+    })
+    .from(socialIcons)
+    .where(eq(socialIcons.userId, userId))
+    .orderBy(asc(socialIcons.position));
+
+  const views: SocialIconView[] = [];
+  for (const row of rows) {
+    const platform = findSocialPlatform(row.platform);
+    const url = buildSocialUrl(row.platform, row.value);
+    if (!platform || !url) continue;
+    views.push({
+      id: row.id,
+      platform: row.platform,
+      url,
+      label: platform.label,
+      isLead: row.isLead,
+    });
+  }
+  return views;
 }
