@@ -14,7 +14,7 @@ services:
       - '55432:5432'
     # 测试库不需要持久化，落在 tmpfs 上换取速度。
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U linkprofile -d link_profile_test']
       interval: 3s
