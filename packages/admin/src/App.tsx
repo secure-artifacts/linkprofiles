@@ -1,7 +1,8 @@
-import { App as AntApp, Button, ConfigProvider, Layout, Menu, Spin, Typography } from 'antd';
+import { App as AntApp, Button, ConfigProvider, Layout, Menu, Space, Spin, Typography } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { useEffect, useState } from 'react';
 import { request, UnauthorizedError } from './api/client.js';
+import { ChangePasswordModal } from './components/ChangePasswordModal.js';
 import type { Session } from './api/types.js';
 import { AdminsPage } from './pages/AdminsPage.js';
 import { AnalyticsPage } from './pages/AnalyticsPage.js';
@@ -21,6 +22,7 @@ export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
   const [view, setView] = useState<View>({ name: 'users' });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     request<Session>('/auth/me')
@@ -94,20 +96,34 @@ export function App() {
               }
             />
 
-            <Button
-              size="small"
-              onClick={async () => {
-                await request('/auth/logout', { method: 'POST' });
-                setSession(null);
-              }}
-            >
-              登出（{session.account}）
-            </Button>
+            <Space>
+              <Button size="small" onClick={() => setChangingPassword(true)}>
+                修改密码
+              </Button>
+              <Button
+                size="small"
+                onClick={async () => {
+                  await request('/auth/logout', { method: 'POST' });
+                  setSession(null);
+                }}
+              >
+                登出（{session.account}）
+              </Button>
+            </Space>
           </Layout.Header>
 
           <Layout.Content style={{ padding: 24 }}>
             {renderView(view, session, setView)}
           </Layout.Content>
+
+          <ChangePasswordModal
+            open={changingPassword}
+            onClose={() => setChangingPassword(false)}
+            onSignedOut={() => {
+              setChangingPassword(false);
+              setSession(null);
+            }}
+          />
         </Layout>
       </AntApp>
     </ConfigProvider>

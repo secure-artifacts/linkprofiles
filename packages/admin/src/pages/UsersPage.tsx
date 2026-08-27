@@ -36,6 +36,7 @@ export function UsersPage({ session, onEdit, onAnalytics }: UsersPageProps) {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [editing, setEditing] = useState<UserSummary | null>(null);
 
   const isSuperadmin = session.role === 'superadmin';
 
@@ -170,6 +171,9 @@ export function UsersPage({ session, onEdit, onAnalytics }: UsersPageProps) {
                 <Button size="small" onClick={() => onEdit(user.id)}>
                   编辑页面
                 </Button>
+                <Button size="small" onClick={() => setEditing(user)}>
+                  账号设置
+                </Button>
                 <Button size="small" onClick={() => onAnalytics(user.id)}>
                   数据
                 </Button>
@@ -182,9 +186,97 @@ export function UsersPage({ session, onEdit, onAnalytics }: UsersPageProps) {
         ]}
       />
 
+      <AccountSettingsModal user={editing} onClose={() => setEditing(null)} onDone={load} />
       <CreateUserModal open={creating} onClose={() => setCreating(false)} onDone={load} />
       <BulkCreateModal open={bulkOpen} onClose={() => setBulkOpen(false)} onDone={load} />
     </Space>
+  );
+}
+
+/**
+ * 账号设置：改 short_name、重置密码。
+ *
+ * 两件事都是管理员才做得了的（用户改不了自己的 short_name，也只能走
+ * 需要验旧密码的自助改密码），所以放在用户列表这一侧而不是编辑器里。
+ */
+function AccountSettingsModal({
+  user,
+  onClose,
+  onDone,
+}: {
+  user: UserSummary | null;
+  onClose: () => void;
+  onDone: () => Promise<void> | void;
+}) {
+  const [shortName, setShortName] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setShortName(user?.shortName ?? '');
+    setNewPassword('');
+  }, [user]);
+
+  if (!user) return null;
+
+  return (
+    <Modal
+      title={`账号设置 · ${user.label || user.account}`}
+      open
+      onCancel={onClose}
+      okText="保存"
+      cancelText="取消"
+      confirmLoading={saving}
+      onOk={async () => {
+        setSaving(true);
+        try {
+          if (shortName && shortName !== user.shortName) {
+            await request(`/users/${user.id}`, { method: 'PATCH', body: { shortName } });
+          }
+          if (newPassword) {
+            await request(`/users/${user.id}/password`, {
+              method: 'PUT',
+              body: { newPassword },
+            });
+          }
+          message.success('已保存');
+          onClose();
+          await onDone();
+        } catch (err) {
+          message.error((err as Error).message);
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          <Typography.Text strong>页面地址</Typography.Text>
+          <Input
+            addonBefore="/"
+            value={shortName}
+            onChange={(e) => setShortName(e.target.value)}
+            placeholder="小写字母、数字与连字符，3–30 位"
+          />
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            改地址会让已经发出去的旧链接失效。已被删除用户占用过的地址永不再分配。
+          </Typography.Text>
+        </Space>
+
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          <Typography.Text strong>重置密码</Typography.Text>
+          <Input.Password
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="留空则不改密码"
+            autoComplete="new-password"
+          />
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            重置后他当前的登录会立刻失效，需要用新密码重新登录。
+          </Typography.Text>
+        </Space>
+      </Space>
+    </Modal>
   );
 }
 

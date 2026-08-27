@@ -6,7 +6,8 @@ import { z } from 'zod';
 import { FORBIDDEN, loadTargetUser, requireCapability, UNAUTHORIZED } from '../auth/guards.js';
 import { hashPassword } from '../auth/passwords.js';
 import { deleteSessionsForUser } from '../auth/sessions.js';
-import { deleteUserAndRetireShortName, isRetired } from '../profiles/deletion.js';
+import { deleteUserAndRetireShortName } from '../profiles/deletion.js';
+import { findUserConflict } from '../users/conflicts.js';
 import { visibleUsersFilter } from '../auth/policy.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,6 +20,10 @@ const createUserBody = z.object({
   shortName: shortNameSchema,
   /** 显示名：个人页上给访客看的名字，可重复。留空时先跟 short_name 一致 */
   displayName: z.string().trim().optional(),
+});
+
+const resetPasswordBody = z.object({
+  newPassword: z.string().min(8, '密码至少 8 位'),
 });
 
 const assignOwnerBody = z.object({
@@ -78,7 +83,7 @@ export async function userRoutes(app: FastifyInstance) {
     }
     const { account, password, label, shortName, displayName } = parsed.data;
 
-    const conflict = await findConflict(app, account, shortName);
+    const conflict = await findUserConflict(app.db, { account, shortName });
     if (conflict) return reply.code(409).send({ error: conflict });
 
     const [row] = await app.db
@@ -113,7 +118,10 @@ export async function userRoutes(app: FastifyInstance) {
     if (!target) return reply.code(403).send(FORBIDDEN);
 
     if (parsed.data.shortName) {
-      const conflict = await findConflict(app, null, parsed.data.shortName, target.id);
+      const conflict = await findUserConflict(app.db, {
+        shortName: parsed.data.shortName,
+        excludeId: target.id,
+      });
       if (conflict) return reply.code(409).send({ error: conflict });
     }
 
@@ -172,6 +180,37 @@ export async function userRoutes(app: FastifyInstance) {
     },
   );
 
+  /**
+   * 重置名下用户的密码。
+   *
+   * 与用户自助改密码（`POST /_api/auth/password`）是两条路：那条要验旧密码，
+   * 这条是「他忘了密码，管理员立刻解决」，因此不验旧密码 —— 也正因为如此，
+   * **只有管理员与超级管理员能调**，否则用户就能绕开旧密码校验改自己的。
+   */
+  app.put<{ Params: { id: string } }>('/users/:id/password', async (req, reply) => {
+    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
+    if (req.currentUser.role === 'user') return reply.code(403).send(FORBIDDEN);
+
+    const parsed = resetPasswordBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+    }
+
+    const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'update');
+    if (!target || target.role !== 'user') return reply.code(403).send(FORBIDDEN);
+
+    await app.db
+      .update(users)
+      .set({ passwordHash: await hashPassword(parsed.data.newPassword), updatedAt: new Date() })
+      .where(eq(users.id, target.id));
+
+    // 改了密码就把他的既有会话全部踢掉，与自助改密码同一条规则
+    await deleteSessionsForUser(app.db, target.id);
+
+    return reply.code(204).send();
+  });
+
   app.delete<{ Params: { id: string } }>('/users/:id', async (req, reply) => {
     if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
     if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
@@ -186,34 +225,4 @@ export async function userRoutes(app: FastifyInstance) {
 
     return reply.code(204).send();
   });
-}
-
-type Conflict = 'account_taken' | 'short_name_taken' | 'short_name_retired';
-
-async function findConflict(
-  app: FastifyInstance,
-  account: string | null,
-  shortName: string,
-  excludeId?: string,
-): Promise<Conflict | null> {
-  if (account) {
-    const [row] = await app.db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.account, account))
-      .limit(1);
-    if (row && row.id !== excludeId) return 'account_taken';
-  }
-
-  const [row] = await app.db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.shortName, shortName))
-    .limit(1);
-  if (row && row.id !== excludeId) return 'short_name_taken';
-
-  // 墓碑里的地址永不释放，新建与改名都抢不到
-  if (await isRetired(app.db, shortName)) return 'short_name_retired';
-
-  return null;
 }

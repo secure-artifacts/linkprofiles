@@ -100,7 +100,19 @@ export function draftToProfileView(draft: Draft): ProfileView {
   };
 }
 
-/** 新按钮与新社媒图标只在浏览器里需要一个 key，保存时服务端会重新发 id。 */
+/**
+ * 新按钮与新社媒图标在浏览器里先要一个 key。
+ *
+ * 带这个前缀的 id 保存时不往服务端送，由服务端发一个真的；
+ * 已落库的条目则原样带回去，好让它保住自己的 id —— 换 id 会让它的
+ * 历史点击成为孤儿（见 EditorPage 的 `withPersistedId`）。
+ */
+const LOCAL_ID_PREFIX = 'local-';
+
 export function localId(): string {
-  return `local-${crypto.randomUUID()}`;
+  return `${LOCAL_ID_PREFIX}${crypto.randomUUID()}`;
+}
+
+export function isLocalId(id: string): boolean {
+  return id.startsWith(LOCAL_ID_PREFIX);
 }

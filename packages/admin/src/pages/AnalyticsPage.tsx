@@ -3,6 +3,7 @@ import {
   Alert,
   Card,
   Col,
+  DatePicker,
   Flex,
   Row,
   Segmented,
@@ -12,6 +13,7 @@ import {
   Table,
   Typography,
 } from 'antd';
+import type { Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { request } from '../api/client.js';
 import type { AnalyticsResponse, DimensionRow } from '../api/types.js';
@@ -32,31 +34,34 @@ interface AnalyticsPageProps {
   userId?: string;
 }
 
+type Preset = 'today' | '7d' | '30d' | 'custom';
+
 export function AnalyticsPage({ userId }: AnalyticsPageProps) {
-  const [preset, setPreset] = useState<'today' | '7d' | '30d'>('7d');
+  const [preset, setPreset] = useState<Preset>('7d');
+  const [customRange, setCustomRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [timeZone, setTimeZone] = useState(DEFAULT_DISPLAY_TIMEZONE);
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams({ preset, tz: timeZone });
+    const params = new URLSearchParams({ tz: timeZone });
+    if (preset === 'custom') {
+      // 自定义区间要两端都选好了才查
+      if (!customRange) return;
+      params.set('from', customRange[0].startOf('day').toISOString());
+      params.set('to', customRange[1].endOf('day').toISOString());
+    } else {
+      params.set('preset', preset);
+    }
     if (userId) params.set('userId', userId);
 
     setError(null);
     request<AnalyticsResponse>(`/analytics?${params}`)
       .then(setData)
       .catch((err: Error) => setError(err.message));
-  }, [preset, timeZone, userId]);
-
-  const peakHour = useMemo(() => {
-    if (!data) return null;
-    const max = Math.max(...data.hourlyLeads);
-    if (max === 0) return null;
-    return data.hourlyLeads.indexOf(max);
-  }, [data]);
+  }, [preset, customRange, timeZone, userId]);
 
   if (error) return <Alert type="error" showIcon message="读不到数据" description={error} />;
-  if (!data) return null;
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -67,13 +72,22 @@ export function AnalyticsPage({ userId }: AnalyticsPageProps) {
         <Space wrap>
           <Segmented
             value={preset}
-            onChange={(value) => setPreset(value as typeof preset)}
+            onChange={(value) => setPreset(value as Preset)}
             options={[
               { value: 'today', label: '今天' },
               { value: '7d', label: '7 天' },
               { value: '30d', label: '30 天' },
+              { value: 'custom', label: '自定义' },
             ]}
           />
+          {preset === 'custom' ? (
+            <DatePicker.RangePicker
+              value={customRange}
+              onChange={(range) =>
+                setCustomRange(range && range[0] && range[1] ? [range[0], range[1]] : null)
+              }
+            />
+          ) : null}
           <Select
             value={timeZone}
             onChange={setTimeZone}
@@ -90,6 +104,24 @@ export function AnalyticsPage({ userId }: AnalyticsPageProps) {
         description="不做访客去重：同一个人刷十次页就是十次页面浏览，连点五次就是五条线索。对外汇报时请说明这一点。"
       />
 
+      {data ? (
+        <AnalyticsResults data={data} timeZone={timeZone} />
+      ) : (
+        <Typography.Text type="secondary">选好起止日期后显示数据。</Typography.Text>
+      )}
+    </Space>
+  );
+}
+
+/** 指标与图表。只有拿到数据才渲染，因此这里的 data 一定非空。 */
+function AnalyticsResults({ data, timeZone }: { data: AnalyticsResponse; timeZone: string }) {
+  const peakHour = useMemo(() => {
+    const max = Math.max(...data.hourlyLeads);
+    return max === 0 ? null : data.hourlyLeads.indexOf(max);
+  }, [data]);
+
+  return (
+    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Row gutter={[16, 16]}>
         <Col xs={12} md={6}>
           <Card size="small">

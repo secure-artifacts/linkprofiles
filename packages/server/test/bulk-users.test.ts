@@ -150,6 +150,41 @@ test('密码以 argon2 哈希入库，不是明文', async () => {
   expect(res.statusCode).toBe(200);
 });
 
+test('批量创建同样抢不到墓碑里的 short_name', async () => {
+  // 先建一个再删掉，其 short_name 进墓碑
+  await bulk(adminToken, row('原主人', 'former', 'taken-name', 'pass-1234'));
+  const [victim] = await ctx.db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.account, 'former'));
+  const removed = await ctx.app.inject({
+    method: 'DELETE',
+    url: `/_api/users/${victim!.id}`,
+    ...withSession(adminToken),
+  });
+  expect(removed.statusCode).toBe(204);
+
+  // 单个创建挡得住，批量创建也必须挡得住 —— 否则绕一下就能抢注旧地址
+  const single = await ctx.app.inject({
+    method: 'POST',
+    url: '/_api/users',
+    ...withSession(adminToken),
+    payload: {
+      account: 'squatter-single',
+      password: 'a-good-password',
+      shortName: 'taken-name',
+    },
+  });
+  expect(single.statusCode).toBe(409);
+
+  const res = await bulk(adminToken, row('抢注', 'squatter-bulk', 'taken-name', 'pass-1234'));
+
+  expect(res.json().createdCount).toBe(0);
+  expect(res.json().failed).toEqual([
+    { line: 1, error: 'short_name taken-name 属于一个已删除的用户，永不再分配' },
+  ]);
+});
+
 test('用户不能批量创建', async () => {
   const res = await bulk(userToken, row('张三', 'zhangsan', 'zhangsan', 'pass-1234'));
 

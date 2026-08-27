@@ -19,7 +19,7 @@ import { PreviewFrame } from '../preview/PreviewFrame.js';
 import { ButtonsEditor } from './editor/ButtonsEditor.js';
 import { MediaEditor } from './editor/MediaEditor.js';
 import { SocialIconsEditor } from './editor/SocialIconsEditor.js';
-import { draftFromServer, draftToProfileView, type Draft } from './editor/draft.js';
+import { draftFromServer, draftToProfileView, isLocalId, type Draft } from './editor/draft.js';
 
 const LAYOUT_LABELS: Record<string, string> = {
   classic: 'Classic',
@@ -102,18 +102,16 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
         },
       });
 
+      // 已有条目要把自己的 id 带回去：换 id 会让它的历史点击成为孤儿，
+      // 单按钮点击率归零。新加的条目 id 是 `local-…`，不往上送。
       await request(`/users/${userId}/buttons`, {
         method: 'PUT',
-        body: {
-          buttons: draft.buttons.map(({ id: _id, ...button }) => button),
-        },
+        body: { buttons: draft.buttons.map(withPersistedId) },
       });
 
       await request(`/users/${userId}/social-icons`, {
         method: 'PUT',
-        body: {
-          socialIcons: draft.socialIcons.map(({ id: _id, ...icon }) => icon),
-        },
+        body: { socialIcons: draft.socialIcons.map(withPersistedId) },
       });
 
       await load();
@@ -250,6 +248,18 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
       </Space>
     </Flex>
   );
+}
+
+/**
+ * 已落库的条目原样带上 id，本地新加的（`local-` 前缀，见 draft.ts 的
+ * `localId`）去掉 id 交给服务端发新的。
+ */
+function withPersistedId<T extends { id: string }>(item: T): T | Omit<T, 'id'> {
+  if (isLocalId(item.id)) {
+    const { id: _id, ...rest } = item;
+    return rest;
+  }
+  return item;
 }
 
 /** 保存时才真正上传选中的素材，用户在确认满意之前不必先落库。 */

@@ -5,7 +5,7 @@ import {
   validateTargetUrl,
 } from '@link-profile/shared';
 import { buttons, layoutEnum, socialIcons, themeEnum, users } from '@link-profile/shared/schema';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { FORBIDDEN, loadTargetUser, UNAUTHORIZED } from '../auth/guards.js';
@@ -25,6 +25,14 @@ const profileBody = z.object({
 });
 
 const buttonInput = z.object({
+  /**
+   * 已有按钮带上自己的 id，新加的不带。
+   *
+   * **id 必须保留下来**：点击埋点记的是 `clicks.target_id`，换一次 id
+   * 这个按钮的历史点击就全成了孤儿，单按钮点击率归零。而编辑器里任何
+   * 一次保存（哪怕只是改了主题）都会把整份列表提交一遍。
+   */
+  id: z.string().uuid().optional(),
   title: z.string().trim().min(1, '按钮文字不能为空').max(80),
   /** 选填的一行说明，留空则页面上不渲染 */
   subtitle: z.string().trim().max(80).default(''),
@@ -39,6 +47,9 @@ const buttonInput = z.object({
  * 增、删、改、拖拽排序在编辑器里都是对同一个数组的操作，一次存下来
  * 比拆成若干个接口 + 一个单独的重排接口简单，也不会有排序竞态。
  * 顺序即数组下标。
+ *
+ * 但**不是整表删了重插**：带 id 的原地更新、不带 id 的新建、没出现在
+ * 这次提交里的才删除。见 `buttonInput.id` 的说明。
  */
 const buttonsBody = z.object({
   buttons: z
@@ -47,6 +58,8 @@ const buttonsBody = z.object({
 });
 
 const socialIconInput = z.object({
+  /** 同 buttonInput.id：换 id 会让这个图标的历史点击成为孤儿 */
+  id: z.string().uuid().optional(),
   platform: z.string(),
   /** 用户填的号码 / 邮箱 / 用户名，不是拼好的 URL */
   value: z.string().trim().min(1, '内容不能为空'),
@@ -125,6 +138,7 @@ export async function profileContentRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: 'invalid_url', index, message: url.error });
       }
       rows.push({
+        ...(input.id ? { id: input.id } : {}),
         userId: target,
         title: input.title,
         subtitle: input.subtitle,
@@ -136,8 +150,28 @@ export async function profileContentRoutes(app: FastifyInstance) {
     }
 
     await app.db.transaction(async (tx) => {
-      await tx.delete(buttons).where(eq(buttons.userId, target));
-      if (rows.length) await tx.insert(buttons).values(rows);
+      const owned = new Set(
+        (await tx.select({ id: buttons.id }).from(buttons).where(eq(buttons.userId, target))).map(
+          (r) => r.id,
+        ),
+      );
+
+      // 别人的 id 塞进来只会当作新建，劫持不了不属于自己的行
+      const keep = rows.filter((row) => row.id && owned.has(row.id)).map((row) => row.id!);
+      const stale = [...owned].filter((id) => !keep.includes(id));
+      if (stale.length) await tx.delete(buttons).where(inArray(buttons.id, stale));
+
+      for (const row of rows) {
+        const { id, ...values } = row;
+        if (id && owned.has(id)) {
+          await tx
+            .update(buttons)
+            .set({ ...values, updatedAt: new Date() })
+            .where(eq(buttons.id, id));
+        } else {
+          await tx.insert(buttons).values(values);
+        }
+      }
     });
 
     return loadEditableProfile(app, target);
@@ -169,6 +203,7 @@ export async function profileContentRoutes(app: FastifyInstance) {
 
       const platform = SOCIAL_PLATFORMS.find((p) => p.id === input.platform)!;
       rows.push({
+        ...(input.id ? { id: input.id } : {}),
         userId: target,
         platform: input.platform,
         value: input.value,
@@ -179,8 +214,30 @@ export async function profileContentRoutes(app: FastifyInstance) {
     }
 
     await app.db.transaction(async (tx) => {
-      await tx.delete(socialIcons).where(eq(socialIcons.userId, target));
-      if (rows.length) await tx.insert(socialIcons).values(rows);
+      const owned = new Set(
+        (
+          await tx
+            .select({ id: socialIcons.id })
+            .from(socialIcons)
+            .where(eq(socialIcons.userId, target))
+        ).map((r) => r.id),
+      );
+
+      const keep = rows.filter((row) => row.id && owned.has(row.id)).map((row) => row.id!);
+      const stale = [...owned].filter((id) => !keep.includes(id));
+      if (stale.length) await tx.delete(socialIcons).where(inArray(socialIcons.id, stale));
+
+      for (const row of rows) {
+        const { id, ...values } = row;
+        if (id && owned.has(id)) {
+          await tx
+            .update(socialIcons)
+            .set({ ...values, updatedAt: new Date() })
+            .where(eq(socialIcons.id, id));
+        } else {
+          await tx.insert(socialIcons).values(values);
+        }
+      }
     });
 
     return loadEditableProfile(app, target);

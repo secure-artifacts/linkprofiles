@@ -1,10 +1,10 @@
-import { parseBulkUserRows, type BulkUserInput } from '@link-profile/shared';
+import { parseBulkUserRows } from '@link-profile/shared';
 import { users } from '@link-profile/shared/schema';
-import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireCapability } from '../auth/guards.js';
 import { hashPassword } from '../auth/passwords.js';
+import { describeConflict, findUserConflict } from '../users/conflicts.js';
 
 const bulkBody = z.object({
   /** 从 Google Sheet 粘过来的原文，每行四列制表符分隔 */
@@ -39,9 +39,10 @@ export async function bulkUserRoutes(app: FastifyInstance) {
         continue;
       }
 
-      const conflict = await findConflict(app, row.value);
+      // 与单个创建同一套判定（含墓碑），绕道批量抢注不了已退休的地址
+      const conflict = await findUserConflict(app.db, row.value);
       if (conflict) {
-        failed.push({ line: row.line, error: conflict });
+        failed.push({ line: row.line, error: describeConflict(conflict, row.value) });
         continue;
       }
 
@@ -64,22 +65,4 @@ export async function bulkUserRoutes(app: FastifyInstance) {
 
     return { created, failed, createdCount: created.length, failedCount: failed.length };
   });
-}
-
-async function findConflict(app: FastifyInstance, input: BulkUserInput): Promise<string | null> {
-  const [byAccount] = await app.db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.account, input.account))
-    .limit(1);
-  if (byAccount) return `账号 ${input.account} 已存在`;
-
-  const [byShortName] = await app.db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.shortName, input.shortName))
-    .limit(1);
-  if (byShortName) return `short_name ${input.shortName} 已被占用`;
-
-  return null;
 }

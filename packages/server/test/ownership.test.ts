@@ -99,6 +99,11 @@ test('管理员访问非名下用户的任一接口都被拒', async () => {
       payload: { shortName: 'stolen-name' },
     },
     { method: 'DELETE' as const, url: `/_api/users/${bobsUser.id}` },
+    {
+      method: 'PUT' as const,
+      url: `/_api/users/${bobsUser.id}/password`,
+      payload: { newPassword: 'stolen-password' },
+    },
   ];
 
   for (const call of calls) {

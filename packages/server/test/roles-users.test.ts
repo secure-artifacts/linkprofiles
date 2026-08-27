@@ -327,3 +327,57 @@ test('未登录访问后台接口一律未授权', async () => {
     expect(res.statusCode, `${method} ${url}`).toBe(401);
   }
 });
+
+test('管理员可以重置名下用户的密码，旧会话立刻失效', async () => {
+  const before = await ctx.app.inject({
+    method: 'GET',
+    url: '/_api/auth/me',
+    ...withSession(userToken),
+  });
+  expect(before.statusCode).toBe(200);
+
+  const reset = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/password`,
+    ...withSession(adminToken),
+    payload: { newPassword: 'reset-by-admin-1234' },
+  });
+  expect(reset.statusCode).toBe(204);
+
+  // 旧会话被踢掉
+  const after = await ctx.app.inject({
+    method: 'GET',
+    url: '/_api/auth/me',
+    ...withSession(userToken),
+  });
+  expect(after.statusCode).toBe(401);
+
+  // 新密码可用，旧密码不可用
+  expect((await login(ctx, 'user', 'user-pass')).res.statusCode).toBe(401);
+  expect((await login(ctx, 'user', 'reset-by-admin-1234')).res.statusCode).toBe(200);
+});
+
+test('超级管理员也可以重置用户密码', async () => {
+  const res = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/password`,
+    ...withSession(superToken),
+    payload: { newPassword: 'reset-by-super-1234' },
+  });
+
+  expect(res.statusCode).toBe(204);
+  expect((await login(ctx, 'user', 'reset-by-super-1234')).res.statusCode).toBe(200);
+});
+
+test('用户不能用重置接口绕开旧密码校验改自己的密码', async () => {
+  const res = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/password`,
+    ...withSession(userToken),
+    payload: { newPassword: 'sneaky-new-password' },
+  });
+
+  expect(res.statusCode).toBe(403);
+  // 原密码仍然有效
+  expect((await login(ctx, 'user', 'user-pass')).res.statusCode).toBe(200);
+});

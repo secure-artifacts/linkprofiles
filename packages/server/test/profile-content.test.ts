@@ -284,6 +284,110 @@ test('非归属管理员改不动别人的用户', async () => {
   expect((await page()).body).not.toContain('我乱改的');
 });
 
+test('保存不换按钮 id，逐按钮的历史点击不被清零', async () => {
+  const created = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/buttons`,
+    ...withSession(ownerToken),
+    payload: {
+      buttons: [
+        { title: '联系我', url: 'https://wa.me/1', isLead: true },
+        { title: '看内容', url: 'https://example.com/blog', isLead: false },
+      ],
+    },
+  });
+  const before = created.json().buttons as { id: string; title: string }[];
+
+  // 只改了个标题就再存一次 —— 这在编辑器里等同于改主题、改简介，任何一次保存
+  const again = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/buttons`,
+    ...withSession(ownerToken),
+    payload: {
+      buttons: [
+        { id: before[0]!.id, title: '联系我（改过）', url: 'https://wa.me/1', isLead: true },
+        { id: before[1]!.id, title: '看内容', url: 'https://example.com/blog', isLead: false },
+      ],
+    },
+  });
+  const after = again.json().buttons as { id: string; title: string }[];
+
+  // id 保持不变，否则 clicks.target_id 全部成为孤儿，单按钮点击率归零
+  expect(after.map((b) => b.id)).toEqual(before.map((b) => b.id));
+  expect(after[0]!.title).toBe('联系我（改过）');
+});
+
+test('重排与增删之后，留下来的按钮仍然是原来那个 id', async () => {
+  const created = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/buttons`,
+    ...withSession(ownerToken),
+    payload: {
+      buttons: [
+        { title: 'A', url: 'https://example.com/a' },
+        { title: 'B', url: 'https://example.com/b' },
+      ],
+    },
+  });
+  const [a, b] = created.json().buttons as { id: string; title: string }[];
+
+  // 交换顺序、删掉 A、加一个新的
+  const again = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/buttons`,
+    ...withSession(ownerToken),
+    payload: {
+      buttons: [
+        { id: b!.id, title: 'B', url: 'https://example.com/b' },
+        { title: 'C', url: 'https://example.com/c' },
+      ],
+    },
+  });
+  const after = again.json().buttons as { id: string; title: string; position: number }[];
+
+  expect(after.map((x) => x.title)).toEqual(['B', 'C']);
+  expect(after[0]!.id).toBe(b!.id);
+  expect(after[0]!.position).toBe(0);
+  // A 真的没了
+  expect(after.map((x) => x.id)).not.toContain(a!.id);
+});
+
+test('别人的按钮 id 塞进来不会被劫持，只会新建一条属于自己的', async () => {
+  const victim = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/buttons`,
+    ...withSession(ownerToken),
+    payload: { buttons: [{ title: '我的', url: 'https://example.com/mine' }] },
+  });
+  const mine = (victim.json().buttons as { id: string }[])[0]!;
+
+  // 另一个用户拿着别人的按钮 id 提交
+  const other = await createLoginableUser(ctx.db, 'other-user-pass', {
+    role: 'user',
+    account: 'other-user',
+    shortName: 'other-user',
+  });
+  const otherToken = (await login(ctx, 'other-user', 'other-user-pass')).token;
+
+  const res = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${other.id}/buttons`,
+    ...withSession(otherToken),
+    payload: { buttons: [{ id: mine.id, title: '抢来的', url: 'https://evil.example.com' }] },
+  });
+  expect(res.statusCode).toBe(200);
+
+  // 我的按钮没被动
+  const stillMine = await ctx.app.inject({
+    method: 'GET',
+    url: `/_api/users/${userId}/profile`,
+    ...withSession(ownerToken),
+  });
+  const list = stillMine.json().buttons as { id: string; title: string }[];
+  expect(list).toHaveLength(1);
+  expect(list[0]).toMatchObject({ id: mine.id, title: '我的' });
+});
+
 test('未登录改不了任何内容', async () => {
   const res = await ctx.app.inject({
     method: 'PUT',

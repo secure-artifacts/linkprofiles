@@ -16,6 +16,7 @@
     "@link-profile/profile-ui": "workspace:*",
     "@link-profile/shared": "workspace:*",
     "antd": "^6.6.1",
+    "dayjs": "^1.11.23",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.18.2"
