@@ -150,12 +150,15 @@ function SortableButtonCard({
           placeholder="按钮文字，如「WhatsApp 上给我留言」"
           maxLength={80}
         />
-        <Input
-          value={button.subtitle}
-          onChange={(e) => onChange({ subtitle: e.target.value })}
-          placeholder="副标题（选填），如「通常当天回复」。留空则不显示这一行"
-          maxLength={80}
-        />
+        {/* 描边行只有一行标题，填了也不会显示，所以非联系类干脆不给这个框 */}
+        {button.isLead ? (
+          <Input
+            value={button.subtitle}
+            onChange={(e) => onChange({ subtitle: e.target.value })}
+            placeholder="副标题（选填），如「通常当天回复」。留空则不显示这一行"
+            maxLength={80}
+          />
+        ) : null}
         <Input
           value={button.url}
           onChange={(e) => onChange({ url: e.target.value })}
