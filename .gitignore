@@ -19,3 +19,6 @@ logs/
 .DS_Store
 .idea/
 .vscode/
+
+# 构建产物与本地上传目录
+packages/*/dist/

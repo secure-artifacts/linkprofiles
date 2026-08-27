@@ -1,0 +1,37 @@
+{
+  "name": "@link-profile/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:migrate": "tsx src/db/migrate.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/static": "^10.1.3",
+    "@link-profile/profile-ui": "workspace:*",
+    "@link-profile/shared": "workspace:*",
+    "argon2": "^0.45.1",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.12.1",
+    "isbot": "^5.2.2",
+    "maxmind": "^5.0.7",
+    "postgres": "^3.4.9",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sharp": "^0.35.4",
+    "ua-parser-js": "^2.0.10",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.12"
+  }
+}

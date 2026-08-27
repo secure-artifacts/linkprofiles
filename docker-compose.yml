@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: linkprofile
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linkprofile}
+      POSTGRES_DB: link_profile
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U linkprofile -d link_profile']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: postgres://linkprofile:${POSTGRES_PASSWORD:-linkprofile}@postgres:5432/link_profile
+      SUPERADMIN_ACCOUNT: ${SUPERADMIN_ACCOUNT:-admin}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:?SUPERADMIN_PASSWORD 必须显式设置}
+    # 只监听 HTTP。TLS 与反向代理交由运维按现有方案接管。
+    ports:
+      - '${APP_PORT:-3000}:3000'
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  uploads:

@@ -1,0 +1,28 @@
+{
+  "name": "link-profile",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter=./packages/* build",
+    "dev": "pnpm --filter @link-profile/server dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r --filter=./packages/* typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "pnpm --filter @link-profile/server db:migrate"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.12"
+  }
+}
