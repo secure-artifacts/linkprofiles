@@ -14,6 +14,7 @@ import { healthRoutes } from './routes/health.js';
 import { mediaRoutes } from './routes/media.js';
 import { profileContentRoutes } from './routes/profile-content.js';
 import { profileRoutes } from './routes/profile.js';
+import { settingsRoutes } from './routes/settings.js';
 import { trackRoutes } from './routes/track.js';
 import { userRoutes } from './routes/users.js';
 
@@ -71,6 +72,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(profileContentRoutes, { prefix: '/_api' });
   await app.register(mediaRoutes, { prefix: '/_api' });
   await app.register(trackRoutes, { prefix: '/_api' });
+  await app.register(settingsRoutes, { prefix: '/_api' });
 
   // 个人页占据根路径，必须最后注册。
   await app.register(profileRoutes);

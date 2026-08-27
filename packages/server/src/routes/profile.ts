@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
+import { sanitizeSource } from '@link-profile/shared';
 import { findProfileByShortName } from '../profiles/repository.js';
+import { readSettings } from '../settings/repository.js';
 import { renderNotFoundDocument, renderProfileDocument } from '../render/document.js';
 import { recordPageView } from '../tracking/record.js';
 import { isCrawler } from '../tracking/visitor.js';
@@ -18,7 +20,14 @@ export async function profileRoutes(app: FastifyInstance) {
         return reply.code(404).type('text/html; charset=utf-8').send(renderNotFoundDocument());
       }
 
-      const profile = await findProfileByShortName(app.db, shortName);
+      // 脏值在门口就丢掉，不进数据库也不进透传出去的地址
+      const source = sanitizeSource(req.query.src);
+      const { sourcePassthroughDefault } = await readSettings(app.db);
+
+      const profile = await findProfileByShortName(app.db, shortName, {
+        source,
+        passthroughDefault: sourcePassthroughDefault,
+      });
       if (!profile) {
         return reply.code(404).type('text/html; charset=utf-8').send(renderNotFoundDocument());
       }
@@ -26,7 +35,7 @@ export async function profileRoutes(app: FastifyInstance) {
       // 社媒 og 爬虫必然抓取且永不点击，算进去会让点击率的分母虚高。
       // 识别为爬虫就直接不写记录，页面与 og 标签照常返回。
       if (!isCrawler(req)) {
-        await recordPageView(app, profile.id, req, req.query.src);
+        await recordPageView(app, profile.id, req, source);
       }
 
       return reply

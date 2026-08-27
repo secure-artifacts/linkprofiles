@@ -9,3 +9,4 @@ export * from './media/mp4-duration.js';
 export * from './tracking/ip.js';
 export * from './tracking/source.js';
 export * from './tracking/user-agent.js';
+export * from './tracking/passthrough.js';
