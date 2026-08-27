@@ -101,9 +101,11 @@ test('公开页按 is_lead 呈现两级视觉，分级与位置无关', async ()
   // 联系类是实心卡片，内容类是描边行——即使联系类排在后面
   expect(html).toMatch(/class="pp-lead"[^>]*>(?:(?!<\/a>).)*联系在后/s);
   expect(html).toMatch(/class="pp-link"[^>]*>(?:(?!<\/a>).)*内容在前/s);
-  // 页面上没有任何区段标题
-  expect(html).not.toContain('联系方式');
-  expect(html).not.toContain('内容链接');
+  // 按钮列表里没有任何区段标题：只有 <a>，没有标题元素
+  const body = html.slice(html.indexOf('<div class="pp-body">'), html.indexOf('</body>'));
+  expect(body).not.toMatch(/<h[2-6][\s>]/);
+  expect(body).not.toContain('联系方式');
+  expect(body).not.toContain('内容链接');
 });
 
 test('副标题留空时不渲染那一行', async () => {

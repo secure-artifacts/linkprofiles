@@ -19,6 +19,38 @@ function escapeHtml(value: string): string {
 
 export interface RenderProfileOptions {
   profile: ProfileView;
+  /** 页面自己的绝对地址。og 标签里的地址必须是绝对的，爬虫不解析相对路径。 */
+  canonicalUrl: string;
+  /** 分享卡片预览图的绝对地址 */
+  previewImageUrl: string;
+}
+
+/**
+ * 分享卡片与收录控制。
+ *
+ * `noindex` 与 og 标签**并行不冲突**：前者是给搜索引擎索引器看的，
+ * 后者是给社媒爬虫抓预览用的，两者读的是不同的标签。个人页不该被
+ * 搜索引擎收录，但转发到 WhatsApp 时必须能出卡片。
+ */
+function metaTags(profile: ProfileView, canonicalUrl: string, previewImageUrl: string): string {
+  const title = profile.displayName || '个人页';
+  const description = profile.bio || `${title} 的联系方式与链接`;
+
+  return [
+    // 阻止搜索引擎收录。社媒爬虫不读这条。
+    '<meta name="robots" content="noindex, nofollow">',
+
+    `<meta property="og:type" content="profile">`,
+    `<meta property="og:title" content="${escapeHtml(title)}">`,
+    `<meta property="og:description" content="${escapeHtml(description)}">`,
+    `<meta property="og:url" content="${escapeHtml(canonicalUrl)}">`,
+    `<meta property="og:image" content="${escapeHtml(previewImageUrl)}">`,
+
+    `<meta name="twitter:card" content="summary_large_image">`,
+    `<meta name="twitter:title" content="${escapeHtml(title)}">`,
+    `<meta name="twitter:description" content="${escapeHtml(description)}">`,
+    `<meta name="twitter:image" content="${escapeHtml(previewImageUrl)}">`,
+  ].join('');
 }
 
 /**
@@ -28,7 +60,11 @@ export interface RenderProfileOptions {
  * 标记，而公开页**不做 hydration** —— 浏览器不下载也不解析 React runtime，
  * 客户端只留一小段原生 JS 负责埋点。这是移动端 LCP 的硬约束，见 ADR-0004。
  */
-export function renderProfileDocument({ profile }: RenderProfileOptions): string {
+export function renderProfileDocument({
+  profile,
+  canonicalUrl,
+  previewImageUrl,
+}: RenderProfileOptions): string {
   const body = renderToStaticMarkup(<ProfilePage profile={profile} priority />);
 
   // LCP 元素是头像位那张图：放视频时就是它的封面图，不是视频本身。
@@ -50,6 +86,7 @@ export function renderProfileDocument({ profile }: RenderProfileOptions): string
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width,initial-scale=1">',
     `<title>${escapeHtml(profile.displayName)}</title>`,
+    metaTags(profile, canonicalUrl, previewImageUrl),
     // 关键 CSS 内联进文档头，其余异步加载。
     `<style>${profileCss}</style>`,
     preloads,

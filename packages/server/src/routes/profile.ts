@@ -3,6 +3,7 @@ import { sanitizeSource } from '@link-profile/shared';
 import { findProfileByShortName } from '../profiles/repository.js';
 import { readSettings } from '../settings/repository.js';
 import { renderNotFoundDocument, renderProfileDocument } from '../render/document.js';
+import { publicOrigin } from '../render/origin.js';
 import { recordPageView } from '../tracking/record.js';
 import { isCrawler } from '../tracking/visitor.js';
 
@@ -38,10 +39,24 @@ export async function profileRoutes(app: FastifyInstance) {
         await recordPageView(app, profile.id, req, source);
       }
 
+      // 预览图取头像或头图；缺失时回落到与主题一致的占位图，
+      // 转发出去仍然是一张成型的卡片而不是一行光秃秃的地址。
+      const origin = publicOrigin(req);
+      const preview =
+        profile.view.video?.poster ??
+        profile.view.avatar?.src ??
+        `/_static/og/${profile.view.theme}.png`;
+
       return reply
         .code(200)
         .type('text/html; charset=utf-8')
-        .send(renderProfileDocument({ profile: profile.view }));
+        .send(
+          renderProfileDocument({
+            profile: profile.view,
+            canonicalUrl: `${origin}/${profile.shortName}`,
+            previewImageUrl: preview.startsWith('http') ? preview : `${origin}${preview}`,
+          }),
+        );
     },
   );
 }
