@@ -70,6 +70,7 @@ export async function adminRoutes(app: FastifyInstance) {
       if (!target) return reply.code(403).send(FORBIDDEN);
 
       await deleteSessionsForUser(app.db, target.id);
+      // 管理员没有 short_name，走普通删除即可；名下用户由外键置空转为无归属
       await app.db.delete(users).where(eq(users.id, target.id));
 
       return reply.code(204).send();

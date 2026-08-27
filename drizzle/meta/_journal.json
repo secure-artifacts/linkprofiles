@@ -43,6 +43,13 @@
       "when": 1787848830856,
       "tag": "0005_nice_exodus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787849050137,
+      "tag": "0006_chief_bruce_banner",
+      "breakpoints": true
     }
   ]
 }

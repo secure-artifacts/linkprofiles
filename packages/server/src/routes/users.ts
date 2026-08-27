@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { FORBIDDEN, loadTargetUser, requireCapability, UNAUTHORIZED } from '../auth/guards.js';
 import { hashPassword } from '../auth/passwords.js';
 import { deleteSessionsForUser } from '../auth/sessions.js';
+import { deleteUserAndRetireShortName, isRetired } from '../profiles/deletion.js';
 import { visibleUsersFilter } from '../auth/policy.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -180,13 +181,14 @@ export async function userRoutes(app: FastifyInstance) {
     if (!target || req.currentUser.role === 'user') return reply.code(403).send(FORBIDDEN);
 
     await deleteSessionsForUser(app.db, target.id);
-    await app.db.delete(users).where(eq(users.id, target.id));
+    // short_name 迁入墓碑、媒体文件下架、埋点保留，见 16
+    await deleteUserAndRetireShortName(app.db, target.id);
 
     return reply.code(204).send();
   });
 }
 
-type Conflict = 'account_taken' | 'short_name_taken';
+type Conflict = 'account_taken' | 'short_name_taken' | 'short_name_retired';
 
 async function findConflict(
   app: FastifyInstance,
@@ -209,6 +211,9 @@ async function findConflict(
     .where(eq(users.shortName, shortName))
     .limit(1);
   if (row && row.id !== excludeId) return 'short_name_taken';
+
+  // 墓碑里的地址永不释放，新建与改名都抢不到
+  if (await isRetired(app.db, shortName)) return 'short_name_retired';
 
   return null;
 }
