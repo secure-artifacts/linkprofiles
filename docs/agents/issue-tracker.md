@@ -10,6 +10,12 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
 
+## Archiving
+
+`triage-labels.md` 的五个标签描述的是**待处理**的票，没有终态。验收通过的票靠移动位置来标记，不靠标签：把文件移到 `.scratch/<feature-slug>/issues/archived/`，保持原文件名。
+
+标签留在原处不动——它记录的是这张票当初交到人手上时的状态，是历史，不是现状。位置才是现状。扫描待办时只看 `issues/` 这一层，不递归进 `archived/`。
+
 ## When a skill says "publish to the issue tracker"
 
 Create a new file under `.scratch/<feature-slug>/` (creating the directory if needed).
