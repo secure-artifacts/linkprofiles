@@ -1,0 +1,21 @@
+node_modules/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+# 运行时产物：上传的媒体与数据库卷
+data/
+uploads/
+
+coverage/
+*.log
+logs/
+
+.DS_Store
+.idea/
+.vscode/

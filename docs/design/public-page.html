@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Link Profile 公开页 — 设计稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#14161A; --ink-2:#5A616B; --line:#E1E4E8; --paper:#F6F7F8; --card:#FFFFFF;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --sys:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --disp:"Bricolage Grotesque",var(--sys);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sys);-webkit-font-smoothing:antialiased}
+code{font-family:var(--mono);font-size:.9em;background:#EDEFF2;padding:1px 5px;border-radius:4px}
+
+/* ---------- canvas chrome ---------- */
+.wrap{max-width:1600px;margin:0 auto;padding:56px 32px 96px}
+.masthead{max-width:760px;margin-bottom:14px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);margin:0 0 14px}
+.masthead h1{font-family:var(--disp);font-weight:800;font-size:clamp(30px,4vw,46px);line-height:1.04;letter-spacing:-.02em;margin:0 0 16px}
+.masthead p{font-size:15px;line-height:1.65;color:var(--ink-2);margin:0 0 10px}
+.masthead strong{color:var(--ink);font-weight:600}
+
+.notice{max-width:760px;margin:22px 0 0;padding:13px 16px;border-left:3px solid #C9A227;background:#FDF8E7;border-radius:0 8px 8px 0;font-size:13.5px;line-height:1.6;color:#5C4A12}
+.notice b{color:#3F3208}
+.rule{height:1px;background:var(--line);margin:44px 0 34px;border:0}
+.sec-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.sec-head h2{font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0}
+.sec-head span{font-family:var(--mono);font-size:11px;color:var(--ink-2);letter-spacing:.08em;text-transform:uppercase}
+.sec-note{font-size:14px;line-height:1.6;color:var(--ink-2);margin:0 0 30px;max-width:660px}
+
+.board{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.slot{width:407px}
+.slot-cap{display:flex;align-items:baseline;gap:9px;margin-bottom:11px}
+.slot-cap b{font-family:var(--disp);font-size:15px;font-weight:700}
+.slot-cap i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+.slot-sub{font-size:12.5px;line-height:1.55;color:var(--ink-2);margin:10px 2px 0}
+
+
+
+/* ---------- iPhone frame ---------- */
+.phone{width:407px;padding:16px;border-radius:62px;position:relative;
+  background:linear-gradient(146deg,#dcdee2 0%,#8d9096 14%,#6d7076 33%,#c3c5ca 52%,#787b81 72%,#b6b8bd 88%,#8a8d93 100%);
+  box-shadow:0 1px 2px rgba(16,20,28,.22),0 34px 64px -22px rgba(16,20,28,.50),
+             inset 0 0 0 1px rgba(255,255,255,.42)}
+.screen{width:375px;height:812px;border-radius:48px;overflow:hidden;position:relative;
+  background:#000;box-shadow:inset 0 0 0 3px #08080a}
+.ip-btn{position:absolute;background:linear-gradient(90deg,#6f7278,#b9bbc0 45%,#7c7f85);border-radius:2px}
+.ip-btn.l{left:-2.5px;width:3.5px}
+.ip-btn.r{right:-2.5px;width:3.5px}
+.ip-act{top:132px;height:30px}
+.ip-vup{top:196px;height:58px}
+.ip-vdn{top:266px;height:58px}
+.ip-pwr{top:214px;height:96px}
+.ip-island{position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  width:118px;height:34px;border-radius:18px;background:#000;z-index:6}
+.ip-status{position:absolute;top:0;left:0;right:0;height:54px;z-index:5;
+  display:flex;align-items:center;justify-content:space-between;padding:2px 26px 0 32px;
+  font-family:var(--sys);font-size:15px;font-weight:600;letter-spacing:.01em;color:var(--text)}
+.ip-status .ico{display:flex;align-items:center;gap:5px}
+.ip-status .ico svg{display:block;height:11px}
+.ip-status .ico .w{width:15px}
+.ip-status .ico .s{width:17px}
+.ip-status .ico .b{width:25px}
+.pp:has(.hd-hero) .ip-status{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.45)}
+.ip-home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+  width:136px;height:5px;border-radius:3px;background:var(--text);opacity:.32;z-index:7}
+
+/* ---------- decisions ---------- */
+.ask-grid{display:grid;gap:15px;margin-bottom:34px}
+.q{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:20px 22px;display:grid;grid-template-columns:32px 1fr;gap:15px;align-items:start}
+.q-num{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;
+  font-family:var(--disp);font-weight:800;font-size:14px;background:#14161A;color:#fff}
+.q h4{font-family:var(--disp);font-size:15.5px;font-weight:700;margin:5px 0 0;letter-spacing:-.008em}
+.q-why{font-size:13px;line-height:1.6;color:var(--ink-2);margin:8px 0 0}
+.q-why b{color:var(--ink);font-weight:600}
+.opts{display:flex;flex-direction:column;gap:7px;margin-top:13px}
+.opt{display:grid;grid-template-columns:22px 1fr;gap:11px;align-items:start;
+  padding:10px 13px;border:1px solid var(--line);border-radius:10px;font-size:13.5px;line-height:1.55}
+.opt.rec{border-color:#14161A;background:#FBFBFC}
+.opt i{font-style:normal;font-family:var(--mono);font-weight:600;font-size:11.5px;
+  color:var(--ink-2);padding-top:2px}
+.opt.rec i{color:#14161A}
+.opt em{font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:#14161A;margin-left:7px}
+.pick{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.pick span{font-size:12.5px;padding:6px 12px;border:1px solid var(--line);border-radius:99px}
+.pick span.rec{border-color:#14161A;font-weight:600}
+.reply{background:#14161A;color:#F2F3F5;border-radius:16px;padding:22px 24px}
+.reply h4{font-family:var(--disp);font-size:15px;font-weight:700;margin:0 0 10px;color:#fff}
+.reply p{font-size:13.5px;line-height:1.7;margin:0;color:#B9BEC6}
+.reply code{background:rgba(255,255,255,.13);color:#fff;font-size:13px;padding:3px 8px;border-radius:5px}
+.skip{font-size:13px;line-height:1.65;color:var(--ink-2);margin:18px 0 0}
+.jump{max-width:760px;margin:14px 0 0;font-size:13.5px;line-height:1.6;color:var(--ink-2)}
+.jump a{color:var(--ink);font-weight:600}
+
+/* ---------- theme tokens ---------- */
+.pp{--bg:linear-gradient(168deg,#FBD9C6 0%,#EBCBDD 46%,#D9C6EF 100%);--bgend:#D9C6EF;
+  --surface:#FFFFFF;--on-surface:#2A2233;--text:#2A2233;--muted:#6E6478;--r:20px;
+  position:absolute;inset:0;background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;overflow:hidden}
+.pp[data-t="harbor"]{--bg:linear-gradient(168deg,#0B3A46 0%,#0E2C43 52%,#12233F 100%);--bgend:#12233F;--surface:#F2E4CE;--on-surface:#0B3A46;--text:#EAF2F2;--muted:#9DB6BC;--r:14px}
+.pp[data-t="moss"]{--bg:linear-gradient(168deg,#17301F 0%,#25381C 55%,#33401C 100%);--bgend:#33401C;--surface:#F0EAD6;--on-surface:#17301F;--text:#E6EDD9;--muted:#9CAE8C;--r:8px}
+.pp[data-t="ember"]{--bg:linear-gradient(168deg,#3B1B33 0%,#65291F 55%,#8A3B22 100%);--bgend:#8A3B22;--surface:#FFF3E6;--on-surface:#3B1B33;--text:#FCE9DC;--muted:#C79A88;--r:999px}
+.pp[data-t="slate"]{--bg:linear-gradient(168deg,#FAFAFA 0%,#F1F3F5 50%,#E6E9EC 100%);--bgend:#E6E9EC;--surface:#101418;--on-surface:#FFFFFF;--text:#101418;--muted:#5C666F;--r:6px}
+.pp[data-t="nocturne"]{--bg:linear-gradient(168deg,#0A0E27 0%,#070A1B 55%,#05060F 100%);--bgend:#05060F;--surface:#A9B4FF;--on-surface:#0A0E27;--text:#EDEFFF;--muted:#7A83B8;--r:16px}
+
+/* ---------- profile page ---------- */
+.pp-scroll{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.hd{flex:none;padding:26px 20px 0}
+.pp-body{flex:none;padding:0 20px 44px;display:flex;flex-direction:column;gap:9px}
+
+.pp-name{font-family:var(--disp);font-weight:800;font-size:31px;line-height:1;letter-spacing:-.025em;margin:0}
+.pp-bio{font-size:14px;line-height:1.5;color:var(--muted);margin:9px 0 0;max-width:29ch}
+
+.pp-soc{display:flex;gap:7px;margin:16px 0 22px}
+.pp-soc a{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;
+  background:#fff;text-decoration:none;box-shadow:0 1px 3px rgba(16,20,28,.18)}
+.pp-soc svg{width:17px;height:17px;display:block}
+
+
+/* SIGNATURE — tier 1: lead channels */
+.pp-lead{display:flex;align-items:center;gap:13px;text-decoration:none;
+  background:var(--surface);color:var(--on-surface);border-radius:var(--r);
+  padding:15px 17px;box-shadow:0 1px 0 rgba(0,0,0,.05),0 8px 20px -12px rgba(0,0,0,.45)}
+.pp-lead .ic{width:34px;height:34px;border-radius:calc(var(--r) * .5);flex:none;display:grid;place-items:center;
+  background:#fff;box-shadow:inset 0 0 0 1px rgba(16,20,28,.10)}
+.pp-lead .ic svg{width:18px;height:18px}
+.pp-lead .tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pp-lead .tx b{font-family:var(--disp);font-weight:700;font-size:15.5px;letter-spacing:-.01em;line-height:1.15}
+.pp-lead .tx span{font-size:11.5px;line-height:1.2;opacity:.62}
+.pp-lead .go{margin-left:auto;flex:none;opacity:.42}
+.pp-lead .go svg{width:15px;height:15px;display:block}
+
+/* tier 2: quiet content links */
+.pp-link{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--text);
+  border:1px solid color-mix(in srgb,var(--text) 26%,transparent);
+  border-radius:var(--r);padding:12px 15px;font-size:14px}
+.pp-link .ic{width:24px;height:24px;border-radius:7px;flex:none;display:grid;place-items:center;
+  background:#fff;box-shadow:inset 0 0 0 1px rgba(16,20,28,.10)}
+.pp-link .ic svg{width:15px;height:15px;display:block}
+.pp-link .go{margin-left:auto;opacity:.34}
+.pp-link .go svg{width:13px;height:13px;display:block}
+
+
+/* ---------- header layouts ---------- */
+.hd-cls{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:78px}
+.hd-cls .av{width:96px;height:96px;border-radius:50%;overflow:hidden;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--text) 22%,transparent)}
+.hd-cls .pp-soc{justify-content:center}
+
+.hd-hero{padding:0;position:relative;height:392px;overflow:hidden}
+.hd-hero .av{position:absolute;inset:0;border-radius:0}
+.hd-hero .veil{position:absolute;inset:0;
+  background:linear-gradient(to top,var(--bgend) 5%,color-mix(in srgb,var(--bgend),transparent 100%) 64%)}
+.hd-hero .cap{position:absolute;left:20px;right:20px;bottom:16px}
+
+.hd-ban{padding:0}
+.hd-ban .bn{height:158px;overflow:hidden;position:relative}
+.hd-ban .bn svg{width:100%;height:100%;display:block}
+.hd-ban .row{display:flex;align-items:flex-end;gap:14px;padding:0 20px;margin-top:-32px;
+  position:relative;z-index:2}
+.hd-ban .av{width:80px;height:80px;border-radius:22px;overflow:hidden;flex:none;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--text) 20%,transparent),0 8px 18px -8px rgba(0,0,0,.5)}
+.hd-ban .nm{padding-bottom:5px}
+
+.hd-cut{padding:52px 20px 0;position:relative;min-height:300px}
+.hd-cut .av{position:absolute;right:-4px;top:46px;width:214px;height:248px;overflow:visible}
+.hd-cut .av img{object-fit:contain;object-position:bottom}
+.hd-cut .nm{position:relative;z-index:2;padding-top:132px}
+.hd-cut .pp-name{font-size:38px}
+
+.hd-shp{padding:74px 20px 0;display:grid;grid-template-columns:118px 1fr;gap:16px;align-items:center}
+.hd-shp .av{width:118px;height:132px;overflow:hidden;
+  border-radius:60px 60px 60px 12px;transform:rotate(-3deg);
+  box-shadow:0 10px 26px -12px rgba(0,0,0,.55)}
+.hd-shp .pp-name{font-size:27px}
+.hd-shp .pp-bio{font-size:13px}
+
+.av{overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ---------- theme swatch grid ---------- */
+.sw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(252px,1fr));gap:20px}
+.sw{border-radius:18px;overflow:hidden;background:var(--card);border:1px solid var(--line)}
+.sw-view{height:322px;position:relative;overflow:hidden}
+.sw-meta{padding:13px 15px 15px;border-top:1px solid var(--line)}
+.sw-meta b{font-family:var(--disp);font-size:14.5px;font-weight:700;display:block}
+.sw-meta p{font-size:12px;line-height:1.5;color:var(--ink-2);margin:4px 0 9px}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{width:19px;height:19px;border-radius:5px;border:1px solid rgba(0,0,0,.10)}
+.sw-mini{flex:1;padding:22px 17px;display:flex;flex-direction:column}
+.sw-mini .pp-name{font-size:22px}
+.sw-mini .pp-bio{font-size:12.5px;margin-top:6px}
+.sw-mini .stack{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+.sw-mini .pp-lead{padding:12px 13px}
+.sw-mini .pp-lead .tx b{font-size:13.5px}
+.sw-mini .pp-lead .tx span{font-size:10.5px}
+.sw-mini .pp-lead .ic{width:28px;height:28px}
+.sw-mini .pp-link{padding:10px 13px;font-size:12.5px}
+.sw-mini .av{width:54px;height:54px;border-radius:50%;overflow:hidden;margin-bottom:12px;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--text) 22%,transparent)}
+
+/* ---------- spec ---------- */
+.spec{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 21px}
+.card h3{font-family:var(--disp);font-size:14px;font-weight:700;margin:0 0 13px;letter-spacing:-.005em}
+.card dl{margin:0;font-size:13px;line-height:1.62}
+.card dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin-top:11px}
+.card dt:first-child{margin-top:0}
+.card dd{margin:2px 0 0;color:var(--ink)}
+.scale span{display:block;font-family:var(--disp);letter-spacing:-.02em;line-height:1.16}
+.s1{font-size:31px;font-weight:800}
+.s2{font-size:15.5px;font-weight:700}
+.s3{font-size:14px;font-weight:400;font-family:var(--sys)}
+.s4{font-size:11.5px;font-weight:400;font-family:var(--sys);color:var(--ink-2)}
+
+@media (prefers-reduced-motion:no-preference){
+  .pp-lead{transition:transform .2s ease}
+  .pp-lead:hover{transform:translateY(-2px)}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <defs>
+    <linearGradient id="pgA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B7BA6"/><stop offset="1" stop-color="#A9718C"/>
+    </linearGradient>
+  </defs>
+  <symbol id="bnr" viewBox="0 0 375 158" preserveAspectRatio="xMidYMid slice">
+    <rect width="375" height="158" fill="url(#pgA)"/>
+    <circle cx="300" cy="34" r="72" fill="rgba(255,255,255,.20)"/>
+    <circle cx="72" cy="140" r="58" fill="rgba(255,255,255,.14)"/>
+  </symbol>
+
+  <symbol id="i-wa" viewBox="0 0 24 24"><title>WhatsApp</title><path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></symbol>
+  <symbol id="i-ms" viewBox="0 0 24 24"><title>Messenger</title><path fill="#0866FF" d="M12 0C5.24 0 0 4.952 0 11.64c0 3.499 1.434 6.521 3.769 8.61a.96.96 0 0 1 .323.683l.065 2.135a.96.96 0 0 0 1.347.85l2.381-1.053a.96.96 0 0 1 .641-.046A13 13 0 0 0 12 23.28c6.76 0 12-4.952 12-11.64S18.76 0 12 0m6.806 7.44c.522-.03.971.567.63 1.094l-4.178 6.457a.707.707 0 0 1-.977.208l-3.87-2.504a.44.44 0 0 0-.49.007l-4.363 3.01c-.637.438-1.415-.317-.995-.966l4.179-6.457a.706.706 0 0 1 .977-.21l3.87 2.505c.15.097.344.094.491-.007l4.362-3.008a.7.7 0 0 1 .364-.13"/></symbol>
+  <symbol id="i-ig" viewBox="0 0 24 24"><title>Instagram</title><path fill="#FF0069" d="M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077"/></symbol>
+  <symbol id="i-fb" viewBox="0 0 24 24"><title>Facebook</title><path fill="#0866FF" d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/></symbol>
+  <symbol id="i-yt" viewBox="0 0 24 24"><title>YouTube</title><path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></symbol>
+  <symbol id="i-tg" viewBox="0 0 24 24"><title>Telegram</title><path fill="#26A5E4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></symbol>
+  <symbol id="i-tt" viewBox="0 0 24 24"><title>TikTok</title><path fill="#000000" d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></symbol>
+  <symbol id="i-em" viewBox="0 0 24 24"><title>Email</title><path fill="none" stroke="#4A5058" stroke-width="1.9" stroke-linejoin="round" d="M3 6.5h18v11H3zM3 7l9 6 9-6"/></symbol>
+  <symbol id="i-sig" viewBox="0 0 18 12"><g fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></g></symbol>
+  <symbol id="i-wifi" viewBox="0 0 16 12"><g fill="currentColor"><path d="M8 11.4 5.9 8.9a3.3 3.3 0 0 1 4.2 0Z"/><path d="M8 5.1c1.6 0 3 .6 4.1 1.6l1.4-1.7A8.3 8.3 0 0 0 8 2.8a8.3 8.3 0 0 0-5.5 2.2l1.4 1.7A6.1 6.1 0 0 1 8 5.1Z" opacity=".9"/><path d="M8 .6c2.7 0 5.2 1 7 2.7l-1.3 1.5A8.9 8.9 0 0 0 8 2.4 8.9 8.9 0 0 0 2.3 4.8L1 3.3A10.4 10.4 0 0 1 8 .6Z" opacity=".75"/></g></symbol>
+  <symbol id="i-bat" viewBox="0 0 26 12"><rect x=".6" y=".6" width="22" height="10.8" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".45"/><rect x="2.2" y="2.2" width="16.5" height="7.6" rx="2" fill="currentColor"/><path d="M24.3 4.2v3.6a2 2 0 0 0 0-3.6Z" fill="currentColor" opacity=".45"/></symbol>
+  <symbol id="i-go" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Link Profile · 公开页设计稿 · 一个方向</p>
+    <h1>页面只有一件事要做：<br>换来一次联系。</h1>
+    <p>访客从 TikTok 简介点进来，三秒内决定要不要开口。所以这不是作品集页，是一张会呼吸的名片。</p>
+    <p><strong>核心取舍：</strong>Linktree 把所有入口做成一模一样的胶囊。但在本产品里，<strong>联系类渠道</strong>和<strong>内容类链接</strong>在数据模型里本就是两种东西——一个产生线索，一个只是浏览。视觉上就不该长一样。</p>
+    <div class="notice"><b>关于稿子里的人像：</b>三张面孔均由 GAN 模型生成，<b>现实中不存在这些人</b>，仅作排版占位，不涉及任何真人肖像。姓名与简介同为示意。最终上线由用户自行上传照片。</div>
+  </header>
+
+  <hr class="rule">
+
+  <div class="sec-head">
+    <h2>五种布局</h2><span>375 × 812 · 同一主题 Dawn · 同一人物</span>
+  </div>
+  <p class="sec-note">布局只决定头像与头图区域的形状和占比，不决定配色。这一组刻意固定人物与主题，让布局成为唯一变量。下方主体结构五种完全一致：联系区在上、内容区在下、底部常驻一条联系条。机身下缘的截断即真实滚动位置。</p>
+
+  <div class="board">
+
+    <div class="slot">
+      <div class="slot-cap"><b>Classic</b><i>01</i></div>
+      <div class="phone"><span class="ip-btn l ip-act"></span><span class="ip-btn l ip-vup"></span><span class="ip-btn l ip-vdn"></span><span class="ip-btn r ip-pwr"></span><div class="screen"><div class="pp" data-t="dawn">
+        <div class="pp-scroll">
+          <div class="hd hd-cls">
+            <div class="av"><img src="assets/av1.webp" alt=""></div>
+            <h1 class="pp-name" style="margin-top:16px">mimnz</h1>
+            <p class="pp-bio">我是一个基督徒，来自美国</p>
+            <div class="pp-soc">
+              <a href="#"><svg><use href="#i-ig"/></svg></a>
+              <a href="#"><svg><use href="#i-wa"/></svg></a>
+              <a href="#"><svg><use href="#i-fb"/></svg></a>
+              <a href="#"><svg><use href="#i-yt"/></svg></a>
+            </div>
+          </div>
+          <div class="pp-body">
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 上给我留言</b><span>通常当天回复</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-ms"/></svg></span><span class="tx"><b>用 Messenger 聊聊</b><span>直接开对话</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-ig"/></svg></span>每日一节 · Instagram<span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-yt"/></svg></span>主日讲道 · YouTube<span class="go"><svg><use href="#i-go"/></svg></span></a>
+          </div>
+        </div>
+        <div class="ip-island"></div><div class="ip-status"><b>9:41</b><span class="ico"><svg class="s"><use href="#i-sig"/></svg><svg class="w"><use href="#i-wifi"/></svg><svg class="b"><use href="#i-bat"/></svg></span></div><div class="ip-home"></div>
+      </div></div></div>
+      <p class="slot-sub">最稳的默认态。圆头像居中，谁传了什么图都不会出错。</p>
+    </div>
+
+    <div class="slot">
+      <div class="slot-cap"><b>Hero</b><i>02</i></div>
+      <div class="phone"><span class="ip-btn l ip-act"></span><span class="ip-btn l ip-vup"></span><span class="ip-btn l ip-vdn"></span><span class="ip-btn r ip-pwr"></span><div class="screen"><div class="pp" data-t="dawn">
+        <div class="pp-scroll">
+          <div class="hd hd-hero">
+            <div class="av"><img src="assets/hero.webp" alt=""></div>
+            <div class="veil"></div>
+            <div class="cap">
+              <h1 class="pp-name">mimnz</h1>
+              <p class="pp-bio">我是一个基督徒，来自美国</p>
+            </div>
+          </div>
+          <div class="pp-body" style="padding-top:14px">
+            <div class="pp-soc" style="margin:0 0 6px">
+              <a href="#"><svg><use href="#i-ig"/></svg></a>
+              <a href="#"><svg><use href="#i-wa"/></svg></a>
+              <a href="#"><svg><use href="#i-fb"/></svg></a>
+              <a href="#"><svg><use href="#i-yt"/></svg></a>
+            </div>
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 上给我留言</b><span>通常当天回复</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-em"/></svg></span><span class="tx"><b>给我发邮件</b><span>适合长一点的话</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-ig"/></svg></span>每日一节 · Instagram<span class="go"><svg><use href="#i-go"/></svg></span></a>
+          </div>
+        </div>
+        <div class="ip-island"></div><div class="ip-status"><b>9:41</b><span class="ico"><svg class="s"><use href="#i-sig"/></svg><svg class="w"><use href="#i-wifi"/></svg><svg class="b"><use href="#i-bat"/></svg></span></div><div class="ip-home"></div>
+      </div></div></div>
+      <p class="slot-sub">头图位放视频就用这个。视频首帧封面先出，加载完再播，首屏不被拖慢。</p>
+    </div>
+
+    <div class="slot">
+      <div class="slot-cap"><b>Banner</b><i>03</i></div>
+      <div class="phone"><span class="ip-btn l ip-act"></span><span class="ip-btn l ip-vup"></span><span class="ip-btn l ip-vdn"></span><span class="ip-btn r ip-pwr"></span><div class="screen"><div class="pp" data-t="dawn">
+        <div class="pp-scroll">
+          <div class="hd hd-ban">
+            <div class="bn"><svg><use href="#bnr"/></svg></div>
+            <div class="row">
+              <div class="av"><img src="assets/av1.webp" alt=""></div>
+              <div class="nm"><h1 class="pp-name" style="font-size:26px">mimnz</h1></div>
+            </div>
+            <div style="padding:0 20px">
+              <p class="pp-bio">我是一个基督徒，来自美国</p>
+              <div class="pp-soc">
+                <a href="#"><svg><use href="#i-ig"/></svg></a>
+                <a href="#"><svg><use href="#i-wa"/></svg></a>
+                <a href="#"><svg><use href="#i-fb"/></svg></a>
+                <a href="#"><svg><use href="#i-yt"/></svg></a>
+              </div>
+            </div>
+          </div>
+          <div class="pp-body" style="padding-top:0">
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 上给我留言</b><span>通常当天回复</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-ms"/></svg></span><span class="tx"><b>用 Messenger 聊聊</b><span>直接开对话</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-yt"/></svg></span>主日讲道 · YouTube<span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-fb"/></svg></span>我的 Facebook 主页<span class="go"><svg><use href="#i-go"/></svg></span></a>
+          </div>
+        </div>
+        <div class="ip-island"></div><div class="ip-status"><b>9:41</b><span class="ico"><svg class="s"><use href="#i-sig"/></svg><svg class="w"><use href="#i-wifi"/></svg><svg class="b"><use href="#i-bat"/></svg></span></div><div class="ip-home"></div>
+      </div></div></div>
+      <p class="slot-sub">横幅 + 左对齐。横幅是场景图不是人脸，信息密度最高，适合话多、链接多的人。</p>
+    </div>
+
+    <div class="slot">
+      <div class="slot-cap"><b>Cutout</b><i>04</i></div>
+      <div class="phone"><span class="ip-btn l ip-act"></span><span class="ip-btn l ip-vup"></span><span class="ip-btn l ip-vdn"></span><span class="ip-btn r ip-pwr"></span><div class="screen"><div class="pp" data-t="dawn">
+        <div class="pp-scroll">
+          <div class="hd hd-cut">
+            <div class="av"><img src="assets/cut.webp" alt=""></div>
+            <div class="nm">
+              <h1 class="pp-name">mimnz</h1>
+              <p class="pp-bio" style="max-width:20ch">我是一个基督徒，来自美国</p>
+              <div class="pp-soc">
+                <a href="#"><svg><use href="#i-ig"/></svg></a>
+                <a href="#"><svg><use href="#i-wa"/></svg></a>
+                <a href="#"><svg><use href="#i-fb"/></svg></a>
+              </div>
+            </div>
+          </div>
+          <div class="pp-body" style="padding-top:0">
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 上给我留言</b><span>通常当天回复</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-em"/></svg></span><span class="tx"><b>给我发邮件</b><span>适合长一点的话</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-ig"/></svg></span>每日一节 · Instagram<span class="go"><svg><use href="#i-go"/></svg></span></a>
+          </div>
+        </div>
+        <div class="ip-island"></div><div class="ip-status"><b>9:41</b><span class="ico"><svg class="s"><use href="#i-sig"/></svg><svg class="w"><use href="#i-wifi"/></svg><svg class="b"><use href="#i-bat"/></svg></span></div><div class="ip-home"></div>
+      </div></div></div>
+      <p class="slot-sub">人像去背、直接站在渐变上。最有人味。本稿用底部渐隐模拟，正式版需要用户上传抠好的透明底 PNG。</p>
+    </div>
+
+    <div class="slot">
+      <div class="slot-cap"><b>Shape</b><i>05</i></div>
+      <div class="phone"><span class="ip-btn l ip-act"></span><span class="ip-btn l ip-vup"></span><span class="ip-btn l ip-vdn"></span><span class="ip-btn r ip-pwr"></span><div class="screen"><div class="pp" data-t="dawn">
+        <div class="pp-scroll">
+          <div class="hd hd-shp">
+            <div class="av"><img src="assets/av1.webp" alt=""></div>
+            <div>
+              <h1 class="pp-name">mimnz</h1>
+              <p class="pp-bio">我是一个基督徒，来自美国</p>
+            </div>
+          </div>
+          <div class="hd" style="padding-top:0">
+            <div class="pp-soc">
+              <a href="#"><svg><use href="#i-ig"/></svg></a>
+              <a href="#"><svg><use href="#i-wa"/></svg></a>
+              <a href="#"><svg><use href="#i-fb"/></svg></a>
+              <a href="#"><svg><use href="#i-yt"/></svg></a>
+            </div>
+          </div>
+          <div class="pp-body" style="padding-top:0">
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 上给我留言</b><span>通常当天回复</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-ms"/></svg></span><span class="tx"><b>用 Messenger 聊聊</b><span>直接开对话</span></span><span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-yt"/></svg></span>主日讲道 · YouTube<span class="go"><svg><use href="#i-go"/></svg></span></a>
+            <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-fb"/></svg></span>我的 Facebook 主页<span class="go"><svg><use href="#i-go"/></svg></span></a>
+          </div>
+        </div>
+        <div class="ip-island"></div><div class="ip-status"><b>9:41</b><span class="ico"><svg class="s"><use href="#i-sig"/></svg><svg class="w"><use href="#i-wifi"/></svg><svg class="b"><use href="#i-bat"/></svg></span></div><div class="ip-home"></div>
+      </div></div></div>
+      <p class="slot-sub">异形遮罩 + 非对称。五种里最跳的一个，给愿意个性化的人。</p>
+    </div>
+
+  </div>
+
+  <hr class="rule">
+
+  <div class="sec-head">
+    <h2>六套主题</h2><span>同一布局 Classic · 三位用户轮替</span>
+  </div>
+  <p class="sec-note">一套主题 = 背景渐变 + 按钮色 + 文字色 + 圆角描边风格。圆角是主题的一部分，不是全局常量——所以 Ember 是全圆，Slate 是近直角。这一组换了三位用户，方便看同一套主题套在不同肤色、发色、背景的照片上是否都成立。文字与按钮对比度均已按 WCAG AA（4.5:1）核过。</p>
+
+  <div class="sw-grid">
+
+    <div class="sw"><div class="sw-view"><div class="pp" data-t="dawn"><div class="sw-mini">
+      <div class="av"><img src="assets/av1.webp" alt=""></div>
+      <h3 class="pp-name">mimnz</h3><p class="pp-bio">我是一个基督徒，来自美国</p>
+      <div class="stack">
+        <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 留言</b><span>通常当天回复</span></span></a>
+        <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-ig"/></svg></span>每日一节</a>
+      </div></div></div></div>
+      <div class="sw-meta"><b>Dawn · 晨</b><p>桃粉到丁香紫。最接近客户参考图的调性，亲和、无攻击性。</p>
+      <div class="chips"><i class="chip" style="background:#FBD9C6"></i><i class="chip" style="background:#D9C6EF"></i><i class="chip" style="background:#FFFFFF"></i><i class="chip" style="background:#2A2233"></i></div></div>
+    </div>
+
+    <div class="sw"><div class="sw-view"><div class="pp" data-t="harbor"><div class="sw-mini">
+      <div class="av"><img src="assets/av2.webp" alt=""></div>
+      <h3 class="pp-name">hana</h3><p class="pp-bio">用中文和英文分享信仰故事</p>
+      <div class="stack">
+        <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 留言</b><span>通常当天回复</span></span></a>
+        <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-ig"/></svg></span>每日一节</a>
+      </div></div></div></div>
+      <div class="sw-meta"><b>Harbor · 港</b><p>深青到靛蓝，配沙色按钮。冷底暖扣，稳重可信。</p>
+      <div class="chips"><i class="chip" style="background:#0B3A46"></i><i class="chip" style="background:#12233F"></i><i class="chip" style="background:#F2E4CE"></i><i class="chip" style="background:#EAF2F2"></i></div></div>
+    </div>
+
+    <div class="sw"><div class="sw-view"><div class="pp" data-t="moss"><div class="sw-mini">
+      <div class="av"><img src="assets/av3.webp" alt=""></div>
+      <h3 class="pp-name">meilin</h3><p class="pp-bio">在洛杉矶带一个小组</p>
+      <div class="stack">
+        <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 留言</b><span>通常当天回复</span></span></a>
+        <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-ig"/></svg></span>每日一节</a>
+      </div></div></div></div>
+      <div class="sw-meta"><b>Moss · 苔</b><p>深林到橄榄，米色按钮，8px 小圆角。素、静、不喧哗。</p>
+      <div class="chips"><i class="chip" style="background:#17301F"></i><i class="chip" style="background:#33401C"></i><i class="chip" style="background:#F0EAD6"></i><i class="chip" style="background:#E6EDD9"></i></div></div>
+    </div>
+
+    <div class="sw"><div class="sw-view"><div class="pp" data-t="ember"><div class="sw-mini">
+      <div class="av"><img src="assets/av1.webp" alt=""></div>
+      <h3 class="pp-name">mimnz</h3><p class="pp-bio">我是一个基督徒，来自美国</p>
+      <div class="stack">
+        <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 留言</b><span>通常当天回复</span></span></a>
+        <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-ig"/></svg></span>每日一节</a>
+      </div></div></div></div>
+      <div class="sw-meta"><b>Ember · 炭</b><p>梅子到锈红，全圆角。六套里最热烈，适合外向人设。</p>
+      <div class="chips"><i class="chip" style="background:#3B1B33"></i><i class="chip" style="background:#8A3B22"></i><i class="chip" style="background:#FFF3E6"></i><i class="chip" style="background:#FCE9DC"></i></div></div>
+    </div>
+
+    <div class="sw"><div class="sw-view"><div class="pp" data-t="slate"><div class="sw-mini">
+      <div class="av"><img src="assets/av2.webp" alt=""></div>
+      <h3 class="pp-name">hana</h3><p class="pp-bio">用中文和英文分享信仰故事</p>
+      <div class="stack">
+        <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 留言</b><span>通常当天回复</span></span></a>
+        <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-ig"/></svg></span>每日一节</a>
+      </div></div></div></div>
+      <div class="sw-meta"><b>Slate · 石</b><p>近白冷灰，墨色实心按钮，6px 近直角。对比度最高，弱光环境和老花眼最友好。</p>
+      <div class="chips"><i class="chip" style="background:#FAFAFA"></i><i class="chip" style="background:#E6E9EC"></i><i class="chip" style="background:#101418"></i><i class="chip" style="background:#5C666F"></i></div></div>
+    </div>
+
+    <div class="sw"><div class="sw-view"><div class="pp" data-t="nocturne"><div class="sw-mini">
+      <div class="av"><img src="assets/av3.webp" alt=""></div>
+      <h3 class="pp-name">meilin</h3><p class="pp-bio">在洛杉矶带一个小组</p>
+      <div class="stack">
+        <a class="pp-lead" href="#"><span class="ic"><svg><use href="#i-wa"/></svg></span><span class="tx"><b>WhatsApp 留言</b><span>通常当天回复</span></span></a>
+        <a class="pp-link" href="#"><span class="ic"><svg><use href="#i-ig"/></svg></span>每日一节</a>
+      </div></div></div></div>
+      <div class="sw-meta"><b>Nocturne · 夜</b><p>午夜蓝到近黑，长春花色按钮。夜里刷手机时最不刺眼。</p>
+      <div class="chips"><i class="chip" style="background:#0A0E27"></i><i class="chip" style="background:#05060F"></i><i class="chip" style="background:#A9B4FF"></i><i class="chip" style="background:#EDEFFF"></i></div></div>
+    </div>
+
+  </div>
+
+  <hr class="rule">
+
+  <div class="sec-head"><h2>规格</h2><span>实现依据</span></div>
+  <p class="sec-note">下列参数直接对应 <code>packages/profile-ui</code> 的 CSS 变量，六套主题只换值，不换结构。</p>
+
+  <div class="spec">
+
+    <div class="card">
+      <h3>字体</h3>
+      <dl>
+        <dt>Display</dt><dd>Bricolage Grotesque（可变字重）<br><span style="color:var(--ink-2);font-size:12px">仅用于姓名与按钮标题</span></dd>
+        <dt>正文 / 界面</dt><dd>系统字体栈<br><span style="color:var(--ink-2);font-size:12px">简介可能是中文，任何中文网页字体都太重</span></dd>
+        <dt>全站仅一个网页字体</dt><dd>预加载 + 子集化。这是移动端 LCP 的硬要求，不是审美偏好。</dd>
+      </dl>
+    </div>
+
+    <div class="card scale">
+      <h3>字号阶梯</h3>
+      <dl>
+        <dt>姓名 · 31 / 800</dt><dd><span class="s1">mimnz</span></dd>
+        <dt>联系按钮标题 · 15.5 / 700</dt><dd><span class="s2">WhatsApp 上给我留言</span></dd>
+        <dt>内容链接 · 14 / 400</dt><dd><span class="s3">每日一节 · Instagram</span></dd>
+        <dt>简介与辅助 · 11.5–14 / 400</dt><dd><span class="s4">通常当天回复</span></dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h3>两级通道</h3>
+      <dl>
+        <dt>一级 · 联系类（is_lead = true）</dt><dd>实心卡片、主题按钮色、34px 图标底、第一人称动词、副行说明。<strong>视觉重量最高。</strong></dd>
+        <dt>二级 · 内容类（is_lead = false）</dt><dd>透明底、1px 描边、单行、17px 图标。安静，不与一级抢。</dd>
+        <dt>不分组</dt><dd>按钮排在<b>一个用户可自由拖拽的列表</b>里，两类可以混排，没有区段标题。分级只靠样式，不靠位置——后台改了 <code>is_lead</code>，那一条的视觉权重立刻跟着变。</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h3>间距与圆角</h3>
+      <dl>
+        <dt>页面左右留白</dt><dd>20px（375px 下内容区 335px）</dd>
+        <dt>卡片间距</dt><dd>9px；区段之间 14px</dd>
+        <dt>圆角</dt><dd>主题变量 <code>--r</code>：6 / 8 / 14 / 16 / 20 / 999px</dd>
+        <dt>最小点击区</dt><dd>≥ 44px，全部条目均满足</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h3>素材与待补</h3>
+      <dl>
+        <dt>社媒图标</dt><dd>官方商标图形取自 Simple Icons（CC0），保留各平台注册品牌色。商标归各自权利人所有。Facebook 与 Messenger 同为 #0866FF，是 Meta 统一蓝色后的现状，非笔误。</dd>
+        <dt>人像</dt><dd>GAN 生成的虚构人物，现实中不存在，仅作占位。姓名与简介同为示意。</dd>
+        <dt>背景图遮罩</dt><dd>已定默认 40% 暗度，本稿未演示（六套主题均未叠背景图）。</dd>
+        <dt>空状态</dt><dd>Hero / Banner / Cutout 未传图时以主题渐变填充，本稿未单独出图。</dd>
+      </dl>
+    </div>
+
+  </div>
+
+  <hr class="rule">
+
+  <div class="sec-head"><h2>已定的事</h2><span>2026-08-26 · 客户确认</span></div>
+  <p class="sec-note">交稿时提出的七个待决项已全部拍板，本稿已按结论重出。以下为定稿记录，开发以此为准。</p>
+
+  <div class="ask-grid">
+    <div class="q"><div class="q-num">1</div><div>
+      <h4>常驻联系条 —— 不做</h4>
+      <p class="q-why">底部那条一直浮着的 WhatsApp 按钮已移除。联系入口只出现在列表里，滚过去就没有了。</p>
+    </div></div>
+
+    <div class="q"><div class="q-num">2</div><div>
+      <h4>按钮不分段 —— 单一列表，用户自由排序</h4>
+      <p class="q-why">不再有「直接联系我」「看看我在做什么」两个区段标题。所有按钮排在一个可拖拽列表里，
+        两类可以混排。<b>视觉分级仍然保留</b>，但只由 <code>is_lead</code> 决定：联系类是实心卡片，
+        内容类是描边行——不靠位置，靠样式。</p>
+    </div></div>
+
+    <div class="q"><div class="q-num">3</div><div>
+      <h4>按钮副标题 —— 要，选填</h4>
+      <p class="q-why">每个按钮多一个可选说明字段（「通常当天回复」）。数据表多一列，后台表单多一个输入框。
+        留空则不显示。</p>
+    </div></div>
+
+    <div class="q"><div class="q-num">4</div><div>
+      <h4>默认值 —— 布局 Classic，配色 Dawn · 晨</h4>
+      <p class="q-why">新账号建出来就是这套，用户可随时自己换。</p>
+    </div></div>
+
+    <div class="q"><div class="q-num">5</div><div>
+      <h4>范围不砍 —— 五种布局、六套配色全做</h4>
+      <p class="q-why">含需要用户自备透明底 PNG 的 Cutout。这条已知门槛，客户接受。</p>
+    </div></div>
+
+    <div class="q"><div class="q-num">6</div><div>
+      <h4>机型外框 —— 维持 375 × 812</h4>
+      <p class="q-why">与规格文档「五种布局均以 375px 为设计基准」一致，文档不动。</p>
+    </div></div>
+  </div>
+
+</div>
+</body>
+</html>
