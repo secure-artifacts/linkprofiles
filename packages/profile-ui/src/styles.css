@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* 主题令牌由 scripts/build-css.mjs 从 src/themes.ts 生成，是唯一来源 */
+@import './generated/themes.css';
 
 /*
  * 公开页样式。破例使用 tailwind 见 ADR-0002：破例范围以包为界，
@@ -22,14 +24,6 @@
 
 @layer components {
   .pp {
-    --bg: linear-gradient(168deg, #fbd9c6 0%, #ebcbdd 46%, #d9c6ef 100%);
-    --bgend: #d9c6ef;
-    --surface: #ffffff;
-    --on-surface: #2a2233;
-    --text: #2a2233;
-    --muted: #6e6478;
-    --r: 20px;
-
     min-height: 100dvh;
     background: var(--bg);
     background-attachment: fixed;
@@ -39,52 +33,6 @@
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
-  }
-
-  .pp[data-t='harbor'] {
-    --bg: linear-gradient(168deg, #0b3a46 0%, #0e2c43 52%, #12233f 100%);
-    --bgend: #12233f;
-    --surface: #f2e4ce;
-    --on-surface: #0b3a46;
-    --text: #eaf2f2;
-    --muted: #9db6bc;
-    --r: 14px;
-  }
-  .pp[data-t='moss'] {
-    --bg: linear-gradient(168deg, #17301f 0%, #25381c 55%, #33401c 100%);
-    --bgend: #33401c;
-    --surface: #f0ead6;
-    --on-surface: #17301f;
-    --text: #e6edd9;
-    --muted: #9cae8c;
-    --r: 8px;
-  }
-  .pp[data-t='ember'] {
-    --bg: linear-gradient(168deg, #3b1b33 0%, #65291f 55%, #8a3b22 100%);
-    --bgend: #8a3b22;
-    --surface: #fff3e6;
-    --on-surface: #3b1b33;
-    --text: #fce9dc;
-    --muted: #c79a88;
-    --r: 999px;
-  }
-  .pp[data-t='slate'] {
-    --bg: linear-gradient(168deg, #fafafa 0%, #f1f3f5 50%, #e6e9ec 100%);
-    --bgend: #e6e9ec;
-    --surface: #101418;
-    --on-surface: #ffffff;
-    --text: #101418;
-    --muted: #5c666f;
-    --r: 6px;
-  }
-  .pp[data-t='nocturne'] {
-    --bg: linear-gradient(168deg, #0a0e27 0%, #070a1b 55%, #05060f 100%);
-    --bgend: #05060f;
-    --surface: #a9b4ff;
-    --on-surface: #0a0e27;
-    --text: #edefff;
-    --muted: #7a83b8;
-    --r: 16px;
   }
 
   /* 背景图覆盖主题渐变，主题的按钮色与文字色仍生效；遮罩暗度可调，见 09。 */

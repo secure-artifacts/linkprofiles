@@ -19,6 +19,8 @@ const profileBody = z.object({
   /** 布局只决定头像与头图区域的形状和占比，不决定配色 */
   layout: z.enum(layoutEnum.enumValues).optional(),
   theme: z.enum(themeEnum.enumValues).optional(),
+  /** 背景图上那层遮罩的暗度。加深对浅色文字主题有利、对深色文字主题不利。 */
+  backgroundOverlay: z.number().min(0).max(1).optional(),
 });
 
 const buttonInput = z.object({
@@ -94,6 +96,9 @@ export async function profileContentRoutes(app: FastifyInstance) {
         ...(parsed.data.bio !== undefined ? { bio: parsed.data.bio } : {}),
         ...(parsed.data.layout !== undefined ? { layout: parsed.data.layout } : {}),
         ...(parsed.data.theme !== undefined ? { theme: parsed.data.theme } : {}),
+        ...(parsed.data.backgroundOverlay !== undefined
+          ? { backgroundOverlay: parsed.data.backgroundOverlay.toFixed(2) }
+          : {}),
         updatedAt: new Date(),
       })
       .where(eq(users.id, target));
@@ -206,6 +211,9 @@ async function loadEditableProfile(app: FastifyInstance, userId: string) {
       bio: users.bio,
       layout: users.layout,
       theme: users.theme,
+      backgroundOverlay: users.backgroundOverlay,
+      avatarMediaId: users.avatarMediaId,
+      backgroundMediaId: users.backgroundMediaId,
     })
     .from(users)
     .where(eq(users.id, userId));
