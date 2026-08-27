@@ -50,6 +50,13 @@
       "when": 1787849050137,
       "tag": "0006_chief_bruce_banner",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787849429143,
+      "tag": "0007_overconfident_marten_broadcloak",
+      "breakpoints": true
     }
   ]
 }
