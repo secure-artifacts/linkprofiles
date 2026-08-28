@@ -93,6 +93,25 @@ const CHEVRON =
   '<path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" ' +
   'stroke-linejoin="round" d="m9 5 7 7-7 7"/>';
 
+// 没传头像时的占位剪影。不是品牌图形，与手绘的 email 图标一样属于自备素材。
+// 颜色写死成中性灰而不是 currentColor：它要在六个主题、五种布局的底色上
+// 都读得出来，跟着文字色走反而会在深色主题里糊成一片。
+const AVATAR_PLACEHOLDER =
+  '<circle cx="48" cy="48" r="48" fill="#C9CDD4"/>' +
+  '<circle cx="48" cy="38.5" r="17" fill="#EDEFF2"/>' +
+  '<path fill="#EDEFF2" d="M14.5 90.5a34 34 0 0 1 67 0z"/>';
+
+// 视频头像右上角那个静音开关的两态。两枚共用同一个喇叭本体，只换右边那截，
+// 这样切换时喇叭不会跳。用 currentColor：按钮自带深色底，颜色由按钮决定。
+const SPEAKER_BODY =
+  '<path fill="currentColor" d="M11 5 6 9H3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3l5 4z"/>';
+const MUTED =
+  SPEAKER_BODY +
+  '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="m16 9 5 6M21 9l-5 6"/>';
+const SOUND =
+  SPEAKER_BODY +
+  '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>';
+
 writeFileSync(
   out,
   [
@@ -114,6 +133,12 @@ writeFileSync(
     )};`,
     '',
     `export const CHEVRON_ICON = ${JSON.stringify(CHEVRON)};`,
+    '',
+    `export const AVATAR_PLACEHOLDER_ICON = ${JSON.stringify(AVATAR_PLACEHOLDER)};`,
+    '',
+    `export const MUTED_ICON = ${JSON.stringify(MUTED)};`,
+    '',
+    `export const SOUND_ICON = ${JSON.stringify(SOUND)};`,
     '',
   ].join('\n'),
 );

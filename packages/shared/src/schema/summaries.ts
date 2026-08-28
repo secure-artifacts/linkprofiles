@@ -5,7 +5,7 @@ import { deviceTypeEnum } from './tracking.js';
  * 日汇总。明细保留六个月，超期聚合进这里后删除；日汇总**永久保留**，
  * 因此跨越清理边界的历史图表不断档。
  *
- * 一行 = 一个用户 × 一天 × 一组维度取值。维度全留着，因此聚合之后
+ * 一行 = 一个个人页 × 一天 × 一组维度取值。维度全留着，因此聚合之后
  * 「按国家拆」「按设备拆」「按来源拆」这些查询照样答得出来，只是失去了
  * 单条明细的时刻。
  *
@@ -17,7 +17,7 @@ export const dailySummaries = pgTable(
   'daily_summaries',
   {
     id: uuid().primaryKey().defaultRandom(),
-    userId: uuid().notNull(),
+    profileId: uuid().notNull(),
     /** UTC 日期。见本 ticket 的说明：跨时区展示时这是个近似。 */
     day: date().notNull(),
 
@@ -33,8 +33,8 @@ export const dailySummaries = pgTable(
     leads: integer().notNull().default(0),
   },
   (t) => [
-    uniqueIndex('daily_summaries_bucket_unique').on(
-      t.userId,
+    uniqueIndex('daily_summaries_profile_bucket_unique').on(
+      t.profileId,
       t.day,
       t.country,
       t.city,
@@ -42,7 +42,7 @@ export const dailySummaries = pgTable(
       t.os,
       t.source,
     ),
-    index('daily_summaries_user_day_idx').on(t.userId, t.day),
+    index('daily_summaries_profile_day_idx').on(t.profileId, t.day),
   ],
 );
 

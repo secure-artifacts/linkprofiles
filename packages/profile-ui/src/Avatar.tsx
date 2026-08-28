@@ -1,3 +1,4 @@
+import { AvatarPlaceholder } from './Icon.js';
 import type { MediaSource, VideoSource } from './types.js';
 
 interface AvatarProps {
@@ -43,7 +44,11 @@ export function Avatar({
   }
 
   if (!media) {
-    return <div className={`${className} av-empty`} aria-hidden="true" />;
+    return (
+      <div className={`${className} av-empty`} aria-hidden="true">
+        <AvatarPlaceholder />
+      </div>
+    );
   }
 
   const img = (

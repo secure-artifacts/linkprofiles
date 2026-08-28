@@ -13,6 +13,7 @@ let ctx: TestContext;
 let token: string;
 let strangerToken: string;
 let userId: string;
+let profileId: string;
 let uploads: string;
 
 beforeAll(async () => {
@@ -40,9 +41,9 @@ beforeEach(async () => {
   await createLoginableUser(ctx.db, 'other-pass', {
     role: 'admin',
     account: 'stranger',
-    shortName: null,
   });
   userId = user.id;
+  profileId = user.profileId!;
   token = (await login(ctx, 'mimnz', 'user-pass')).token;
   strangerToken = (await login(ctx, 'stranger', 'other-pass')).token;
 });
@@ -55,7 +56,7 @@ function upload(
   const { payload, headers } = multipart(fields, files);
   return ctx.app.inject({
     method: 'POST',
-    url: `/_api/users/${userId}/media`,
+    url: `/_api/profiles/${profileId}/media`,
     ...withSession(authToken),
     headers,
     payload,
@@ -255,7 +256,7 @@ test('清空头像后该区域回到主题渐变填充', async () => {
 
   const cleared = await ctx.app.inject({
     method: 'DELETE',
-    url: `/_api/users/${userId}/media/avatar`,
+    url: `/_api/profiles/${profileId}/media/avatar`,
     ...withSession(token),
   });
   expect(cleared.statusCode).toBe(204);
@@ -275,7 +276,7 @@ test('未登录上传不了', async () => {
   const { payload, headers } = multipart({ slot: 'avatar' }, { file: await imageFile() });
   const res = await ctx.app.inject({
     method: 'POST',
-    url: `/_api/users/${userId}/media`,
+    url: `/_api/profiles/${profileId}/media`,
     headers,
     payload,
   });

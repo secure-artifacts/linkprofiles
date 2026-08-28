@@ -1,6 +1,4 @@
-import { relations } from 'drizzle-orm';
 import { boolean, index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { users } from './users.js';
 
 export const deviceTypeEnum = pgEnum('device_type', ['mobile', 'tablet', 'desktop', 'unknown']);
 export const clickTargetEnum = pgEnum('click_target', ['button', 'social']);
@@ -30,12 +28,12 @@ export const pageViews = pgTable(
   'page_views',
   {
     id: uuid().primaryKey().defaultRandom(),
-    // 用户被删除后埋点保留，历史汇总不断档，因此不级联删除，见 16。
-    userId: uuid().notNull(),
+    // 个人页被删除后埋点保留，历史汇总不断档，因此不级联删除，见 16。
+    profileId: uuid().notNull(),
     ...visitorColumns,
   },
   (t) => [
-    index('page_views_user_time_idx').on(t.userId, t.occurredAt),
+    index('page_views_profile_time_idx').on(t.profileId, t.occurredAt),
     index('page_views_time_idx').on(t.occurredAt),
   ],
 );
@@ -45,7 +43,7 @@ export const clicks = pgTable(
   'clicks',
   {
     id: uuid().primaryKey().defaultRandom(),
-    userId: uuid().notNull(),
+    profileId: uuid().notNull(),
 
     targetKind: clickTargetEnum().notNull(),
     /** 指向 buttons.id 或 social_icons.id。目标被删后这条记录仍然保留。 */
@@ -59,19 +57,11 @@ export const clicks = pgTable(
     ...visitorColumns,
   },
   (t) => [
-    index('clicks_user_time_idx').on(t.userId, t.occurredAt),
+    index('clicks_profile_time_idx').on(t.profileId, t.occurredAt),
     index('clicks_target_idx').on(t.targetId),
     index('clicks_time_idx').on(t.occurredAt),
   ],
 );
-
-export const pageViewsRelations = relations(pageViews, ({ one }) => ({
-  user: one(users, { fields: [pageViews.userId], references: [users.id] }),
-}));
-
-export const clicksRelations = relations(clicks, ({ one }) => ({
-  user: one(users, { fields: [clicks.userId], references: [users.id] }),
-}));
 
 export type PageViewRow = typeof pageViews.$inferSelect;
 export type ClickRow = typeof clicks.$inferSelect;

@@ -5,7 +5,7 @@ import {
   presetRange,
   type RangePreset,
 } from '@link-profile/shared';
-import { users } from '@link-profile/shared/schema';
+import { profiles, users } from '@link-profile/shared/schema';
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -21,14 +21,20 @@ import {
   type QueryScope,
 } from '../analytics/queries.js';
 
-const querySchema = z.object({
-  /** 只看某一个用户。不给就看可见范围内的全部。 */
-  userId: z.string().uuid().optional(),
-  preset: z.enum(['today', '7d', '30d']).optional(),
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
-  tz: z.string().optional(),
-});
+const querySchema = z
+  .object({
+    /** 汇总视图：某个账号名下全部个人页的合计 */
+    userId: z.string().uuid().optional(),
+    /** 单页视图：只看这一个个人页 */
+    profileId: z.string().uuid().optional(),
+    preset: z.enum(['today', '7d', '30d']).optional(),
+    from: z.string().datetime().optional(),
+    to: z.string().datetime().optional(),
+    tz: z.string().optional(),
+  })
+  .refine((v) => !(v.userId && v.profileId), {
+    message: 'userId 与 profileId 不能同时指定',
+  });
 
 export async function analyticsRoutes(app: FastifyInstance) {
   /**
@@ -36,7 +42,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
    *
    * 可见范围复用 04 建立的授权检查点：用户只看得到自己的，管理员只看得到
    * 名下的，超级管理员看得到全部 —— 这里不重新实现一遍过滤，而是把
-   * `visibleUsersFilter` 的结果先解析成一组 userId 再往下查。
+   * `visibleUsersFilter` 的结果先解析成一组个人页 id 再往下查。
    */
   app.get('/analytics', async (req, reply) => {
     if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
@@ -54,13 +60,16 @@ export async function analyticsRoutes(app: FastifyInstance) {
     const range = resolveRange(parsed.data, timeZone);
     if ('error' in range) return reply.code(400).send(range);
 
-    const userIds = await resolveVisibleUserIds(app, req.currentUser, parsed.data.userId);
-    // 指名道姓要看一个自己看不见的用户，与「这个用户不存在」同一个响应
-    if (parsed.data.userId && userIds.length === 0) {
+    const profileIds = await resolveVisibleProfileIds(app, req.currentUser, {
+      ...(parsed.data.userId ? { userId: parsed.data.userId } : {}),
+      ...(parsed.data.profileId ? { profileId: parsed.data.profileId } : {}),
+    });
+    // 指名道姓要看一个自己看不见的对象，与「它不存在」同一个响应
+    if ((parsed.data.userId || parsed.data.profileId) && profileIds.length === 0) {
       return reply.code(403).send({ error: 'forbidden' });
     }
 
-    const scope: QueryScope = { userIds, from: range.from, to: range.to, timeZone };
+    const scope: QueryScope = { profileIds, from: range.from, to: range.to, timeZone };
     const granularity = granularityFor(range.from, range.to);
 
     const totals = await queryTotals(app.sql, scope);
@@ -110,20 +119,34 @@ function resolveRange(
   return presetRange(query.preset ?? '7d', timeZone);
 }
 
-/** 把可见范围解析成一组 userId。管理员名下没人时得到空数组，查询直接给零值。 */
-async function resolveVisibleUserIds(
+/**
+ * 把可见范围解析成一组个人页 id。
+ *
+ * 三级角色的可见范围仍然由 `visibleUsersFilter` 一处说了算，这里只是在它
+ * 外面多 join 一层 `profiles`，绝不重新实现一遍过滤 —— 漏一处就是越权。
+ *
+ * 三种形态：
+ * - 都不给：可见范围内全部账号的全部个人页（用户自己即「我的全部页面汇总」）
+ * - 给 userId：窄到这一个账号名下的全部个人页
+ * - 给 profileId：窄到这一个个人页
+ *
+ * 管理员名下没人时得到空数组，查询直接给零值。
+ */
+async function resolveVisibleProfileIds(
   app: FastifyInstance,
   actor: CurrentUser,
-  onlyUserId: string | undefined,
+  filter: { userId?: string; profileId?: string },
 ): Promise<string[]> {
   const scope = visibleUsersFilter(actor);
   const conditions = [eq(users.role, 'user' as const)];
   if (scope) conditions.push(scope);
-  if (onlyUserId) conditions.push(eq(users.id, onlyUserId));
+  if (filter.userId) conditions.push(eq(profiles.userId, filter.userId));
+  if (filter.profileId) conditions.push(eq(profiles.id, filter.profileId));
 
   const rows = await app.db
-    .select({ id: users.id })
-    .from(users)
+    .select({ id: profiles.id })
+    .from(profiles)
+    .innerJoin(users, eq(users.id, profiles.userId))
     .where(and(...conditions));
 
   return rows.map((r) => r.id);

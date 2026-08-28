@@ -7,17 +7,25 @@ import {
   rejectImage,
   rejectVideo,
 } from '@link-profile/shared';
-import { media, users } from '@link-profile/shared/schema';
+import { media, profiles } from '@link-profile/shared/schema';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { FORBIDDEN, loadTargetUser, UNAUTHORIZED } from '../auth/guards.js';
+import { FORBIDDEN, UNAUTHORIZED } from '../auth/guards.js';
 import { storeImage, storeVideo } from '../media/storage.js';
+import { resolveProfileAccess } from '../profiles/access.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 头像位可以放图或视频；背景图只收图。 */
 const SLOTS = ['avatar', 'background', 'poster'] as const;
 type Slot = (typeof SLOTS)[number];
+
+/**
+ * 把个人页 id 解析成可写的目标。
+ *
+ * 权限仍然落在**账号**上：`resolveProfileAccess` 先反查这个页面的主人，再交给 `loadTargetUser`
+ * 走三级角色那一套，不另起规则。id 不合法、页面不存在、越权都收敛成 null。
+ */
 
 export async function mediaRoutes(app: FastifyInstance) {
   /**
@@ -27,12 +35,12 @@ export async function mediaRoutes(app: FastifyInstance) {
    * 首帧抽出来（见 admin），抽帧失败则前端要求用户手动选一张图，
    * 服务端这边两种情况收到的都是一个普通的图片字段。
    */
-  app.post<{ Params: { id: string } }>('/users/:id/media', async (req, reply) => {
+  app.post<{ Params: { id: string } }>('/profiles/:id/media', async (req, reply) => {
     if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
     if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
 
-    const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'update');
-    if (!target || target.role !== 'user') return reply.code(403).send(FORBIDDEN);
+    const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
+    if (!target) return reply.code(403).send(FORBIDDEN);
 
     const parts = await collectMultipart(req);
     if ('error' in parts) return reply.code(400).send(parts);
@@ -84,24 +92,24 @@ export async function mediaRoutes(app: FastifyInstance) {
       const videoId = randomUUID();
       const posterId = randomUUID();
       const storedVideo = await storeVideo(Buffer.from(main.data), {
-        userId: target.id,
+        profileId: target,
         mediaId: videoId,
         durationMs: durationMs!,
       });
       const storedPoster = await storeImage(Buffer.from(poster.data), {
-        userId: target.id,
+        profileId: target,
         mediaId: posterId,
         usage: 'avatar',
       });
 
       await app.db.insert(media).values([
-        { id: videoId, userId: target.id, kind: 'video', ...storedVideo },
-        { id: posterId, userId: target.id, kind: 'image', ...storedPoster },
+        { id: videoId, profileId: target, kind: 'video', ...storedVideo },
+        { id: posterId, profileId: target, kind: 'image', ...storedPoster },
       ]);
       await app.db
-        .update(users)
+        .update(profiles)
         .set({ avatarMediaId: videoId, avatarPosterId: posterId, updatedAt: new Date() })
-        .where(eq(users.id, target.id));
+        .where(eq(profiles.id, target));
 
       return reply.code(201).send({ slot, mediaId: videoId, posterId, durationMs });
     }
@@ -111,14 +119,14 @@ export async function mediaRoutes(app: FastifyInstance) {
 
     const mediaId = randomUUID();
     const stored = await storeImage(Buffer.from(main.data), {
-      userId: target.id,
+      profileId: target,
       mediaId,
       usage: slot === 'background' ? 'background' : 'avatar',
     });
-    await app.db.insert(media).values({ id: mediaId, userId: target.id, kind: 'image', ...stored });
+    await app.db.insert(media).values({ id: mediaId, profileId: target, kind: 'image', ...stored });
 
     await app.db
-      .update(users)
+      .update(profiles)
       .set({
         ...(slot === 'background'
           ? { backgroundMediaId: mediaId }
@@ -126,31 +134,31 @@ export async function mediaRoutes(app: FastifyInstance) {
             { avatarMediaId: mediaId, avatarPosterId: null }),
         updatedAt: new Date(),
       })
-      .where(eq(users.id, target.id));
+      .where(eq(profiles.id, target));
 
     return reply.code(201).send({ slot, mediaId });
   });
 
   /** 清空某个位置的素材。清空后该区域回到主题渐变填充。 */
   app.delete<{ Params: { id: string; slot: string } }>(
-    '/users/:id/media/:slot',
+    '/profiles/:id/media/:slot',
     async (req, reply) => {
       if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
       if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
 
-      const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'update');
-      if (!target || target.role !== 'user') return reply.code(403).send(FORBIDDEN);
+      const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
+      if (!target) return reply.code(403).send(FORBIDDEN);
 
       if (req.params.slot === 'background') {
         await app.db
-          .update(users)
+          .update(profiles)
           .set({ backgroundMediaId: null, updatedAt: new Date() })
-          .where(eq(users.id, target.id));
+          .where(eq(profiles.id, target));
       } else if (req.params.slot === 'avatar') {
         await app.db
-          .update(users)
+          .update(profiles)
           .set({ avatarMediaId: null, avatarPosterId: null, updatedAt: new Date() })
-          .where(eq(users.id, target.id));
+          .where(eq(profiles.id, target));
       } else {
         return reply.code(400).send({ error: 'invalid_slot' });
       }

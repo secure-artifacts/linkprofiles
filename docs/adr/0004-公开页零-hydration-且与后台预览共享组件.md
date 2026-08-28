@@ -9,6 +9,10 @@
 
 ## Consequences
 
-- 引入 React 只是替换模板引擎，**公开页仍不做 hydration**：服务端输出纯 HTML，客户端只有一小段原生 JS 负责点击埋点，浏览器不下载也不解析 React runtime，移动端 LCP 不受影响。
+- 引入 React 只是替换模板引擎，**公开页仍不做 hydration**：服务端输出纯 HTML，客户端只有一小段原生 JS，浏览器不下载也不解析 React runtime，移动端 LCP 不受影响。
+
+  这段原生 JS 后来长到四件事：视频延迟播放、点击埋点、简介打字机、视频头像的静音切换。**边界没变**——禁的始终是 React hydration 与 React runtime，不是所有客户端 JS。判据是「浏览器要不要重新执行一遍组件树」，四件事都不需要：它们操作的是 SSR 已经画好的 DOM。静音按钮的两枚图标就是这么处理的——都渲染出来，显示哪一枚交给 CSS 按 `aria-pressed` 选，脚本只翻属性，不碰 innerHTML。
+
+  代价是这段脚本里的顺序变成了一条纪律：**点击埋点必须最先注册**，它是线索统计的唯一来源；后面每件装饰性的事各自 `try` 起来，谁抛异常都不许连累已经装好的东西。`profile-page.test.ts` 里有两条测试专门守这个顺序。
 - iframe 不是为了省事，而是同时解决两件事：真实的 375px 移动端视口，以及 tailwind preflight 与 Ant Design reset 的样式隔离（见 ADR-0002）。
 - 公开页组件必须保持无浏览器专有依赖，才能同时跑在服务端 `renderToString` 和后台预览两处。

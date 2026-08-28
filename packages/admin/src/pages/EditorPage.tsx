@@ -3,18 +3,27 @@ import { layoutEnum, themeEnum } from '@link-profile/shared/schema';
 import { Check } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useParams } from 'react-router-dom';
 import { request } from '../api/client.js';
-import type { AppSettings, EditableProfile, SocialPlatformInfo } from '../api/types.js';
+import type { AppSettings, EditableProfile, EntryDraft, SocialPlatformInfo } from '../api/types.js';
+import { useBreadcrumb } from '../nav/breadcrumb.js';
 import { PreviewFrame } from '../preview/PreviewFrame.js';
+import { useSession } from '../session.js';
 import { Alert } from '../ui/Alert.js';
 import { Button } from '../ui/Button.js';
 import { Input, Textarea } from '../ui/Input.js';
+import { Checkbox } from '../ui/Checkbox.js';
 import { Spinner } from '../ui/Spinner.js';
 import { useToast } from '../ui/Toast.js';
-import { ButtonsEditor } from './editor/ButtonsEditor.js';
+import { ContentEditor } from './editor/ContentEditor.js';
 import { MediaEditor } from './editor/MediaEditor.js';
-import { SocialIconsEditor } from './editor/SocialIconsEditor.js';
-import { draftFromServer, draftToProfileView, isLocalId, type Draft } from './editor/draft.js';
+import {
+  draftFromServer,
+  draftToProfileView,
+  isLocalId,
+  type Draft,
+  type LiveMedia,
+} from './editor/draft.js';
 
 const LAYOUT_LABELS: Record<string, string> = {
   classic: 'Classic',
@@ -24,29 +33,27 @@ const LAYOUT_LABELS: Record<string, string> = {
   shape: 'Shape',
 };
 
-interface EditorPageProps {
-  userId: string;
-  /** 当前登录者是不是页面的主人。管理员代改时提示语不一样。 */
-  editingSelf: boolean;
-}
-
 /**
  * 个人页编辑器。
  *
  * 左边改，右边那台手机同步变 —— 不用保存、不用切设备。预览渲染的是与
  * 公开页同一批组件，见 `PreviewFrame` 与 ADR-0004。
  */
-export function EditorPage({ userId, editingSelf }: EditorPageProps) {
+export function EditorPage() {
+  const { profileId = '' } = useParams();
+  const session = useSession();
   const toast = useToast();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [platforms, setPlatforms] = useState<SocialPlatformInfo[]>([]);
   const [caveat, setCaveat] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 裁切弹窗开着时的临时构图。不进 draft，取消即消失。
+  const [liveMedia, setLiveMedia] = useState<LiveMedia>({});
 
   const load = useCallback(async () => {
     const [loaded, platformList, settings] = await Promise.all([
-      request<EditableProfile>(`/users/${userId}/profile`),
+      request<EditableProfile>(`/profiles/${profileId}`),
       request<{ platforms: SocialPlatformInfo[] }>('/social-platforms'),
       request<AppSettings>('/settings'),
     ]);
@@ -60,14 +67,33 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
         avatarIsVideo: loaded.profile.avatarIsVideo,
       }),
     );
-  }, [userId]);
+  }, [profileId]);
 
   useEffect(() => {
     load().catch((err: Error) => setError(err.message));
   }, [load]);
 
   // 草稿一变就重新算一份预览用的视图。没有 debounce：改一个字那边就跟着动。
-  const preview = useMemo(() => (draft ? draftToProfileView(draft) : null), [draft]);
+  const preview = useMemo(
+    () => (draft ? draftToProfileView(draft, liveMedia) : null),
+    [draft, liveMedia],
+  );
+
+  const editingSelf = draft?.fields.userId === session.id;
+  useBreadcrumb(
+    draft
+      ? editingSelf
+        ? [
+            { label: '我的页面', to: `/users/${session.id}/profiles` },
+            { label: `/${draft.fields.shortName}` },
+          ]
+        : [
+            { label: '用户', to: '/users' },
+            { label: '页面', to: `/users/${draft.fields.userId}/profiles` },
+            { label: `/${draft.fields.shortName}` },
+          ]
+      : [],
+  );
 
   if (error) return <Alert tone="danger" message="打不开这个页面" description={error} />;
   if (!draft || !preview) return <Spinner fullscreen />;
@@ -85,29 +111,27 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
   const save = async () => {
     setSaving(true);
     try {
-      await uploadPendingMedia(userId, draft);
+      await uploadPendingMedia(profileId, draft);
 
-      await request(`/users/${userId}/profile`, {
+      await request(`/profiles/${profileId}`, {
         method: 'PATCH',
         body: {
           displayName: draft.fields.displayName,
           bio: draft.fields.bio,
+          bioTypewriter: draft.fields.bioTypewriter,
           layout: draft.fields.layout,
           theme: draft.fields.theme,
+          solidBackground: draft.fields.solidBackground,
+          iconPlate: draft.fields.iconPlate,
           backgroundOverlay: Number(draft.fields.backgroundOverlay),
         },
       });
 
       // 已有条目要把自己的 id 带回去：换 id 会让它的历史点击成为孤儿，
-      // 单按钮点击率归零。新加的条目 id 是 `local-…`，不往上送。
-      await request(`/users/${userId}/buttons`, {
+      // 逐条点击率归零。新加的条目 id 是 `local-…`，不往上送。
+      await request(`/profiles/${profileId}/entries`, {
         method: 'PUT',
-        body: { buttons: draft.buttons.map(withPersistedId) },
-      });
-
-      await request(`/users/${userId}/social-icons`, {
-        method: 'PUT',
-        body: { socialIcons: draft.socialIcons.map(withPersistedId) },
+        body: { entries: draft.entries.map(toPayload) },
       });
 
       await load();
@@ -120,26 +144,25 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
   };
 
   return (
-    <div className="flex flex-wrap items-start gap-6">
-      <div className="flex min-w-[380px] flex-1 flex-col gap-4">
+    <div className="flex flex-wrap items-start justify-center gap-6">
+      {/* 限宽照 SettingsPage 的先例：不封顶的话宽屏上输入框与素材卡会一路撑满 */}
+      <div className="flex min-w-[380px] max-w-[720px] flex-1 flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-display text-[22px] font-semibold text-fg">
             {editingSelf ? '我的个人页' : '代改个人页'}
           </h1>
           <div className="flex gap-2">
-            {draft.fields.shortName ? (
-              <a
-                href={`/${draft.fields.shortName}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-8 items-center justify-center rounded-[var(--radius-control)]
-                  border border-border bg-surface px-3 text-[13px] font-medium text-fg
-                  hover:bg-surface-hover focus-visible:outline focus-visible:outline-2
-                  focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                打开公开页
-              </a>
-            ) : null}
+            <a
+              href={`/${draft.fields.shortName}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-8 items-center justify-center rounded-[var(--radius-control)]
+                border border-border bg-surface px-3 text-[13px] font-medium text-fg
+                hover:bg-surface-hover focus-visible:outline focus-visible:outline-2
+                focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              打开公开页
+            </a>
             <Button variant="primary" size="sm" loading={saving} onClick={() => void save()}>
               保存
             </Button>
@@ -161,8 +184,17 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
               maxLength={300}
               rows={3}
             />
+            <div className="flex w-fit items-center gap-2">
+              <Checkbox
+                checked={draft.fields.bioTypewriter}
+                onChange={(checked) => patchFields({ bioTypewriter: checked })}
+              >
+                简介逐字打出
+              </Checkbox>
+              <span className="text-[12px] text-muted">· 访客系统设了「减少动效」时自动跳过</span>
+            </div>
             <p className="text-[12px] text-muted">
-              页面地址：/{draft.fields.shortName ?? '—'}
+              页面地址：/{draft.fields.shortName}
               {editingSelf ? '（地址由管理员维护，改动会使已发出的链接失效）' : ''}
             </p>
           </div>
@@ -185,7 +217,9 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
                     ${active ? 'border-accent ring-1 ring-accent' : 'border-border hover:bg-surface-hover'}`}
                 >
                   {active ? (
-                    <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-accent text-accent-fg">
+                    // z-10 不能省：cutout 的示意图色块用的是同一组坐标、hero 的盖住整条顶边，
+                    // 两者都排在这个对号之后，同层叠上下文里后来的绝对定位元素会压住它。
+                    <span className="absolute right-1.5 top-1.5 z-10 flex size-4 items-center justify-center rounded-full bg-accent text-accent-fg">
                       <Check className="size-2.5" strokeWidth={3} />
                     </span>
                   ) : null}
@@ -227,30 +261,29 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
         </Panel>
 
         <Panel title="素材">
-          <MediaEditor draft={draft} onChange={patch} onChangeFields={patchFields} />
-        </Panel>
-
-        <Panel title="按钮">
-          <ButtonsEditor
-            buttons={draft.buttons}
-            onChange={(buttons) => patch({ buttons })}
-            passthroughCaveat={caveat}
+          <MediaEditor
+            draft={draft}
+            onChange={patch}
+            onChangeFields={patchFields}
+            onLiveMedia={setLiveMedia}
           />
         </Panel>
 
-        <Panel title="社媒图标">
-          <SocialIconsEditor
+        <Panel title="内容编排">
+          <ContentEditor
             platforms={platforms}
-            icons={draft.socialIcons}
-            onChange={(socialIcons) => patch({ socialIcons })}
+            entries={draft.entries}
+            onChange={(entries) => patch({ entries })}
             passthroughCaveat={caveat}
+            solidBackground={draft.fields.solidBackground}
+            iconPlate={draft.fields.iconPlate}
+            onChangeStyle={patchFields}
           />
         </Panel>
       </div>
 
       <div className="sticky top-6 flex flex-col items-center gap-2">
         <PreviewFrame profile={preview} />
-        <p className="text-[12px] text-muted">375px 实时预览 · 未保存的改动也看得到</p>
       </div>
     </div>
   );
@@ -326,16 +359,33 @@ function Bars({ align = 'center' }: { align?: 'center' | 'left' }) {
  * 已落库的条目原样带上 id，本地新加的（`local-` 前缀，见 draft.ts 的
  * `localId`）去掉 id 交给服务端发新的。
  */
-function withPersistedId<T extends { id: string }>(item: T): T | Omit<T, 'id'> {
-  if (isLocalId(item.id)) {
-    const { id: _id, ...rest } = item;
-    return rest;
-  }
-  return item;
+/**
+ * 草稿条目 → 提交体。
+ *
+ * 按 kind 只送对应的字段：草稿里 url/platform/value 三个都在（表单切换时留着
+ * 旧值方便回退），但服务端那条 CHECK 要求 link 不带 platform/value、social 不带
+ * url，整份送上去会被数据库拒掉。
+ *
+ * 本地新建的条目 id 是 `local-…`，不往上送 —— 服务端会发一个真的。已保存的
+ * 必须原样带回去：换 id 会让它的历史点击成为孤儿。
+ */
+function toPayload(entry: EntryDraft): Record<string, unknown> {
+  const common = {
+    ...(isLocalId(entry.id) ? {} : { id: entry.id }),
+    kind: entry.kind,
+    title: entry.title,
+    subtitle: entry.subtitle,
+    isLead: entry.isLead,
+    passSource: entry.passSource,
+  };
+
+  return entry.kind === 'social'
+    ? { ...common, platform: entry.platform, value: entry.value }
+    : { ...common, url: entry.url };
 }
 
 /** 保存时才真正上传选中的素材，用户在确认满意之前不必先落库。 */
-async function uploadPendingMedia(userId: string, draft: Draft): Promise<void> {
+async function uploadPendingMedia(profileId: string, draft: Draft): Promise<void> {
   if (draft.pendingAvatar) {
     const form = new FormData();
     form.append('slot', 'avatar');
@@ -343,17 +393,21 @@ async function uploadPendingMedia(userId: string, draft: Draft): Promise<void> {
     if (draft.pendingAvatarPoster) {
       form.append('poster', draft.pendingAvatarPoster.file);
     }
-    await request(`/users/${userId}/media`, { method: 'POST', formData: form });
+    await request(`/profiles/${profileId}/media`, { method: 'POST', formData: form });
   } else if (draft.savedAvatarUrl === null) {
-    await request(`/users/${userId}/media/avatar`, { method: 'DELETE' }).catch(() => undefined);
+    await request(`/profiles/${profileId}/media/avatar`, { method: 'DELETE' }).catch(
+      () => undefined,
+    );
   }
 
   if (draft.pendingBackground) {
     const form = new FormData();
     form.append('slot', 'background');
     form.append('file', draft.pendingBackground.file);
-    await request(`/users/${userId}/media`, { method: 'POST', formData: form });
+    await request(`/profiles/${profileId}/media`, { method: 'POST', formData: form });
   } else if (draft.savedBackgroundUrl === null) {
-    await request(`/users/${userId}/media/background`, { method: 'DELETE' }).catch(() => undefined);
+    await request(`/profiles/${profileId}/media/background`, { method: 'DELETE' }).catch(
+      () => undefined,
+    );
   }
 }

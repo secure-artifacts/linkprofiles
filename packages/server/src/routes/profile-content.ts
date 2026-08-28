@@ -1,45 +1,90 @@
 import {
   isSocialPlatformId,
-  MAX_BUTTONS_PER_USER,
+  MAX_BUTTONS_PER_PROFILE,
+  shortNameSchema,
   SOCIAL_PLATFORMS,
   validateTargetUrl,
 } from '@link-profile/shared';
-import { buttons, layoutEnum, socialIcons, themeEnum, users } from '@link-profile/shared/schema';
-import { asc, eq, inArray } from 'drizzle-orm';
+import {
+  buttons,
+  layoutEnum,
+  profiles,
+  shortNameChanges,
+  themeEnum,
+  users,
+} from '@link-profile/shared/schema';
+import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { FORBIDDEN, loadTargetUser, UNAUTHORIZED } from '../auth/guards.js';
-import type { CurrentUser } from '../auth/sessions.js';
-import { loadMediaByIds, toMediaSource, toVideoSource } from '../profiles/media-view.js';
+import { deleteProfile } from '../profiles/deletion.js';
+import {
+  loadMediaByIds,
+  toMediaSource,
+  toThumbnailUrl,
+  toVideoSource,
+} from '../profiles/media-view.js';
+import { findUserConflict } from '../users/conflicts.js';
+import { resolveProfileAccess } from '../profiles/access.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 改名人。与被改的那个页面的主人不是一回事，所以要单独 join 一次。 */
+const changedBy = alias(users, 'changed_by');
+
+const createProfileBody = z.object({
+  shortName: shortNameSchema,
+  /** 显示名：个人页上给访客看的名字，可重复。留空时先跟 short_name 一致 */
+  displayName: z.string().trim().max(60).optional(),
+});
 
 const profileBody = z.object({
   displayName: z.string().trim().max(60).optional(),
   bio: z.string().trim().max(300).optional(),
+  bioTypewriter: z.boolean().optional(),
   /** 布局只决定头像与头图区域的形状和占比，不决定配色 */
   layout: z.enum(layoutEnum.enumValues).optional(),
   theme: z.enum(themeEnum.enumValues).optional(),
+  /** 条目一律实心卡片还是一律描边行。整页统一，不逐条配。 */
+  solidBackground: z.boolean().optional(),
+  iconPlate: z.boolean().optional(),
   /** 背景图上那层遮罩的暗度。加深对浅色文字主题有利、对深色文字主题不利。 */
   backgroundOverlay: z.number().min(0).max(1).optional(),
 });
 
-const buttonInput = z.object({
-  /**
-   * 已有按钮带上自己的 id，新加的不带。
-   *
-   * **id 必须保留下来**：点击埋点记的是 `clicks.target_id`，换一次 id
-   * 这个按钮的历史点击就全成了孤儿，单按钮点击率归零。而编辑器里任何
-   * 一次保存（哪怕只是改了主题）都会把整份列表提交一遍。
-   */
-  id: z.string().uuid().optional(),
-  title: z.string().trim().min(1, '按钮文字不能为空').max(80),
-  /** 选填的一行说明，留空则页面上不渲染 */
-  subtitle: z.string().trim().max(80).default(''),
-  url: z.string(),
-  isLead: z.boolean().default(false),
-  passSource: z.boolean().default(false),
-});
+/**
+ * 一个条目。两种 kind 要求的字段不同，用 discriminatedUnion 分开，
+ * 免得两边的必填项互相污染（比如 social 不该被要求填 url）。
+ *
+ * **id 必须保留下来**：点击埋点记的是 `clicks.target_id`，换一次 id
+ * 这个条目的历史点击就全成了孤儿，单条目点击率归零。而编辑器里任何
+ * 一次保存（哪怕只是改了主题）都会把整份列表提交一遍。
+ */
+const entryInput = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('link'),
+    id: z.string().uuid().optional(),
+    title: z.string().trim().min(1, '标题不能为空').max(80),
+    /** 选填的一行说明，留空则页面上不渲染 */
+    subtitle: z.string().trim().max(80).default(''),
+    url: z.string(),
+    isLead: z.boolean().default(false),
+    passSource: z.boolean().default(false),
+  }),
+  z.object({
+    kind: z.literal('social'),
+    id: z.string().uuid().optional(),
+    /** 社媒条目现在也有用户自定义的标题与描述，不再只是一枚图标 */
+    title: z.string().trim().min(1, '标题不能为空').max(80),
+    subtitle: z.string().trim().max(80).default(''),
+    platform: z.string(),
+    /** 用户填的号码 / 邮箱 / 用户名，不是拼好的 URL */
+    value: z.string().trim().min(1, '内容不能为空'),
+    isLead: z.boolean().optional(),
+    passSource: z.boolean().default(false),
+  }),
+]);
 
 /**
  * 整份有序列表一次提交。
@@ -49,26 +94,13 @@ const buttonInput = z.object({
  * 顺序即数组下标。
  *
  * 但**不是整表删了重插**：带 id 的原地更新、不带 id 的新建、没出现在
- * 这次提交里的才删除。见 `buttonInput.id` 的说明。
+ * 这次提交里的才删除。见 `entryInput` 的说明。
+ *
+ * 总长度上限是两种 kind 各自上限之和 —— 合表之前链接与社媒各有各的额度，
+ * 合表不该把这两份额度挤成一份。逐类的检查在处理函数里。
  */
-const buttonsBody = z.object({
-  buttons: z
-    .array(buttonInput)
-    .max(MAX_BUTTONS_PER_USER, `单页按钮数量上限 ${MAX_BUTTONS_PER_USER}`),
-});
-
-const socialIconInput = z.object({
-  /** 同 buttonInput.id：换 id 会让这个图标的历史点击成为孤儿 */
-  id: z.string().uuid().optional(),
-  platform: z.string(),
-  /** 用户填的号码 / 邮箱 / 用户名，不是拼好的 URL */
-  value: z.string().trim().min(1, '内容不能为空'),
-  isLead: z.boolean().optional(),
-  passSource: z.boolean().default(false),
-});
-
-const socialIconsBody = z.object({
-  socialIcons: z.array(socialIconInput).max(SOCIAL_PLATFORMS.length),
+const entriesBody = z.object({
+  entries: z.array(entryInput).max(MAX_BUTTONS_PER_PROFILE + SOCIAL_PLATFORMS.length),
 });
 
 export async function profileContentRoutes(app: FastifyInstance) {
@@ -84,76 +116,310 @@ export async function profileContentRoutes(app: FastifyInstance) {
     })),
   }));
 
-  app.get<{ Params: { id: string } }>('/users/:id/profile', async (req, reply) => {
+  /** 某个账号名下的全部个人页。一个账号可以有多个，见 ADR-0008。 */
+  app.get<{ Params: { userId: string } }>('/users/:userId/profiles', async (req, reply) => {
+    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!UUID.test(req.params.userId)) return reply.code(403).send(FORBIDDEN);
+
+    const owner = await loadTargetUser(app.db, req.currentUser, req.params.userId, 'read');
+    if (!owner || owner.role !== 'user') return reply.code(403).send(FORBIDDEN);
+
+    const rows = await app.db
+      .select({
+        id: profiles.id,
+        shortName: profiles.shortName,
+        displayName: profiles.displayName,
+        layout: profiles.layout,
+        theme: profiles.theme,
+        avatarMediaId: profiles.avatarMediaId,
+        createdAt: profiles.createdAt,
+      })
+      .from(profiles)
+      .where(eq(profiles.userId, owner.id))
+      .orderBy(asc(profiles.createdAt));
+
+    // 一次把这批页面的头像全查出来，不要逐行查
+    const mediaById = await loadMediaByIds(
+      app.db,
+      rows.map((r) => r.avatarMediaId),
+    );
+
+    return {
+      profiles: rows.map(({ avatarMediaId, ...rest }) => ({
+        ...rest,
+        avatarUrl: toThumbnailUrl(avatarMediaId ? mediaById.get(avatarMediaId) : undefined),
+      })),
+    };
+  });
+
+  /** 给某个账号新建一个个人页。不限数量。 */
+  app.post<{ Params: { userId: string } }>('/users/:userId/profiles', async (req, reply) => {
+    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!UUID.test(req.params.userId)) return reply.code(403).send(FORBIDDEN);
+
+    const parsed = createProfileBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+    }
+
+    // 建页面不作废任何已发出去的链接，只是多一个地址，所以用户自己也能建
+    const owner = await loadTargetUser(
+      app.db,
+      req.currentUser,
+      req.params.userId,
+      'profile:create',
+    );
+    if (!owner || owner.role !== 'user') return reply.code(403).send(FORBIDDEN);
+
+    const conflict = await findUserConflict(app.db, { shortName: parsed.data.shortName });
+    if (conflict) return reply.code(409).send({ error: conflict });
+
+    const [row] = await app.db
+      .insert(profiles)
+      .values({
+        userId: owner.id,
+        shortName: parsed.data.shortName,
+        displayName: parsed.data.displayName || parsed.data.shortName,
+      })
+      .returning({
+        id: profiles.id,
+        shortName: profiles.shortName,
+        displayName: profiles.displayName,
+        layout: profiles.layout,
+        theme: profiles.theme,
+        createdAt: profiles.createdAt,
+      });
+
+    return reply.code(201).send(row);
+  });
+
+  app.get<{ Params: { id: string } }>('/profiles/:id', async (req, reply) => {
     if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
 
-    const target = await resolveTarget(app, req.currentUser, req.params.id, 'read');
+    const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'read');
     if (!target) return reply.code(403).send(FORBIDDEN);
 
     return loadEditableProfile(app, target);
   });
 
-  app.patch<{ Params: { id: string } }>('/users/:id/profile', async (req, reply) => {
+  /**
+   * 改个人页地址。与内容编辑分开，因为它的后果外溢到系统之外：已经印在名片、
+   * 二维码、投放素材上的旧地址会立刻失效。每次改动留一条流水，改错了照着改回去。
+   */
+  app.patch<{ Params: { id: string } }>('/profiles/:id/short-name', async (req, reply) => {
+    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+
+    const parsed = z.object({ shortName: shortNameSchema }).safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+    }
+
+    const target = await resolveProfileAccess(
+      app.db,
+      req.currentUser,
+      req.params.id,
+      'update:shortName',
+    );
+    if (!target) return reply.code(403).send(FORBIDDEN);
+
+    const [current] = await app.db
+      .select({ shortName: profiles.shortName })
+      .from(profiles)
+      .where(eq(profiles.id, target));
+    if (!current) return reply.code(403).send(FORBIDDEN);
+
+    // 改成原来那个不算一次改动，不留流水
+    if (current.shortName === parsed.data.shortName) return loadEditableProfile(app, target);
+
+    const conflict = await findUserConflict(app.db, {
+      shortName: parsed.data.shortName,
+      excludeProfileId: target,
+    });
+    if (conflict) return reply.code(409).send({ error: conflict });
+
+    const actorId = req.currentUser.id;
+    // 改名与流水同一个事务：只写成一半的话，回退时就照不着旧地址了
+    await app.db.transaction(async (tx) => {
+      await tx
+        .update(profiles)
+        .set({ shortName: parsed.data.shortName, updatedAt: new Date() })
+        .where(eq(profiles.id, target));
+
+      await tx.insert(shortNameChanges).values({
+        profileId: target,
+        fromShortName: current.shortName,
+        toShortName: parsed.data.shortName,
+        changedBy: actorId,
+      });
+    });
+
+    return loadEditableProfile(app, target);
+  });
+
+  /**
+   * 这个页面的地址改过几次、从什么改成什么。
+   *
+   * 拿它做回退：挑一个旧地址，走上面那个 PATCH 改回去即可 —— 冲突与墓碑检查
+   * 在那条路径上已经做了，这里不需要第二个入口。
+   */
+  app.get<{ Params: { id: string } }>('/profiles/:id/short-name-history', async (req, reply) => {
+    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+
+    const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'read');
+    if (!target) return reply.code(403).send(FORBIDDEN);
+
+    const rows = await app.db
+      .select({
+        id: shortNameChanges.id,
+        fromShortName: shortNameChanges.fromShortName,
+        toShortName: shortNameChanges.toShortName,
+        createdAt: shortNameChanges.createdAt,
+        changedByLabel: sql<
+          string | null
+        >`coalesce(nullif(${changedBy.label}, ''), ${changedBy.account})`,
+      })
+      .from(shortNameChanges)
+      .leftJoin(changedBy, eq(changedBy.id, shortNameChanges.changedBy))
+      .where(eq(shortNameChanges.profileId, target))
+      .orderBy(desc(shortNameChanges.createdAt));
+
+    return { changes: rows };
+  });
+
+  /** 删一个个人页。它的 short_name 进墓碑，永不再分配。 */
+  app.delete<{ Params: { id: string } }>('/profiles/:id', async (req, reply) => {
+    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    // 删页面是唯一不可逆的那个：地址进墓碑永不再分配，媒体一并从磁盘删除。
+    // 与建页面分开管，用户建得了但删不了。
+    const target = await resolveProfileAccess(
+      app.db,
+      req.currentUser,
+      req.params.id,
+      'profile:delete',
+    );
+    if (!target) return reply.code(403).send(FORBIDDEN);
+
+    await deleteProfile(app.db, target);
+    return reply.code(204).send();
+  });
+
+  app.patch<{ Params: { id: string } }>('/profiles/:id', async (req, reply) => {
     if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
     const parsed = profileBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
     }
 
-    const target = await resolveTarget(app, req.currentUser, req.params.id, 'update');
+    const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
     if (!target) return reply.code(403).send(FORBIDDEN);
 
     await app.db
-      .update(users)
+      .update(profiles)
       .set({
         ...(parsed.data.displayName !== undefined ? { displayName: parsed.data.displayName } : {}),
         ...(parsed.data.bio !== undefined ? { bio: parsed.data.bio } : {}),
+        ...(parsed.data.bioTypewriter !== undefined
+          ? { bioTypewriter: parsed.data.bioTypewriter }
+          : {}),
         ...(parsed.data.layout !== undefined ? { layout: parsed.data.layout } : {}),
         ...(parsed.data.theme !== undefined ? { theme: parsed.data.theme } : {}),
+        ...(parsed.data.solidBackground !== undefined
+          ? { solidBackground: parsed.data.solidBackground }
+          : {}),
+        ...(parsed.data.iconPlate !== undefined ? { iconPlate: parsed.data.iconPlate } : {}),
         ...(parsed.data.backgroundOverlay !== undefined
           ? { backgroundOverlay: parsed.data.backgroundOverlay.toFixed(2) }
           : {}),
         updatedAt: new Date(),
       })
-      .where(eq(users.id, target));
+      .where(eq(profiles.id, target));
 
     return loadEditableProfile(app, target);
   });
 
-  app.put<{ Params: { id: string } }>('/users/:id/buttons', async (req, reply) => {
+  /**
+   * 整份条目列表一次提交。链接与社媒混在同一个数组里，靠 `kind` 区分。
+   *
+   * 两种 kind 各有各的数量额度：链接受 `MAX_BUTTONS_PER_PROFILE` 限制，
+   * 社媒受内置清单长度限制且同一平台只能启用一次。合表不该把这两份额度
+   * 挤成一份 —— 那会让原本能建 50 个链接的页面因为加了社媒而建不满。
+   */
+  app.put<{ Params: { id: string } }>('/profiles/:id/entries', async (req, reply) => {
     if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    const parsed = buttonsBody.safeParse(req.body);
+    const parsed = entriesBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
     }
 
-    const target = await resolveTarget(app, req.currentUser, req.params.id, 'update');
+    const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
     if (!target) return reply.code(403).send(FORBIDDEN);
 
-    // 目标地址逐条校验，带上下标好让后台指出是哪一条
+    const links = parsed.data.entries.filter((e) => e.kind === 'link');
+    if (links.length > MAX_BUTTONS_PER_PROFILE) {
+      return reply.code(400).send({
+        error: 'too_many_buttons',
+        message: `单页自定义链接数量上限 ${MAX_BUTTONS_PER_PROFILE}`,
+      });
+    }
+
     const rows: (typeof buttons.$inferInsert)[] = [];
-    for (const [index, input] of parsed.data.buttons.entries()) {
-      const url = validateTargetUrl(input.url);
-      if (!url.ok) {
-        return reply.code(400).send({ error: 'invalid_url', index, message: url.error });
-      }
-      rows.push({
+    const seenPlatforms = new Set<string>();
+
+    // 逐条校验，带上下标好让后台指出是哪一条
+    for (const [index, input] of parsed.data.entries.entries()) {
+      const common = {
         ...(input.id ? { id: input.id } : {}),
-        userId: target,
+        profileId: target,
         title: input.title,
         subtitle: input.subtitle,
-        url: url.value,
         position: index,
-        isLead: input.isLead,
         passSource: input.passSource,
+      };
+
+      if (input.kind === 'link') {
+        const url = validateTargetUrl(input.url);
+        if (!url.ok) {
+          return reply.code(400).send({ error: 'invalid_url', index, message: url.error });
+        }
+        const isLead = input.isLead;
+        rows.push({
+          ...common,
+          kind: 'link',
+          url: url.value,
+          platform: null,
+          value: null,
+          isLead,
+        });
+        continue;
+      }
+
+      if (!isSocialPlatformId(input.platform)) {
+        return reply.code(400).send({ error: 'unknown_platform', index, platform: input.platform });
+      }
+      if (seenPlatforms.has(input.platform)) {
+        return reply
+          .code(400)
+          .send({ error: 'duplicate_platform', index, platform: input.platform });
+      }
+      seenPlatforms.add(input.platform);
+
+      const platform = SOCIAL_PLATFORMS.find((p) => p.id === input.platform)!;
+      const isLead = input.isLead ?? platform.defaultIsLead;
+      rows.push({
+        ...common,
+        kind: 'social',
+        url: null,
+        platform: input.platform,
+        value: input.value,
+        isLead,
       });
     }
 
     await app.db.transaction(async (tx) => {
       const owned = new Set(
-        (await tx.select({ id: buttons.id }).from(buttons).where(eq(buttons.userId, target))).map(
-          (r) => r.id,
-        ),
+        (
+          await tx.select({ id: buttons.id }).from(buttons).where(eq(buttons.profileId, target))
+        ).map((r) => r.id),
       );
 
       // 别人的 id 塞进来只会当作新建，劫持不了不属于自己的行
@@ -176,118 +442,44 @@ export async function profileContentRoutes(app: FastifyInstance) {
 
     return loadEditableProfile(app, target);
   });
-
-  app.put<{ Params: { id: string } }>('/users/:id/social-icons', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    const parsed = socialIconsBody.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
-    }
-
-    const target = await resolveTarget(app, req.currentUser, req.params.id, 'update');
-    if (!target) return reply.code(403).send(FORBIDDEN);
-
-    const seen = new Set<string>();
-    const rows: (typeof socialIcons.$inferInsert)[] = [];
-    for (const [index, input] of parsed.data.socialIcons.entries()) {
-      // 清单仅含海外平台，不认识的 id 一律拒绝，挡住绕过后台直接调接口。
-      if (!isSocialPlatformId(input.platform)) {
-        return reply.code(400).send({ error: 'unknown_platform', index, platform: input.platform });
-      }
-      if (seen.has(input.platform)) {
-        return reply
-          .code(400)
-          .send({ error: 'duplicate_platform', index, platform: input.platform });
-      }
-      seen.add(input.platform);
-
-      const platform = SOCIAL_PLATFORMS.find((p) => p.id === input.platform)!;
-      rows.push({
-        ...(input.id ? { id: input.id } : {}),
-        userId: target,
-        platform: input.platform,
-        value: input.value,
-        position: index,
-        isLead: input.isLead ?? platform.defaultIsLead,
-        passSource: input.passSource,
-      });
-    }
-
-    await app.db.transaction(async (tx) => {
-      const owned = new Set(
-        (
-          await tx
-            .select({ id: socialIcons.id })
-            .from(socialIcons)
-            .where(eq(socialIcons.userId, target))
-        ).map((r) => r.id),
-      );
-
-      const keep = rows.filter((row) => row.id && owned.has(row.id)).map((row) => row.id!);
-      const stale = [...owned].filter((id) => !keep.includes(id));
-      if (stale.length) await tx.delete(socialIcons).where(inArray(socialIcons.id, stale));
-
-      for (const row of rows) {
-        const { id, ...values } = row;
-        if (id && owned.has(id)) {
-          await tx
-            .update(socialIcons)
-            .set({ ...values, updatedAt: new Date() })
-            .where(eq(socialIcons.id, id));
-        } else {
-          await tx.insert(socialIcons).values(values);
-        }
-      }
-    });
-
-    return loadEditableProfile(app, target);
-  });
-}
-
-/**
- * 统一的目标解析：id 不合法、越权、不存在、不是 user 角色，
- * 对外都收敛成同一个 null，调用方一律回 403。
- */
-async function resolveTarget(
-  app: FastifyInstance,
-  actor: CurrentUser,
-  id: string,
-  action: 'read' | 'update',
-): Promise<string | null> {
-  if (!UUID.test(id)) return null;
-  const target = await loadTargetUser(app.db, actor, id, action);
-  return target && target.role === 'user' ? target.id : null;
 }
 
 /** 编辑器与预览都读这一份，字段与保存接口一一对应。 */
-async function loadEditableProfile(app: FastifyInstance, userId: string) {
+async function loadEditableProfile(app: FastifyInstance, profileId: string) {
   const [profile] = await app.db
     .select({
-      id: users.id,
-      shortName: users.shortName,
-      displayName: users.displayName,
-      bio: users.bio,
-      layout: users.layout,
-      theme: users.theme,
-      backgroundOverlay: users.backgroundOverlay,
-      avatarMediaId: users.avatarMediaId,
-      backgroundMediaId: users.backgroundMediaId,
+      id: profiles.id,
+      userId: profiles.userId,
+      shortName: profiles.shortName,
+      displayName: profiles.displayName,
+      bio: profiles.bio,
+      bioTypewriter: profiles.bioTypewriter,
+      layout: profiles.layout,
+      theme: profiles.theme,
+      solidBackground: profiles.solidBackground,
+      iconPlate: profiles.iconPlate,
+      backgroundOverlay: profiles.backgroundOverlay,
+      avatarMediaId: profiles.avatarMediaId,
+      backgroundMediaId: profiles.backgroundMediaId,
     })
-    .from(users)
-    .where(eq(users.id, userId));
+    .from(profiles)
+    .where(eq(profiles.id, profileId));
 
-  const buttonRows = await app.db
+  const entryRows = await app.db
     .select({
       id: buttons.id,
+      kind: buttons.kind,
       title: buttons.title,
       subtitle: buttons.subtitle,
       url: buttons.url,
+      platform: buttons.platform,
+      value: buttons.value,
       isLead: buttons.isLead,
       passSource: buttons.passSource,
       position: buttons.position,
     })
     .from(buttons)
-    .where(eq(buttons.userId, userId))
+    .where(eq(buttons.profileId, profileId))
     .orderBy(asc(buttons.position));
 
   const mediaById = await loadMediaByIds(app.db, [
@@ -300,19 +492,6 @@ async function loadEditableProfile(app: FastifyInstance, userId: string) {
     : undefined;
   const video = toVideoSource(avatarRow, undefined);
 
-  const iconRows = await app.db
-    .select({
-      id: socialIcons.id,
-      platform: socialIcons.platform,
-      value: socialIcons.value,
-      isLead: socialIcons.isLead,
-      passSource: socialIcons.passSource,
-      position: socialIcons.position,
-    })
-    .from(socialIcons)
-    .where(eq(socialIcons.userId, userId))
-    .orderBy(asc(socialIcons.position));
-
   return {
     profile: profile
       ? {
@@ -323,7 +502,6 @@ async function loadEditableProfile(app: FastifyInstance, userId: string) {
           backgroundUrl: toMediaSource(backgroundRow)?.src ?? null,
         }
       : profile,
-    buttons: buttonRows,
-    socialIcons: iconRows,
+    entries: entryRows,
   };
 }

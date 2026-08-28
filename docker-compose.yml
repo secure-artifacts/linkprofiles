@@ -3,15 +3,22 @@ services:
     image: postgres:18-alpine
     environment:
       POSTGRES_USER: linkprofile
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linkprofile}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 必须显式设置}
       POSTGRES_DB: link_profile
     volumes:
+      # postgres:18 的 PGDATA 是 /var/lib/postgresql/18/docker，挂父目录才能完整包住。
+      # 不要改成 17 及以前习惯的 /var/lib/postgresql/data
       - pgdata:/var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U linkprofile -d link_profile']
       interval: 5s
       timeout: 5s
       retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
     restart: unless-stopped
 
   app:
@@ -22,16 +29,53 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 3000
-      DATABASE_URL: postgres://linkprofile:${POSTGRES_PASSWORD:-linkprofile}@postgres:5432/link_profile
+      # 密码直接拼进连接串，因此只允许字母数字，见 .env.example
+      DATABASE_URL: postgres://linkprofile:${POSTGRES_PASSWORD}@postgres:5432/link_profile
       SUPERADMIN_ACCOUNT: ${SUPERADMIN_ACCOUNT:-admin}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:?SUPERADMIN_PASSWORD 必须显式设置}
-    # 只监听 HTTP。TLS 与反向代理交由运维按现有方案接管。
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN 必须显式设置，分享卡片里的地址取自它}
+      # 反代的实际源地址。留空则不信任 X-Forwarded-*，访客 IP 会记成代理地址
+      TRUST_PROXY: ${TRUST_PROXY:?TRUST_PROXY 必须显式设置，查法见 docs/deployment.md}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      GEOLITE2_CITY_PATH: ${GEOLITE2_CITY_PATH:-}
+    # 只绑回环，强制流量走反向代理。绑 0.0.0.0 时任何人可直连并伪造 X-Forwarded-For
     ports:
-      - '${APP_PORT:-3000}:3000'
+      - '127.0.0.1:${APP_PORT:-3000}:3000'
     volumes:
       - uploads:/app/uploads
+      # 需要地域维度时取消下一行注释，并在 .env 里设好两个 GEOLITE2_ 变量
+      # - ${GEOLITE2_HOST_DIR}:/app/geoip:ro
+    # 只提供状态可见性与 depends_on 判据。unhealthy 不会触发 restart policy，
+    # 自动拉起要靠外部监控，见 docs/operations.md
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/_api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
     restart: unless-stopped
 
 volumes:
   pgdata:
   uploads:
+
+# 网段写死，否则 down 会删掉默认网络，重建时 Docker 另分一段，网关随之改变，
+# 而 .env 里的 TRUST_PROXY 还是旧地址 —— 升级后访客 IP 会静默记成网关地址。
+# 与宿主机现有网段冲突时改这里，并同步改 .env 的 TRUST_PROXY。
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+          gateway: 172.28.0.1

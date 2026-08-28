@@ -7,6 +7,7 @@ import { login, withSession } from './helpers/http.js';
 let ctx: TestContext;
 let token: string;
 let userId: string;
+let profileId: string;
 
 beforeAll(async () => {
   ctx = await createTestContext();
@@ -26,13 +27,14 @@ beforeEach(async () => {
     bio: '我是一个基督徒，来自美国',
   });
   userId = user.id;
+  profileId = user.profileId!;
   token = (await login(ctx, 'mimnz', 'user-pass')).token;
 });
 
 const setLayout = (layout: string) =>
   ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(token),
     payload: { layout },
   });

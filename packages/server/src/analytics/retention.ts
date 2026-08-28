@@ -36,7 +36,7 @@ export async function aggregateAndPrune(
     const upserted = await tx`
       with page_buckets as (
         select
-          user_id,
+          profile_id,
           (occurred_at at time zone 'UTC')::date as day,
           coalesce(country, '') as country,
           coalesce(city, '') as city,
@@ -52,7 +52,7 @@ export async function aggregateAndPrune(
       ),
       click_buckets as (
         select
-          user_id,
+          profile_id,
           (occurred_at at time zone 'UTC')::date as day,
           coalesce(country, '') as country,
           coalesce(city, '') as city,
@@ -68,7 +68,7 @@ export async function aggregateAndPrune(
       ),
       merged as (
         select
-          user_id, day, country, city, device_type, os, source,
+          profile_id, day, country, city, device_type, os, source,
           sum(page_views)::int as page_views,
           sum(clicks)::int as clicks,
           sum(leads)::int as leads
@@ -76,10 +76,10 @@ export async function aggregateAndPrune(
         group by 1, 2, 3, 4, 5, 6, 7
       )
       insert into daily_summaries
-        (user_id, day, country, city, device_type, os, source, page_views, clicks, leads)
-      select user_id, day, country, city, device_type, os, source, page_views, clicks, leads
+        (profile_id, day, country, city, device_type, os, source, page_views, clicks, leads)
+      select profile_id, day, country, city, device_type, os, source, page_views, clicks, leads
       from merged
-      on conflict (user_id, day, country, city, device_type, os, source) do update set
+      on conflict (profile_id, day, country, city, device_type, os, source) do update set
         page_views = daily_summaries.page_views + excluded.page_views,
         clicks = daily_summaries.clicks + excluded.clicks,
         leads = daily_summaries.leads + excluded.leads

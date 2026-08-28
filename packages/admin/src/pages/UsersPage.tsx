@@ -1,8 +1,11 @@
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { request } from '../api/client.js';
-import type { AdminSummary, Session, UserSummary } from '../api/types.js';
+import type { AdminSummary, UserSummary } from '../api/types.js';
+import { useBreadcrumb } from '../nav/breadcrumb.js';
+import { useSession } from '../session.js';
 import { Alert } from '../ui/Alert.js';
 import { Button } from '../ui/Button.js';
 import { Dialog } from '../ui/Dialog.js';
@@ -11,12 +14,6 @@ import { Select } from '../ui/Select.js';
 import { Tag } from '../ui/Tag.js';
 import { useToast } from '../ui/Toast.js';
 import { useConfirm } from '../ui/useConfirm.js';
-
-interface UsersPageProps {
-  session: Session;
-  onEdit: (userId: string) => void;
-  onAnalytics: (userId: string) => void;
-}
 
 const PAGE_SIZE = 20;
 
@@ -27,7 +24,10 @@ const PAGE_SIZE = 20;
  * 超级管理员额外看得到「无归属」——归属管理员被删除后留下的账号，
  * 做成显眼的红色标记，避免它们长期没人管理。
  */
-export function UsersPage({ session, onEdit, onAnalytics }: UsersPageProps) {
+export function UsersPage() {
+  const session = useSession();
+  const navigate = useNavigate();
+  useBreadcrumb([{ label: '用户' }]);
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [admins, setAdmins] = useState<AdminSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,8 +70,8 @@ export function UsersPage({ session, onEdit, onAnalytics }: UsersPageProps) {
       description: (
         <div className="flex flex-col gap-1.5 text-[13px] text-fg">
           <span>
-            地址 /{user.shortName} 会进入墓碑并<strong className="font-semibold">永不再分配</strong>
-            ，旧链接从此返回 404。
+            他名下 {user.profileCount} 个页面的地址会全部进入墓碑并
+            <strong className="font-semibold">永不再分配</strong>，旧链接从此返回 404。
           </span>
           <span>他上传的图片与视频会从磁盘删除；埋点数据保留，历史汇总不断档。</span>
         </div>
@@ -119,7 +119,7 @@ export function UsersPage({ session, onEdit, onAnalytics }: UsersPageProps) {
             <tr className="border-b border-border bg-bg text-left text-[12px] font-medium text-muted">
               <th className="px-4 py-2.5">用户名称</th>
               <th className="px-4 py-2.5">账号</th>
-              <th className="px-4 py-2.5">页面地址</th>
+              <th className="px-4 py-2.5">页面</th>
               {isSuperadmin ? <th className="px-4 py-2.5">归属管理员</th> : null}
               <th className="px-4 py-2.5">操作</th>
             </tr>
@@ -148,18 +148,13 @@ export function UsersPage({ session, onEdit, onAnalytics }: UsersPageProps) {
                   </td>
                   <td className="px-4 py-2 font-mono text-[13px] text-fg">{user.account}</td>
                   <td className="px-4 py-2">
-                    {user.shortName ? (
-                      <a
-                        href={`/${user.shortName}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-accent hover:underline"
-                      >
-                        /{user.shortName}
-                      </a>
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/users/${user.id}/profiles`)}
+                      className="text-accent hover:underline"
+                    >
+                      {user.profileCount} 个页面
+                    </button>
                   </td>
                   {isSuperadmin ? (
                     <td className="px-4 py-2">
@@ -180,19 +175,27 @@ export function UsersPage({ session, onEdit, onAnalytics }: UsersPageProps) {
                           </div>
                         </div>
                       ) : (
-                        (admins.find((a) => a.id === user.owningAdminId)?.label ?? '—')
+                        (user.owningAdminLabel ?? '—')
                       )}
                     </td>
                   ) : null}
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <Button variant="default" size="sm" onClick={() => onEdit(user.id)}>
-                        编辑页面
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => navigate(`/users/${user.id}/profiles`)}
+                      >
+                        管理页面
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => setEditing(user)}>
                         账号设置
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => onAnalytics(user.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/analytics?userId=${user.id}`)}
+                      >
                         数据
                       </Button>
                       <Button variant="danger-ghost" size="sm" onClick={() => void remove(user)}>
@@ -245,10 +248,10 @@ export function UsersPage({ session, onEdit, onAnalytics }: UsersPageProps) {
 }
 
 /**
- * 账号设置：改 short_name、重置密码。
+ * 账号设置：改备注、重置密码。
  *
- * 两件事都是管理员才做得了的（用户改不了自己的 short_name，也只能走
- * 需要验旧密码的自助改密码），所以放在用户列表这一侧而不是编辑器里。
+ * 页面地址不在这里改 —— 一个账号可以有多个个人页，地址属于页面而不属于账号，
+ * 改名在个人页列表那一侧做。
  */
 function AccountSettingsModal({
   user,
@@ -259,13 +262,13 @@ function AccountSettingsModal({
   onClose: () => void;
   onDone: () => Promise<void> | void;
 }) {
-  const [shortName, setShortName] = useState('');
+  const [label, setLabel] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
-    setShortName(user?.shortName ?? '');
+    setLabel(user?.label ?? '');
     setNewPassword('');
   }, [user]);
 
@@ -274,8 +277,8 @@ function AccountSettingsModal({
   const save = async () => {
     setSaving(true);
     try {
-      if (shortName && shortName !== user.shortName) {
-        await request(`/users/${user.id}`, { method: 'PATCH', body: { shortName } });
+      if (label !== user.label) {
+        await request(`/users/${user.id}`, { method: 'PATCH', body: { label } });
       }
       if (newPassword) {
         await request(`/users/${user.id}/password`, { method: 'PUT', body: { newPassword } });
@@ -308,16 +311,12 @@ function AccountSettingsModal({
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">页面地址</span>
+          <span className="text-[13px] font-medium text-fg">用户名称</span>
           <Input
-            addonBefore="/"
-            value={shortName}
-            onChange={(e) => setShortName(e.target.value)}
-            placeholder="小写字母、数字与连字符，3–30 位"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="后台备注，用来认人，不出现在页面上"
           />
-          <span className="text-[12px] text-muted">
-            改地址会让已经发出去的旧链接失效。已被删除用户占用过的地址永不再分配。
-          </span>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -419,7 +418,7 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
             autoComplete="off"
           />
         </Field>
-        <Field label="short_name" hint="个人页地址。一经发布即为对外资产，删除后永不再分配">
+        <Field label="short_name" hint="第一个个人页的地址。一经发布即为对外资产，删除后永不再分配">
           <Input
             addonBefore="/"
             value={shortName}

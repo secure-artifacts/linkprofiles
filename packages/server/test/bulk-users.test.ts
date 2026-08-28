@@ -24,7 +24,6 @@ beforeEach(async () => {
   const admin = await createLoginableUser(ctx.db, 'admin-pass', {
     role: 'admin',
     account: 'admin',
-    shortName: null,
   });
   adminId = admin.id;
   await createLoginableUser(ctx.db, 'user-pass', {
@@ -181,7 +180,7 @@ test('批量创建同样抢不到墓碑里的 short_name', async () => {
 
   expect(res.json().createdCount).toBe(0);
   expect(res.json().failed).toEqual([
-    { line: 1, error: 'short_name taken-name 属于一个已删除的用户，永不再分配' },
+    { line: 1, error: 'short_name taken-name 属于一个已删除的个人页，永不再分配' },
   ]);
 });
 

@@ -36,7 +36,6 @@ beforeEach(async () => {
   const admin = await createLoginableUser(ctx.db, 'admin-pass', {
     role: 'admin',
     account: 'admin',
-    shortName: null,
   });
   adminId = admin.id;
   adminToken = (await login(ctx, 'admin', 'admin-pass')).token;
@@ -64,7 +63,7 @@ test('删除用户后 short_name 迁入墓碑', async () => {
 
   const rows = await ctx.db.select().from(shortNameTombstones);
   expect(rows.map((r) => r.shortName)).toEqual(['mimnz']);
-  expect(rows[0]?.formerUserId).toBe(created.json().id);
+  expect(rows[0]?.formerProfileId).toBe(created.json().firstProfile.id);
 });
 
 test('访问墓碑中的 short_name 返回 404，而不是另一个陌生人的页面', async () => {
@@ -94,7 +93,7 @@ test('改名也抢不到墓碑里的 short_name', async () => {
 
   const res = await ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${other.json().id}`,
+    url: `/_api/profiles/${other.json().firstProfile.id}/short-name`,
     ...withSession(adminToken),
     payload: { shortName: 'mimnz' },
   });
@@ -126,6 +125,7 @@ test('short_name 永不释放：删两次也只有一条墓碑，地址一直是
 test('删除用户时其上传的媒体文件从磁盘移除，不留孤儿', async () => {
   const created = await createUser('mimnz');
   const userId = created.json().id as string;
+  const profileId = created.json().firstProfile.id as string;
 
   const { payload, headers } = multipart(
     { slot: 'avatar' },
@@ -133,7 +133,7 @@ test('删除用户时其上传的媒体文件从磁盘移除，不留孤儿', as
   );
   const uploaded = await ctx.app.inject({
     method: 'POST',
-    url: `/_api/users/${userId}/media`,
+    url: `/_api/profiles/${profileId}/media`,
     ...withSession(adminToken),
     headers,
     payload,
@@ -153,6 +153,7 @@ test('删除用户时其上传的媒体文件从磁盘移除，不留孤儿', as
 test('删除用户时其埋点数据保留，历史汇总不断档', async () => {
   const created = await createUser('mimnz');
   const userId = created.json().id as string;
+  const profileId = created.json().firstProfile.id as string;
 
   await visit('mimnz');
   await visit('mimnz');
@@ -162,14 +163,13 @@ test('删除用户时其埋点数据保留，历史汇总不断档', async () =>
 
   const rows = await ctx.db.select().from(pageViews);
   expect(rows).toHaveLength(2);
-  expect(rows.every((r) => r.userId === userId)).toBe(true);
+  expect(rows.every((r) => r.profileId === profileId)).toBe(true);
 });
 
 test('删除管理员不产生墓碑：管理员没有 short_name', async () => {
   const superadmin = await createLoginableUser(ctx.db, 'super-pass', {
     role: 'superadmin',
     account: 'super',
-    shortName: null,
   });
   expect(superadmin.role).toBe('superadmin');
   const superToken = (await login(ctx, 'super', 'super-pass')).token;

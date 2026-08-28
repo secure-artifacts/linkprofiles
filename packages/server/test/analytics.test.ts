@@ -6,7 +6,9 @@ import { login, withSession } from './helpers/http.js';
 
 let ctx: TestContext;
 let userId: string;
+let profileId: string;
 let otherUserId: string;
+let otherProfileId: string;
 let userToken: string;
 let adminToken: string;
 let strangerToken: string;
@@ -29,17 +31,14 @@ beforeEach(async () => {
   await createLoginableUser(ctx.db, 'super-pass', {
     role: 'superadmin',
     account: 'super',
-    shortName: null,
   });
   const admin = await createLoginableUser(ctx.db, 'admin-pass', {
     role: 'admin',
     account: 'admin',
-    shortName: null,
   });
   const stranger = await createLoginableUser(ctx.db, 'stranger-pass', {
     role: 'admin',
     account: 'stranger',
-    shortName: null,
   });
   const user = await createLoginableUser(ctx.db, 'user-pass', {
     role: 'user',
@@ -54,7 +53,9 @@ beforeEach(async () => {
     owningAdminId: stranger.id,
   });
   userId = user.id;
+  profileId = user.profileId!;
   otherUserId = other.id;
+  otherProfileId = other.profileId!;
 
   superToken = (await login(ctx, 'super', 'super-pass')).token;
   adminToken = (await login(ctx, 'admin', 'admin-pass')).token;
@@ -62,9 +63,13 @@ beforeEach(async () => {
   userToken = (await login(ctx, 'mimnz', 'user-pass')).token;
 });
 
-async function seedView(when: string, forUser = userId, overrides: Record<string, unknown> = {}) {
+async function seedView(
+  when: string,
+  forProfile = profileId,
+  overrides: Record<string, unknown> = {},
+) {
   await ctx.db.insert(pageViews).values({
-    userId: forUser,
+    profileId: forProfile,
     occurredAt: new Date(when),
     country: 'US',
     city: 'Austin',
@@ -78,11 +83,11 @@ async function seedView(when: string, forUser = userId, overrides: Record<string
 async function seedClick(
   when: string,
   isLead: boolean,
-  forUser = userId,
+  forProfile = profileId,
   overrides: Record<string, unknown> = {},
 ) {
   await ctx.db.insert(clicks).values({
-    userId: forUser,
+    profileId: forProfile,
     occurredAt: new Date(when),
     targetKind: 'button',
     targetId: '00000000-0000-4000-8000-000000000001',
@@ -151,28 +156,28 @@ test('点击率的分母永远是页面浏览，没有浏览时为零而不是�
 test('单按钮点击率也以页面浏览为分母', async () => {
   const created = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(userToken),
-    payload: { buttons: [{ title: '联系我', url: 'https://wa.me/1', isLead: true }] },
+    payload: { entries: [{ kind: 'link', title: '联系我', url: 'https://wa.me/1', isLead: true }] },
   });
-  const button = created.json().buttons[0] as { id: string };
+  const button = created.json().entries[0] as { id: string };
 
   for (let i = 0; i < 10; i += 1) await seedView(`2026-08-05T1${i % 10}:00:00Z`);
-  await seedClick('2026-08-05T12:10:00Z', true, userId, { targetId: button.id });
-  await seedClick('2026-08-05T12:20:00Z', true, userId, { targetId: button.id });
+  await seedClick('2026-08-05T12:10:00Z', true, profileId, { targetId: button.id });
+  await seedClick('2026-08-05T12:20:00Z', true, profileId, { targetId: button.id });
 
   const body = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
 
   expect(body.buttons).toHaveLength(1);
-  expect(body.buttons[0]).toMatchObject({ title: '联系我', clicks: 2 });
+  expect(body.buttons[0]).toMatchObject({ kind: 'link', title: '联系我', clicks: 2 });
   expect(body.buttons[0].ctr).toBeCloseTo(0.2);
 });
 
 test('维度可拆分：国家与城市、设备类型与操作系统、来源', async () => {
-  await seedView('2026-08-05T12:00:00Z', userId, { country: 'US', city: 'Austin' });
-  await seedView('2026-08-05T12:00:00Z', userId, { country: 'CA', city: 'Toronto' });
-  await seedView('2026-08-05T12:00:00Z', userId, { deviceType: 'desktop', os: 'Windows' });
-  await seedView('2026-08-05T12:00:00Z', userId, { source: 'instagram' });
+  await seedView('2026-08-05T12:00:00Z', profileId, { country: 'US', city: 'Austin' });
+  await seedView('2026-08-05T12:00:00Z', profileId, { country: 'CA', city: 'Toronto' });
+  await seedView('2026-08-05T12:00:00Z', profileId, { deviceType: 'desktop', os: 'Windows' });
+  await seedView('2026-08-05T12:00:00Z', profileId, { source: 'instagram' });
 
   const dims = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json().dimensions;
 
@@ -187,8 +192,8 @@ test('维度可拆分：国家与城市、设备类型与操作系统、来源',
 });
 
 test('未知维度归到同一桶，空串表示未知', async () => {
-  await seedView('2026-08-05T12:00:00Z', userId, { country: null, source: null });
-  await seedView('2026-08-05T13:00:00Z', userId, { country: null, source: null });
+  await seedView('2026-08-05T12:00:00Z', profileId, { country: null, source: null });
+  await seedView('2026-08-05T13:00:00Z', profileId, { country: null, source: null });
 
   const dims = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json().dimensions;
 
@@ -272,7 +277,7 @@ test('不认识的时区被拒，不会被拿去拼 SQL', async () => {
 test('跨越清理边界的历史不断档：日汇总与明细一起算进总数', async () => {
   await seedView('2026-08-05T12:00:00Z');
   await ctx.db.insert(dailySummaries).values({
-    userId,
+    profileId,
     day: '2026-08-02',
     country: 'US',
     city: 'Austin',
@@ -300,8 +305,8 @@ test('跨越清理边界的历史不断档：日汇总与明细一起算进总�
 });
 
 test('用户只看得到自己的数据', async () => {
-  await seedView('2026-08-05T12:00:00Z', userId);
-  await seedView('2026-08-05T12:00:00Z', otherUserId);
+  await seedView('2026-08-05T12:00:00Z', profileId);
+  await seedView('2026-08-05T12:00:00Z', otherProfileId);
   await seedView('2026-08-05T13:00:00Z', otherUserId);
 
   const body = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
@@ -309,8 +314,8 @@ test('用户只看得到自己的数据', async () => {
 });
 
 test('管理员只看得到名下用户的数据', async () => {
-  await seedView('2026-08-05T12:00:00Z', userId);
-  await seedView('2026-08-05T12:00:00Z', otherUserId);
+  await seedView('2026-08-05T12:00:00Z', profileId);
+  await seedView('2026-08-05T12:00:00Z', otherProfileId);
 
   const mine = (await analytics(adminToken, `?tz=${NY}${RANGE}`)).json();
   expect(mine.totals.pageViews).toBe(1);
@@ -320,15 +325,15 @@ test('管理员只看得到名下用户的数据', async () => {
 });
 
 test('超级管理员看得到全部', async () => {
-  await seedView('2026-08-05T12:00:00Z', userId);
-  await seedView('2026-08-05T12:00:00Z', otherUserId);
+  await seedView('2026-08-05T12:00:00Z', profileId);
+  await seedView('2026-08-05T12:00:00Z', otherProfileId);
 
   const body = (await analytics(superToken, `?tz=${NY}${RANGE}`)).json();
   expect(body.totals.pageViews).toBe(2);
 });
 
 test('指名看一个自己看不见的用户，与看不见给同一个响应', async () => {
-  await seedView('2026-08-05T12:00:00Z', otherUserId);
+  await seedView('2026-08-05T12:00:00Z', otherProfileId);
 
   const res = await analytics(adminToken, `?userId=${otherUserId}&tz=${NY}${RANGE}`);
   const missing = await analytics(
@@ -342,7 +347,7 @@ test('指名看一个自己看不见的用户，与看不见给同一个响应',
 });
 
 test('管理员可以单看名下某一个用户', async () => {
-  await seedView('2026-08-05T12:00:00Z', userId);
+  await seedView('2026-08-05T12:00:00Z', profileId);
 
   const res = await analytics(adminToken, `?userId=${userId}&tz=${NY}${RANGE}`);
 
@@ -377,4 +382,39 @@ test('自定义区间的起止颠倒被拒', async () => {
 
   expect(res.statusCode).toBe(400);
   expect(res.json()).toMatchObject({ error: 'invalid_range' });
+});
+
+test('社媒条目也有逐条点击明细，历史 social 点击不再被过滤掉', async () => {
+  // 合表之前 queryButtons 硬编码了 target_kind='button'，社媒条目根本查不出明细。
+  // 这条用例是那个能力的唯一防线：谁把过滤条件加回去，这里立刻变红。
+  const saved = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/profiles/${profileId}/entries`,
+    ...withSession(userToken),
+    payload: {
+      entries: [
+        { kind: 'link', title: '联系我', url: 'https://wa.me/1', isLead: true },
+        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '15550109999' },
+      ],
+    },
+  });
+  expect(saved.statusCode).toBe(200);
+
+  const entries = saved.json().entries as { id: string; kind: string }[];
+  const social = entries.find((e) => e.kind === 'social')!;
+
+  // 历史数据里社媒点击的 target_kind 是 'social'，正是以前被过滤掉的那一类
+  await seedView('2026-08-05T10:00:00Z');
+  await seedClick('2026-08-05T12:10:00Z', true, profileId, {
+    targetKind: 'social',
+    targetId: social.id,
+  });
+
+  const body = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
+  const row = (body.buttons as { id: string; kind: string; clicks: number }[]).find(
+    (b) => b.id === social.id,
+  );
+  expect(row).toBeDefined();
+  expect(row!.kind).toBe('social');
+  expect(row!.clicks).toBe(1);
 });

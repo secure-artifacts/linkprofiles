@@ -7,9 +7,11 @@ import { Input, PasswordInput } from '../ui/Input.js';
 import { Spinner } from '../ui/Spinner.js';
 import { useToast } from '../ui/Toast.js';
 import { useConfirm } from '../ui/useConfirm.js';
+import { useBreadcrumb } from '../nav/breadcrumb.js';
 
 /** 管理员管理。只有超级管理员进得来。 */
 export function AdminsPage() {
+  useBreadcrumb([{ label: '管理员' }]);
   const toast = useToast();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [admins, setAdmins] = useState<AdminSummary[]>([]);

@@ -1,12 +1,13 @@
-import { users } from '@link-profile/shared/schema';
+import { profiles, users } from '@link-profile/shared/schema';
 import { shortNameSchema } from '@link-profile/shared';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, count, eq, isNull, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { FORBIDDEN, loadTargetUser, requireCapability, UNAUTHORIZED } from '../auth/guards.js';
 import { hashPassword } from '../auth/passwords.js';
 import { deleteSessionsForUser } from '../auth/sessions.js';
-import { deleteUserAndRetireShortName } from '../profiles/deletion.js';
+import { deleteUserAccount } from '../profiles/deletion.js';
 import { findUserConflict } from '../users/conflicts.js';
 import { visibleUsersFilter } from '../auth/policy.js';
 
@@ -33,15 +34,17 @@ const assignOwnerBody = z.object({
 
 const updateUserBody = z.object({
   label: z.string().trim().optional(),
-  shortName: shortNameSchema.optional(),
 });
 
+/**
+ * 账号字段。**不再拍平个人页字段**：一个账号可以有多个个人页，
+ * 拍平就得任选一个，那是撒谎。要具体个人页走 `/users/:id/profiles`，
+ * 见 ADR-0008。
+ */
 const publicColumns = {
   id: users.id,
   account: users.account,
   label: users.label,
-  shortName: users.shortName,
-  displayName: users.displayName,
   owningAdminId: users.owningAdminId,
   createdAt: users.createdAt,
 };
@@ -56,10 +59,25 @@ export async function userRoutes(app: FastifyInstance) {
       // 因此只有超级管理员真的取得到东西。
       const unowned = req.query.owner === 'none' ? isNull(users.owningAdminId) : undefined;
 
+      // 归属人的名字在这里一并取出来。前端拿 `/admins` 自己对照是不行的 ——
+      // 那个清单只含 role='admin'，归属给超级管理员的用户会对不上，显示成
+      // 「—」，与真正需要处理的「无归属」混为一谈。
+      const owner = alias(users, 'owner');
+
+      // count(profiles.id) 对没有个人页的账号得 0，正是想要的
       const rows = await app.db
-        .select(publicColumns)
+        .select({
+          ...publicColumns,
+          owningAdminLabel: sql<
+            string | null
+          >`coalesce(nullif(${owner.label}, ''), ${owner.account})`,
+          profileCount: count(profiles.id),
+        })
         .from(users)
+        .leftJoin(profiles, eq(profiles.userId, users.id))
+        .leftJoin(owner, eq(owner.id, users.owningAdminId))
         .where(and(eq(users.role, 'user'), scope, unowned))
+        .groupBy(users.id, owner.label, owner.account)
         .orderBy(users.createdAt);
       return { users: rows };
     },
@@ -72,7 +90,12 @@ export async function userRoutes(app: FastifyInstance) {
     const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'read');
     if (!target) return reply.code(403).send(FORBIDDEN);
 
-    const [row] = await app.db.select(publicColumns).from(users).where(eq(users.id, target.id));
+    const [row] = await app.db
+      .select({ ...publicColumns, profileCount: count(profiles.id) })
+      .from(users)
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(eq(users.id, target.id))
+      .groupBy(users.id);
     return row;
   });
 
@@ -86,19 +109,37 @@ export async function userRoutes(app: FastifyInstance) {
     const conflict = await findUserConflict(app.db, { account, shortName });
     if (conflict) return reply.code(409).send({ error: conflict });
 
-    const [row] = await app.db
-      .insert(users)
-      .values({
-        role: 'user',
-        account,
-        passwordHash: await hashPassword(password),
-        label,
-        shortName,
-        displayName: displayName || shortName,
-        // 创建者自动成为归属管理员，见 ADR-0005。
-        owningAdminId: req.currentUser!.id,
-      })
-      .returning(publicColumns);
+    const passwordHash = await hashPassword(password);
+    // 账号与它的第一个个人页一起建，同一个事务：建了账号却没有页面，
+    // 对调用方来说就是一次半成品的创建。
+    const row = await app.db.transaction(async (tx) => {
+      const [account_] = await tx
+        .insert(users)
+        .values({
+          role: 'user',
+          account,
+          passwordHash,
+          label,
+          // 创建者自动成为归属管理员，见 ADR-0005。
+          owningAdminId: req.currentUser!.id,
+        })
+        .returning(publicColumns);
+
+      const [profile] = await tx
+        .insert(profiles)
+        .values({
+          userId: account_!.id,
+          shortName,
+          displayName: displayName || shortName,
+        })
+        .returning({
+          id: profiles.id,
+          shortName: profiles.shortName,
+          displayName: profiles.displayName,
+        });
+
+      return { ...account_!, profileCount: 1, firstProfile: profile! };
+    });
 
     return reply.code(201).send(row);
   });
@@ -112,24 +153,15 @@ export async function userRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
     }
 
-    // 改 short_name 与改其他字段是两种权限：用户改得了自己的备注，改不了自己的地址。
-    const action = parsed.data.shortName === undefined ? 'update' : 'update:shortName';
-    const target = await loadTargetUser(app.db, req.currentUser, req.params.id, action);
+    // 这里只改账号字段。个人页地址归 `PATCH /profiles/:id/short-name` 管，
+    // 它自带二次确认与变更流水，见 ADR-0010。
+    const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'update');
     if (!target) return reply.code(403).send(FORBIDDEN);
-
-    if (parsed.data.shortName) {
-      const conflict = await findUserConflict(app.db, {
-        shortName: parsed.data.shortName,
-        excludeId: target.id,
-      });
-      if (conflict) return reply.code(409).send({ error: conflict });
-    }
 
     const [row] = await app.db
       .update(users)
       .set({
         ...(parsed.data.label !== undefined ? { label: parsed.data.label } : {}),
-        ...(parsed.data.shortName !== undefined ? { shortName: parsed.data.shortName } : {}),
         updatedAt: new Date(),
       })
       .where(eq(users.id, target.id))
@@ -220,8 +252,8 @@ export async function userRoutes(app: FastifyInstance) {
     if (!target || req.currentUser.role === 'user') return reply.code(403).send(FORBIDDEN);
 
     await deleteSessionsForUser(app.db, target.id);
-    // short_name 迁入墓碑、媒体文件下架、埋点保留，见 16
-    await deleteUserAndRetireShortName(app.db, target.id);
+    // 名下全部个人页的 short_name 迁入墓碑、媒体文件下架、埋点保留，见 16
+    await deleteUserAccount(app.db, target.id);
 
     return reply.code(204).send();
   });

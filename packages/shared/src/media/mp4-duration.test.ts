@@ -51,16 +51,22 @@ function mp4(...moovChildren: Uint8Array[]): Uint8Array {
 describe('readMp4Info', () => {
   test('读出 version 0 的时长', () => {
     // timescale 600、duration 4500 即 7.5 秒
-    expect(readMp4Info(mp4(mvhdV0(600, 4500)))).toEqual({ durationMs: 7500 });
+    expect(readMp4Info(mp4(mvhdV0(600, 4500)))).toEqual({ durationMs: 7500, hasAudio: false });
   });
 
   test('读出 version 1 的时长', () => {
-    expect(readMp4Info(mp4(mvhdV1(90000, 1_350_000n)))).toEqual({ durationMs: 15000 });
+    expect(readMp4Info(mp4(mvhdV1(90000, 1_350_000n)))).toEqual({
+      durationMs: 15000,
+      hasAudio: false,
+    });
   });
 
   test('mvhd 前面有别的盒也能找到', () => {
     const filler = box('udta', new Uint8Array(64));
-    expect(readMp4Info(mp4(filler, mvhdV0(1000, 3000)))).toEqual({ durationMs: 3000 });
+    expect(readMp4Info(mp4(filler, mvhdV0(1000, 3000)))).toEqual({
+      durationMs: 3000,
+      hasAudio: false,
+    });
   });
 
   test('不是 mp4、被截断、盒结构坏了都返回 null', () => {
@@ -75,6 +81,35 @@ describe('readMp4Info', () => {
 
   test('timescale 为零不会除出无穷大', () => {
     expect(readMp4Info(mp4(mvhdV0(0, 4500)))).toBeNull();
+  });
+});
+
+/** 一条轨道：trak > mdia > hdlr，hdlr 负载前 8 字节之后是 handler_type。 */
+function trak(handler: 'soun' | 'vide'): Uint8Array {
+  const payload = new Uint8Array(12);
+  payload.set(new TextEncoder().encode(handler), 8);
+  return box('trak', box('mdia', box('hdlr', payload)));
+}
+
+describe('音轨检测', () => {
+  test('有 soun 轨道就是有声音', () => {
+    const info = readMp4Info(mp4(mvhdV0(600, 4500), trak('vide'), trak('soun')));
+    expect(info?.hasAudio).toBe(true);
+  });
+
+  test('只有画面轨道时是无声', () => {
+    const info = readMp4Info(mp4(mvhdV0(600, 4500), trak('vide')));
+    expect(info?.hasAudio).toBe(false);
+  });
+
+  test('音轨排在画面轨之前也找得到', () => {
+    // 找到画面轨时不能就此收手，得继续往下走完剩下的 trak
+    const info = readMp4Info(mp4(mvhdV0(600, 4500), trak('soun'), trak('vide')));
+    expect(info?.hasAudio).toBe(true);
+  });
+
+  test('一条轨道都没有时按无声算，不报错', () => {
+    expect(readMp4Info(mp4(mvhdV0(600, 4500)))?.hasAudio).toBe(false);
   });
 });
 

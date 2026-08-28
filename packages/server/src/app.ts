@@ -43,6 +43,15 @@ declare module 'fastify' {
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' },
+    /**
+     * 反向代理的源地址，逗号分隔的 IP / CIDR。不配则一律不信任 X-Forwarded-*。
+     *
+     * 值依部署环境而定，写死任何一个都会错：应用在容器里，看到的源地址是 Docker
+     * 网桥网关（Linux 上通常 172.17.0.1，Docker Desktop 上是 192.168.65.1），
+     * 既不是 loopback，也未必落在 172.16.0.0/12 里。实测 `loopback` 与 hop-count
+     * 写法都不生效，只有显式写出实际网关才行。查法与验收命令见 docs/deployment.md。
+     */
+    trustProxy: process.env.TRUST_PROXY || false,
   });
 
   app.decorate('db', deps.db);

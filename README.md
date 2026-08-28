@@ -12,6 +12,8 @@
 | [docs/requirements.md](./docs/requirements.md) | 功能需求定稿 |
 | [docs/adr/](./docs/adr/) | 六条架构决策记录 |
 | [docs/design/public-page.html](./docs/design/public-page.html) | 公开页设计稿，五种布局 × 六套主题 |
+| [docs/deployment.md](./docs/deployment.md) | 部署手册：前置条件、首次部署、升级、回滚 |
+| [docs/operations.md](./docs/operations.md) | 运维手册：监控、容量、故障处理、应急流程 |
 | [.scratch/link-profile-v1/](./.scratch/link-profile-v1/) | 规格与十七张实施票 |
 
 `.scratch/` 是本仓库的 issue tracker，约定见 [docs/agents/issue-tracker.md](./docs/agents/issue-tracker.md)。

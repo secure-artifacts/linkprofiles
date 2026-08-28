@@ -1,11 +1,6 @@
 import type { ProfileView } from '@link-profile/profile-ui';
 import { buildSocialUrl, findSocialPlatform, inferPlatformFromUrl } from '@link-profile/shared';
-import type {
-  ButtonDraft,
-  EditableProfile,
-  ProfileFields,
-  SocialIconDraft,
-} from '../../api/types.js';
+import type { EditableProfile, EntryDraft, ProfileFields } from '../../api/types.js';
 
 /**
  * 编辑器里的草稿状态。
@@ -21,8 +16,7 @@ export interface PendingMedia {
 
 export interface Draft {
   fields: ProfileFields;
-  buttons: ButtonDraft[];
-  socialIcons: SocialIconDraft[];
+  entries: EntryDraft[];
   /** 已保存的素材地址，由服务端给出 */
   savedAvatarUrl: string | null;
   savedAvatarIsVideo: boolean;
@@ -39,8 +33,7 @@ export function draftFromServer(
 ): Draft {
   return {
     fields: loaded.profile,
-    buttons: loaded.buttons.map(stripPosition),
-    socialIcons: loaded.socialIcons.map(stripPosition),
+    entries: loaded.entries.map(stripPosition),
     savedAvatarUrl: urls.avatar,
     savedAvatarIsVideo: urls.avatarIsVideo,
     savedBackgroundUrl: urls.background,
@@ -62,41 +55,61 @@ function stripPosition<T extends { position: number }>(row: T): Omit<T, 'positio
  * 决定头像位放图还是放视频。用的都是 shared 里那几个纯函数，与服务端
  * 渲染走的是同一套规则。
  */
-export function draftToProfileView(draft: Draft): ProfileView {
-  const avatarUrl = draft.pendingAvatar?.objectUrl ?? draft.savedAvatarUrl;
-  // 新选的文件看它自己的 MIME；没有新选就沿用服务端给的判断
-  const isVideo = draft.pendingAvatar
-    ? draft.pendingAvatar.file.type.startsWith('video/')
-    : draft.savedAvatarIsVideo;
+/**
+ * 裁切弹窗开着时边调边推过来的低清图。
+ *
+ * 它压在 `pending` 之上但不进 `Draft` —— 还没确认的构图不是待上传的素材，
+ * 取消就该干净消失。
+ */
+export interface LiveMedia {
+  avatar?: string | undefined;
+  background?: string | undefined;
+}
+
+export function draftToProfileView(draft: Draft, live: LiveMedia = {}): ProfileView {
+  const avatarUrl = live.avatar ?? draft.pendingAvatar?.objectUrl ?? draft.savedAvatarUrl;
+  // 新选的文件看它自己的 MIME；没有新选就沿用服务端给的判断。
+  // 裁切中的实时图一定是图片（视频不进裁切）。
+  const isVideo = live.avatar
+    ? false
+    : draft.pendingAvatar
+      ? draft.pendingAvatar.file.type.startsWith('video/')
+      : draft.savedAvatarIsVideo;
   const posterUrl = draft.pendingAvatarPoster?.objectUrl ?? null;
-  const backgroundUrl = draft.pendingBackground?.objectUrl ?? draft.savedBackgroundUrl;
+  const backgroundUrl =
+    live.background ?? draft.pendingBackground?.objectUrl ?? draft.savedBackgroundUrl;
 
   return {
     displayName: draft.fields.displayName,
     bio: draft.fields.bio,
+    bioTypewriter: draft.fields.bioTypewriter,
     layout: draft.fields.layout,
     theme: draft.fields.theme,
+    solidBackground: draft.fields.solidBackground,
+    iconPlate: draft.fields.iconPlate,
     avatar: !isVideo && avatarUrl ? { src: avatarUrl } : null,
     video: isVideo && avatarUrl ? { src: avatarUrl, poster: posterUrl } : null,
     background: backgroundUrl
       ? { src: backgroundUrl, overlay: Number(draft.fields.backgroundOverlay) }
       : null,
-    socialIcons: draft.socialIcons.flatMap((icon) => {
-      const platform = findSocialPlatform(icon.platform);
-      const url = buildSocialUrl(icon.platform, icon.value);
-      if (!platform || !url) return [];
+    // 拼不出地址的社媒条目整条不进预览 —— 与公开页同一条规则。
+    // 编辑器里那条红边就是把这个静默丢弃显性化的。
+    buttons: draft.entries.flatMap((entry) => {
+      const url = entry.kind === 'social' ? buildSocialUrl(entry.platform, entry.value) : entry.url;
+      if (entry.kind === 'social' && (!url || !findSocialPlatform(entry.platform))) return [];
+
       return [
-        { id: icon.id, platform: icon.platform, url, label: platform.label, isLead: icon.isLead },
+        {
+          id: entry.id,
+          kind: entry.kind,
+          title: entry.title || '未命名条目',
+          subtitle: entry.subtitle,
+          url: url ?? '',
+          isLead: entry.isLead,
+          platform: entry.kind === 'social' ? entry.platform : inferPlatformFromUrl(entry.url),
+        },
       ];
     }),
-    buttons: draft.buttons.map((button) => ({
-      id: button.id,
-      title: button.title || '未命名按钮',
-      subtitle: button.subtitle,
-      url: button.url,
-      isLead: button.isLead,
-      platform: inferPlatformFromUrl(button.url),
-    })),
   };
 }
 

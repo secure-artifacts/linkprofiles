@@ -3,6 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <!--
+      预览里渲染的是真实的 <a href>，点一下会把整个 iframe 导航到外站、编辑器状态全丢。
+      只在这份预览文档上强制新窗口；公开页不受影响，它的链接不该被强制成 _blank。
+    -->
+    <base target="_blank" />
     <title>预览</title>
   </head>
   <body>

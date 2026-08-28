@@ -7,6 +7,7 @@ import { login, withSession } from './helpers/http.js';
 
 let ctx: TestContext;
 let userId: string;
+let profileId: string;
 let token: string;
 let superToken: string;
 
@@ -31,9 +32,9 @@ beforeEach(async () => {
   await createLoginableUser(ctx.db, 'super-pass', {
     role: 'superadmin',
     account: 'super',
-    shortName: null,
   });
   userId = user.id;
+  profileId = user.profileId!;
   token = (await login(ctx, 'mimnz', 'user-pass')).token;
   superToken = (await login(ctx, 'super', 'super-pass')).token;
 });
@@ -51,12 +52,12 @@ const visit = (url: string) =>
 async function setButtons(list: Record<string, unknown>[]) {
   const res = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(token),
-    payload: { buttons: list },
+    payload: { entries: list.map((item) => ({ kind: 'link', ...item })) },
   });
   expect(res.statusCode).toBe(200);
-  return res.json().buttons as { id: string; url: string }[];
+  return res.json().entries as { id: string; url: string }[];
 }
 
 /** 从直出的 HTML 里取出某个按钮的 href。 */
@@ -78,7 +79,9 @@ test('src 随该次访问的页面浏览一并记录', async () => {
 });
 
 test('src 随点击一并记录', async () => {
-  const [button] = await setButtons([{ title: '联系我', url: 'https://wa.me/1', isLead: true }]);
+  const [button] = await setButtons([
+    { kind: 'link', title: '联系我', url: 'https://wa.me/1', isLead: true },
+  ]);
 
   await ctx.app.inject({
     method: 'POST',
@@ -122,8 +125,8 @@ test('脏值也不会出现在后台图表读到的任何地方', async () => {
 
 test('按钮可逐条开启透传，开启后目标 URL 上带上来源', async () => {
   await setButtons([
-    { title: '透传的', url: 'https://example.com/landing', passSource: true },
-    { title: '不透传的', url: 'https://example.com/other', passSource: false },
+    { kind: 'link', title: '透传的', url: 'https://example.com/landing', passSource: true },
+    { kind: 'link', title: '不透传的', url: 'https://example.com/other', passSource: false },
   ]);
 
   const html = (await visit('/mimnz?src=tiktok')).body;
@@ -133,7 +136,9 @@ test('按钮可逐条开启透传，开启后目标 URL 上带上来源', async 
 });
 
 test('没有来源时开着透传也不改地址', async () => {
-  await setButtons([{ title: '透传的', url: 'https://example.com/landing', passSource: true }]);
+  await setButtons([
+    { kind: 'link', title: '透传的', url: 'https://example.com/landing', passSource: true },
+  ]);
 
   const html = (await visit('/mimnz')).body;
 
@@ -142,7 +147,12 @@ test('没有来源时开着透传也不改地址', async () => {
 
 test('目标本来就带了 src 就不覆盖，用户手写的优先', async () => {
   await setButtons([
-    { title: '手写过', url: 'https://example.com/landing?src=manual', passSource: true },
+    {
+      kind: 'link',
+      title: '手写过',
+      url: 'https://example.com/landing?src=manual',
+      passSource: true,
+    },
   ]);
 
   const html = (await visit('/mimnz?src=tiktok')).body;
@@ -153,8 +163,8 @@ test('目标本来就带了 src 就不覆盖，用户手写的优先', async () 
 
 test('mailto 与 tel 这类地址不挂参数', async () => {
   await setButtons([
-    { title: '发邮件', url: 'mailto:hi@example.com', passSource: true },
-    { title: '打电话', url: 'tel:+15550109999', passSource: true },
+    { kind: 'link', title: '发邮件', url: 'mailto:hi@example.com', passSource: true },
+    { kind: 'link', title: '打电话', url: 'tel:+15550109999', passSource: true },
   ]);
 
   const html = (await visit('/mimnz?src=tiktok')).body;
@@ -164,7 +174,7 @@ test('mailto 与 tel 这类地址不挂参数', async () => {
 });
 
 test('超级管理员可设置透传的全局默认值', async () => {
-  await setButtons([{ title: '没单独开', url: 'https://example.com/landing' }]);
+  await setButtons([{ kind: 'link', title: '没单独开', url: 'https://example.com/landing' }]);
 
   // 默认关着
   expect(hrefOf((await visit('/mimnz?src=tiktok')).body, '没单独开')).toBe(
@@ -212,10 +222,18 @@ test('后台读得到已知取舍的文案，说明用的是 src 而不是 utm_s
 test('社媒图标同样支持逐条透传', async () => {
   await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/social-icons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(token),
     payload: {
-      socialIcons: [{ platform: 'instagram', value: 'mimnz', passSource: true }],
+      entries: [
+        {
+          kind: 'social',
+          title: 'Instagram',
+          platform: 'instagram',
+          value: 'mimnz',
+          passSource: true,
+        },
+      ],
     },
   });
 

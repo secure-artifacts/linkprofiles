@@ -9,6 +9,7 @@ let adminToken: string;
 let userToken: string;
 let adminId: string;
 let userId: string;
+let profileId: string;
 
 beforeAll(async () => {
   ctx = await createTestContext();
@@ -25,12 +26,10 @@ beforeEach(async () => {
   await createLoginableUser(ctx.db, 'super-pass', {
     role: 'superadmin',
     account: 'super',
-    shortName: null,
   });
   const admin = await createLoginableUser(ctx.db, 'admin-pass', {
     role: 'admin',
     account: 'admin',
-    shortName: null,
   });
   // 归属于上面这个管理员 —— 05 之后管理员只碰得到名下用户
   const user = await createLoginableUser(ctx.db, 'user-pass', {
@@ -41,6 +40,7 @@ beforeEach(async () => {
   });
   adminId = admin.id;
   userId = user.id;
+  profileId = user.profileId!;
 
   superToken = (await login(ctx, 'super', 'super-pass')).token;
   adminToken = (await login(ctx, 'admin', 'admin-pass')).token;
@@ -136,9 +136,8 @@ test('四个标识字段各就各位：账号唯一、short_name 唯一、用户
   expect(first.statusCode).toBe(201);
   expect(first.json()).toMatchObject({
     account: 'a1',
-    shortName: 'a-one',
     label: '同名备注',
-    displayName: '小王',
+    firstProfile: { shortName: 'a-one', displayName: '小王' },
   });
 
   // 用户名称与显示名可以重复
@@ -191,19 +190,20 @@ test('short_name 入库即强制小写，公开页按小写地址可达', async 
     payload: newUser({ account: 'mixedcase', shortName: 'MixedCase' }),
   });
 
-  expect(res.json().shortName).toBe('mixedcase');
+  expect(res.json().firstProfile.shortName).toBe('mixedcase');
   const page = await ctx.app.inject({ method: 'GET', url: '/MixedCase' });
   expect(page.statusCode).toBe(200);
 });
 
-test('用户改不了自己的 short_name，但改得了自己的备注', async () => {
+test('用户改得了自己的 short_name 与备注', async () => {
   const rename = await ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${userId}`,
+    url: `/_api/profiles/${profileId}/short-name`,
     ...withSession(userToken),
     payload: { shortName: 'i-want-this' },
   });
-  expect(rename.statusCode).toBe(403);
+  expect(rename.statusCode).toBe(200);
+  expect(rename.json().profile.shortName).toBe('i-want-this');
 
   const relabel = await ctx.app.inject({
     method: 'PATCH',
@@ -215,16 +215,34 @@ test('用户改不了自己的 short_name，但改得了自己的备注', async 
   expect(relabel.json().label).toBe('我改的备注');
 });
 
+test('用户建得了自己的新页面，但删不掉任何一个', async () => {
+  const created = await ctx.app.inject({
+    method: 'POST',
+    url: `/_api/users/${userId}/profiles`,
+    ...withSession(userToken),
+    payload: { shortName: 'my-second-page', displayName: '第二个' },
+  });
+  expect(created.statusCode).toBe(201);
+
+  // 删除是唯一不可逆的那个（地址进墓碑、媒体从磁盘删掉），仍然只有管理员做得了
+  const removed = await ctx.app.inject({
+    method: 'DELETE',
+    url: `/_api/profiles/${created.json().id}`,
+    ...withSession(userToken),
+  });
+  expect(removed.statusCode).toBe(403);
+});
+
 test('管理员可以修改用户的 short_name', async () => {
   const res = await ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${userId}`,
+    url: `/_api/profiles/${profileId}/short-name`,
     ...withSession(adminToken),
     payload: { shortName: 'renamed-by-admin' },
   });
 
   expect(res.statusCode).toBe(200);
-  expect(res.json().shortName).toBe('renamed-by-admin');
+  expect(res.json().profile.shortName).toBe('renamed-by-admin');
 });
 
 test('用户删不了任何人，包括自己', async () => {

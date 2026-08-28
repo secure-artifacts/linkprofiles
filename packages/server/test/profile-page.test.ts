@@ -1,3 +1,6 @@
+import { TYPEWRITER_STEP_MS } from '@link-profile/shared';
+import { media, profiles } from '@link-profile/shared/schema';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createUser } from './helpers/factories.js';
 import { createTestContext, type TestContext } from './helpers/context.js';
@@ -111,4 +114,134 @@ test('管理员与超级管理员没有个人页', async () => {
   const res = await ctx.app.inject({ method: 'GET', url: '/someadmin' });
 
   expect(res.statusCode).toBe(404);
+});
+
+test('桌面端有卡片断点，移动端形态不受影响', async () => {
+  const res = await ctx.app.inject({ method: 'GET', url: '/mimnz' });
+
+  // 断点本身
+  expect(res.body).toContain('@media (min-width:768px)');
+  // 卡片的三样：不被 flex 拉满、自己的圆角、自己的底色
+  expect(res.body).toMatch(/@media \(min-width:768px\)\{[^}]*\.pp\{padding:56px 24px\}/);
+  expect(res.body).toContain('border-radius:28px');
+
+  // 卡片底色必须是主题渐变本身，不能是写死的白 ——
+  // nocturne 那类深底浅字的主题，铺白会让文字直接看不见
+  const desktop = res.body.slice(res.body.indexOf('@media (min-width:768px)'));
+  expect(desktop.slice(0, 400)).toContain('background:var(--bg)');
+});
+
+test('简介打字机：开关关着时不带标记，开着才带', async () => {
+  const off = await ctx.app.inject({ method: 'GET', url: '/mimnz' });
+  // 只看那个 <p> 本身：脚本里有一句 '.pp-bio[data-tw]' 选择器，
+  // 拿整篇 HTML 找 data-tw 会被它命中
+  expect(off.body).toContain('<p class="pp-bio">');
+  expect(off.body).not.toContain('<p class="pp-bio" data-tw');
+
+  await ctx.db.update(profiles).set({ bioTypewriter: true }).where(eq(profiles.shortName, 'mimnz'));
+
+  const on = await ctx.app.inject({ method: 'GET', url: '/mimnz' });
+  expect(on.body).toContain('<p class="pp-bio" data-tw');
+  // 全文始终在 DOM 里：没有 JS 时它就是一段普通简介，不是空节点
+  expect(on.body).toContain('我是一个基督徒，来自美国');
+});
+
+test('打字机那段脚本尊重减少动效，且先钉住高度防跳动', async () => {
+  const res = await ctx.app.inject({ method: 'GET', url: '/mimnz' });
+  expect(res.body).toContain('prefers-reduced-motion: reduce');
+  // 清空前先固定高度，否则底下整列条目会往上跳一帧
+  expect(res.body).toContain('minHeight');
+});
+
+test('打字机拖不垮点击埋点：排在它之后，且单独 try 起来', async () => {
+  const res = await ctx.app.inject({ method: 'GET', url: '/mimnz' });
+
+  const clickListener = res.body.indexOf("addEventListener('click'");
+  const typewriter = res.body.indexOf('.pp-bio[data-tw]');
+  expect(clickListener).toBeGreaterThan(-1);
+  expect(typewriter).toBeGreaterThan(-1);
+
+  // 埋点是线索统计的唯一来源，装饰功能没有资格排在它前面、也不许让它挂掉
+  expect(clickListener).toBeLessThan(typewriter);
+  expect(res.body.slice(clickListener, typewriter)).toContain('try{');
+  // 老 webview 可能没有 matchMedia，取值前要先探测
+  expect(res.body).toContain('!window.matchMedia');
+});
+
+test('静音切换同样排在埋点之后，且单独 try 起来', async () => {
+  const res = await ctx.app.inject({ method: 'GET', url: '/mimnz' });
+
+  const clickListener = res.body.indexOf("addEventListener('click'");
+  const mute = res.body.indexOf(".querySelector('.pp-mute')");
+  expect(mute).toBeGreaterThan(-1);
+  expect(clickListener).toBeLessThan(mute);
+  expect(res.body.slice(clickListener, mute)).toContain('try{');
+});
+
+test('打字机速度取自 shared 那个唯一常量', async () => {
+  const res = await ctx.app.inject({ method: 'GET', url: '/mimnz' });
+  // 两份实现（内联脚本与后台预览）共用一个数字，插值没接上就会退回字面量
+  expect(res.body).toContain(`setTimeout(tick,${TYPEWRITER_STEP_MS})`);
+});
+
+test('静音按钮只在头像位放了视频时才出现', async () => {
+  // mimnz 没有视频头像：不该凭空多一个点了没用的按钮
+  const withoutVideo = await ctx.app.inject({ method: 'GET', url: '/mimnz' });
+  expect(withoutVideo.body).not.toContain('class="pp-mute"');
+
+  const created = await createUser(ctx.db, { shortName: 'hasvideo', displayName: '视频头像' });
+  const profileId = created.profileId!;
+  const [videoRow] = await ctx.db
+    .insert(media)
+    .values({
+      profileId,
+      kind: 'video',
+      directory: `${profileId}/vid`,
+      durationMs: 8_000,
+      variants: [
+        {
+          format: 'mp4',
+          mimeType: 'video/mp4',
+          path: `${profileId}/vid/video.mp4`,
+          width: 720,
+          height: 720,
+          bytes: 1_024,
+        },
+      ],
+    })
+    .returning();
+  const [posterRow] = await ctx.db
+    .insert(media)
+    .values({
+      profileId,
+      kind: 'image',
+      directory: `${profileId}/poster`,
+      variants: [
+        {
+          format: 'webp',
+          mimeType: 'image/webp',
+          path: `${profileId}/poster/image.webp`,
+          width: 720,
+          height: 720,
+          bytes: 512,
+        },
+      ],
+    })
+    .returning();
+  await ctx.db
+    .update(profiles)
+    .set({ avatarMediaId: videoRow!.id, avatarPosterId: posterRow!.id })
+    .where(eq(profiles.id, profileId));
+
+  const withVideo = await ctx.app.inject({ method: 'GET', url: '/hasvideo' });
+  // 视频本身的渲染规则：默认静音、循环、行内播放，靠 data-autoplay 交给脚本延迟起播
+  expect(withVideo.body).toContain('data-autoplay');
+  expect(withVideo.body).toMatch(/<video[^>]*\bmuted\b/);
+  expect(withVideo.body).toMatch(/<video[^>]*\bloop\b/);
+  // 按钮出现，且默认停在「静音」那一态
+  expect(withVideo.body).toContain('class="pp-mute"');
+  expect(withVideo.body).toContain('aria-pressed="false"');
+  // 两枚图标都得 SSR 出来 —— 公开页没有 JS 能在点击时换图标
+  expect(withVideo.body).toContain('class="off"');
+  expect(withVideo.body).toContain('class="on"');
 });

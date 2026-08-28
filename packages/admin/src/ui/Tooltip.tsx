@@ -10,8 +10,8 @@ export function Tooltip({ content, children }: { content: string; children: Reac
       <RadixTooltip.Portal>
         <RadixTooltip.Content
           sideOffset={6}
-          className="z-50 max-w-xs rounded-[var(--radius-control)] border border-border bg-fg px-2.5 py-1.5
-            text-[12px] leading-snug text-bg shadow-[var(--shadow-float)]"
+          className="z-50 max-w-xs whitespace-pre-line rounded-[var(--radius-control)] border border-border
+            bg-fg px-2.5 py-1.5 text-[12px] leading-snug text-bg shadow-[var(--shadow-float)]"
         >
           {content}
           <RadixTooltip.Arrow className="fill-fg" />

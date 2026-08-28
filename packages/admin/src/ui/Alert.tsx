@@ -5,7 +5,7 @@ type Tone = 'info' | 'warning' | 'danger';
 
 const TONE_CLASSES: Record<Tone, string> = {
   info: 'border-border bg-surface-hover text-fg',
-  warning: 'border-transparent bg-warning-soft text-[oklch(0.4_0.12_70)]',
+  warning: 'border-transparent bg-warning-soft text-warning-fg',
   danger: 'border-transparent bg-danger-soft text-danger',
 };
 

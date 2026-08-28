@@ -56,14 +56,14 @@ export function isCrawler(req: FastifyRequest): boolean {
 
 /**
  * 应用只监听 HTTP，TLS 与反向代理交由运维，因此真实来访 IP 在
- * `X-Forwarded-For` 的第一段上。没有代理时退回 socket 地址。
+ * `X-Forwarded-For` 上。
+ *
+ * 取 `req.ip` 而不是自己读那个头：`X-Forwarded-For` 是客户端可以随手写的，
+ * 直接读第一段等于让任何人把埋点 IP 填成任意值，连带污染地域统计。Fastify
+ * 会先按 `trustProxy` 校验这一跳来源可信，再去解析该头，来源不可信就退回
+ * socket 地址。代价是 `TRUST_PROXY` 配错时会记成代理地址 —— 那是配置错误，
+ * 验收时查一眼就能发现，比静默接受伪造值好。
  */
 function clientIp(req: FastifyRequest): string | null {
-  const forwarded = req.headers['x-forwarded-for'];
-  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  if (raw) {
-    const first = raw.split(',')[0]?.trim();
-    if (first) return first;
-  }
   return req.ip || null;
 }

@@ -1,5 +1,5 @@
 import { parseBulkUserRows } from '@link-profile/shared';
-import { users } from '@link-profile/shared/schema';
+import { profiles, users } from '@link-profile/shared/schema';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireCapability } from '../auth/guards.js';
@@ -46,21 +46,34 @@ export async function bulkUserRoutes(app: FastifyInstance) {
         continue;
       }
 
-      const [inserted] = await app.db
-        .insert(users)
-        .values({
-          role: 'user',
-          account: row.value.account,
-          passwordHash: await hashPassword(row.value.password),
-          label: row.value.label,
-          shortName: row.value.shortName,
-          displayName: row.value.shortName,
-          // 批量创建的用户归属于操作者，与单个创建同一条规则。
-          owningAdminId: req.currentUser!.id,
-        })
-        .returning({ id: users.id, shortName: users.shortName });
+      const passwordHash = await hashPassword(row.value.password);
+      // 账号与它的第一个个人页同一个事务，与单个创建同一条规则
+      const inserted = await app.db.transaction(async (tx) => {
+        const [account] = await tx
+          .insert(users)
+          .values({
+            role: 'user',
+            account: row.value.account,
+            passwordHash,
+            label: row.value.label,
+            // 批量创建的用户归属于操作者，与单个创建同一条规则。
+            owningAdminId: req.currentUser!.id,
+          })
+          .returning({ id: users.id });
 
-      created.push({ line: row.line, id: inserted!.id, shortName: inserted!.shortName! });
+        const [profile] = await tx
+          .insert(profiles)
+          .values({
+            userId: account!.id,
+            shortName: row.value.shortName,
+            displayName: row.value.shortName,
+          })
+          .returning({ id: profiles.id, shortName: profiles.shortName });
+
+        return { id: account!.id, shortName: profile!.shortName };
+      });
+
+      created.push({ line: row.line, id: inserted.id, shortName: inserted.shortName });
     }
 
     return { created, failed, createdCount: created.length, failedCount: failed.length };

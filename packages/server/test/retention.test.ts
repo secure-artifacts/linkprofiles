@@ -6,7 +6,8 @@ import { createTestContext, type TestContext } from './helpers/context.js';
 import { createUser } from './helpers/factories.js';
 
 let ctx: TestContext;
-let userId: string;
+let profileId: string;
+let userAccountId: string;
 
 beforeAll(async () => {
   ctx = await createTestContext();
@@ -20,14 +21,15 @@ beforeEach(async () => {
   await ctx.sql`truncate table users cascade`;
   await ctx.sql`truncate table page_views, clicks, daily_summaries`;
   const user = await createUser(ctx.db, { shortName: 'mimnz' });
-  userId = user.id;
+  profileId = user.profileId!;
+  userAccountId = user.id;
 });
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
 async function seedPageView(when: Date, overrides: Record<string, unknown> = {}) {
   await ctx.db.insert(pageViews).values({
-    userId,
+    profileId,
     occurredAt: when,
     country: 'US',
     city: 'Austin',
@@ -40,7 +42,7 @@ async function seedPageView(when: Date, overrides: Record<string, unknown> = {})
 
 async function seedClick(when: Date, isLead: boolean, overrides: Record<string, unknown> = {}) {
   await ctx.db.insert(clicks).values({
-    userId,
+    profileId,
     occurredAt: when,
     targetKind: 'button',
     targetId: '00000000-0000-4000-8000-000000000001',
@@ -70,7 +72,7 @@ test('超过保留期的明细被聚合进日汇总后删除', async () => {
 
   const [summary] = await ctx.db.select().from(dailySummaries);
   expect(summary).toMatchObject({
-    userId,
+    profileId,
     country: 'US',
     city: 'Austin',
     deviceType: 'mobile',
@@ -196,12 +198,12 @@ test('删掉的用户，其历史汇总仍在', async () => {
   await seedPageView(daysAgo(200));
   await aggregateAndPrune(ctx.sql);
 
-  await ctx.sql`delete from users where id = ${userId}`;
+  await ctx.sql`delete from users where id = ${userAccountId}`;
 
   const rows = await ctx.db
     .select()
     .from(dailySummaries)
-    .where(and(eq(dailySummaries.userId, userId)));
+    .where(and(eq(dailySummaries.profileId, profileId)));
   expect(rows).toHaveLength(1);
 });
 

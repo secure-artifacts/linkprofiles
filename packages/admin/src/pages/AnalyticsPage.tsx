@@ -12,8 +12,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useSearchParams } from 'react-router-dom';
 import { request } from '../api/client.js';
 import type { AnalyticsResponse, DimensionRow } from '../api/types.js';
+import { useBreadcrumb } from '../nav/breadcrumb.js';
 import { Alert } from '../ui/Alert.js';
 import { Segmented } from '../ui/Segmented.js';
 import { Select } from '../ui/Select.js';
@@ -31,14 +33,20 @@ const TIME_ZONES = [
 
 const ACCENT = 'oklch(0.455 0.105 151)';
 
-interface AnalyticsPageProps {
-  /** 只看某一个用户；不给就看可见范围内的全部 */
-  userId?: string;
-}
-
 type Preset = 'today' | '7d' | '30d' | 'custom';
 
-export function AnalyticsPage({ userId }: AnalyticsPageProps) {
+/**
+ * 数据分析。
+ *
+ * 范围由查询串决定：`profileId` 看单个页面、`userId` 看一个账号名下全部页面的
+ * 合计、都不给就是可见范围内的全部。放在 URL 里而不是组件状态里，前进后退
+ * 才回得到刚才那个范围。
+ */
+export function AnalyticsPage() {
+  const [searchParams] = useSearchParams();
+  const userId = searchParams.get('userId');
+  const profileId = searchParams.get('profileId');
+  useBreadcrumb([{ label: '数据分析' }]);
   const [preset, setPreset] = useState<Preset>('7d');
   const [customRange, setCustomRange] = useState<[Date, Date] | null>(null);
   const [timeZone, setTimeZone] = useState(DEFAULT_DISPLAY_TIMEZONE);
@@ -55,13 +63,14 @@ export function AnalyticsPage({ userId }: AnalyticsPageProps) {
     } else {
       params.set('preset', preset);
     }
-    if (userId) params.set('userId', userId);
+    if (profileId) params.set('profileId', profileId);
+    else if (userId) params.set('userId', userId);
 
     setError(null);
     request<AnalyticsResponse>(`/analytics?${params}`)
       .then(setData)
       .catch((err: Error) => setError(err.message));
-  }, [preset, customRange, timeZone, userId]);
+  }, [preset, customRange, timeZone, userId, profileId]);
 
   if (error) return <Alert tone="danger" message="读不到数据" description={error} />;
 
@@ -289,11 +298,12 @@ function AnalyticsResults({ data, timeZone }: { data: AnalyticsResponse; timeZon
         <DimensionCard title="操作系统" rows={data.dimensions.operatingSystems} />
       </div>
 
-      <Panel title="各按钮的点击率" action={<ExportCsvButton buttons={data.buttons} />}>
+      <Panel title="各条目的点击率" action={<ExportCsvButton buttons={data.buttons} />}>
         <table className="w-full text-[13px]">
           <thead>
             <tr className="border-b border-border text-left text-muted">
-              <th className="py-2 font-medium">按钮</th>
+              <th className="py-2 font-medium">条目</th>
+              <th className="py-2 font-medium">类别</th>
               <th className="py-2 font-medium">类型</th>
               <th className="py-2 font-medium">点击</th>
               <th className="py-2 font-medium">点击率</th>
@@ -303,6 +313,7 @@ function AnalyticsResults({ data, timeZone }: { data: AnalyticsResponse; timeZon
             {data.buttons.map((button) => (
               <tr key={button.id} className="border-b border-border last:border-0">
                 <td className="py-2 text-fg">{button.title}</td>
+                <td className="py-2 text-muted">{button.kind === 'social' ? '社媒' : '链接'}</td>
                 <td className="py-2 text-muted">{button.isLead ? '联系类' : '内容类'}</td>
                 <td className="py-2 font-mono text-fg">{button.clicks}</td>
                 <td className="py-2 font-mono text-fg">{(button.ctr * 100).toFixed(1)}%</td>
@@ -311,7 +322,7 @@ function AnalyticsResults({ data, timeZone }: { data: AnalyticsResponse; timeZon
           </tbody>
         </table>
         <p className="mt-3 text-[12px] text-muted">
-          分母是页面浏览数，不是访客数 —— 按钮没有独立曝光，页面渲染一次全部按钮就都露过一次面。
+          分母是页面浏览数，不是访客数 —— 条目没有独立曝光，页面渲染一次全部条目就都露过一次面。
         </p>
       </Panel>
     </div>
@@ -406,9 +417,10 @@ function DimensionCard({ title, rows }: { title: string; rows: DimensionRow[] })
 function ExportCsvButton({ buttons }: { buttons: AnalyticsResponse['buttons'] }) {
   const download = () => {
     const rows = [
-      ['按钮', '类型', '点击', '点击率'],
+      ['条目', '类别', '类型', '点击', '点击率'],
       ...buttons.map((b) => [
         b.title,
+        b.kind === 'social' ? '社媒' : '链接',
         b.isLead ? '联系类' : '内容类',
         String(b.clicks),
         `${(b.ctr * 100).toFixed(1)}%`,
@@ -421,7 +433,7 @@ function ExportCsvButton({ buttons }: { buttons: AnalyticsResponse['buttons'] })
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = '按钮点击率.csv';
+    a.download = '条目点击率.csv';
     a.click();
     URL.revokeObjectURL(url);
   };

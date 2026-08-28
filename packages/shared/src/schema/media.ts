@@ -1,6 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { users } from './users.js';
+import { profiles } from './profiles.js';
 
 export const mediaKindEnum = pgEnum('media_kind', ['image', 'video']);
 
@@ -20,9 +20,9 @@ export const media = pgTable(
   'media',
   {
     id: uuid().primaryKey().defaultRandom(),
-    userId: uuid()
+    profileId: uuid()
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => profiles.id, { onDelete: 'cascade' }),
 
     kind: mediaKindEnum().notNull(),
     width: integer(),
@@ -30,17 +30,17 @@ export const media = pgTable(
     /** 仅视频有值。视频不转码，时长是从 mp4 的 mvhd 盒里读出来的。 */
     durationMs: integer(),
 
-    /** 落盘的相对目录，删用户时按它清理，见 16。 */
+    /** 落盘的相对目录，删个人页时按它清理，见 16。 */
     directory: text().notNull(),
     variants: jsonb().$type<MediaVariant[]>().notNull(),
 
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('media_user_idx').on(t.userId)],
+  (t) => [index('media_profile_idx').on(t.profileId)],
 );
 
 export const mediaRelations = relations(media, ({ one }) => ({
-  user: one(users, { fields: [media.userId], references: [users.id] }),
+  profile: one(profiles, { fields: [media.profileId], references: [profiles.id] }),
 }));
 
 export type MediaRow = typeof media.$inferSelect;

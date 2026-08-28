@@ -8,6 +8,7 @@ let ownerToken: string;
 let adminToken: string;
 let strangerToken: string;
 let userId: string;
+let profileId: string;
 
 beforeAll(async () => {
   ctx = await createTestContext();
@@ -23,12 +24,10 @@ beforeEach(async () => {
   const admin = await createLoginableUser(ctx.db, 'admin-pass', {
     role: 'admin',
     account: 'admin',
-    shortName: null,
   });
   await createLoginableUser(ctx.db, 'other-pass', {
     role: 'admin',
     account: 'other-admin',
-    shortName: null,
   });
   const user = await createLoginableUser(ctx.db, 'user-pass', {
     role: 'user',
@@ -38,18 +37,26 @@ beforeEach(async () => {
     owningAdminId: admin.id,
   });
   userId = user.id;
+  profileId = user.profileId!;
 
   ownerToken = (await login(ctx, 'mimnz', 'user-pass')).token;
   adminToken = (await login(ctx, 'admin', 'admin-pass')).token;
   strangerToken = (await login(ctx, 'other-admin', 'other-pass')).token;
 });
 
-const putButtons = (token: string, list: unknown[]) =>
+/** 只提交链接条目。社媒条目走 putEntries。 */
+const putButtons = (token: string, list: Record<string, unknown>[]) =>
+  putEntries(
+    token,
+    list.map((item) => ({ kind: 'link', ...item })),
+  );
+
+const putEntries = (token: string, entries: unknown[]) =>
   ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(token),
-    payload: { buttons: list },
+    payload: { entries },
   });
 
 const page = () => ctx.app.inject({ method: 'GET', url: '/mimnz' });
@@ -57,7 +64,7 @@ const page = () => ctx.app.inject({ method: 'GET', url: '/mimnz' });
 test('改显示名与简介，公开页随之变化', async () => {
   const res = await ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(ownerToken),
     payload: { displayName: '新的名字', bio: '我是一个基督徒，来自美国' },
   });
@@ -90,22 +97,64 @@ test('按钮可增删改，顺序持久化并反映在公开页上', async () =>
   expect(html.indexOf('第三个')).toBeLessThan(html.indexOf('改过名的第一个'));
 });
 
-test('公开页按 is_lead 呈现两级视觉，分级与位置无关', async () => {
+test('实心还是描边整页统一，与 is_lead 和位置都无关', async () => {
   await putButtons(ownerToken, [
     { title: '内容在前', url: 'https://example.com/blog', isLead: false },
     { title: '联系在后', url: 'https://wa.me/15550109999', isLead: true },
   ]);
 
-  const html = (await page()).body;
+  const setSolid = (solidBackground: boolean) =>
+    ctx.app.inject({
+      method: 'PATCH',
+      url: `/_api/profiles/${profileId}`,
+      ...withSession(ownerToken),
+      payload: { solidBackground },
+    });
 
-  // 联系类是实心卡片，内容类是描边行——即使联系类排在后面
-  expect(html).toMatch(/class="pp-lead"[^>]*>(?:(?!<\/a>).)*联系在后/s);
-  expect(html).toMatch(/class="pp-link"[^>]*>(?:(?!<\/a>).)*内容在前/s);
-  // 按钮列表里没有任何区段标题：只有 <a>，没有标题元素
-  const body = html.slice(html.indexOf('<div class="pp-body">'), html.indexOf('</body>'));
+  await setSolid(false);
+  const outline = (await page()).body;
+  expect(outline).toMatch(/class="pp-link"[^>]*>(?:(?!<\/a>).)*内容在前/s);
+  expect(outline).toMatch(/class="pp-link"[^>]*>(?:(?!<\/a>).)*联系在后/s);
+  expect(outline).not.toContain('class="pp-lead"');
+
+  await setSolid(true);
+  const solid = (await page()).body;
+  expect(solid).toMatch(/class="pp-lead"[^>]*>(?:(?!<\/a>).)*内容在前/s);
+  expect(solid).toMatch(/class="pp-lead"[^>]*>(?:(?!<\/a>).)*联系在后/s);
+  expect(solid).not.toContain('class="pp-link"');
+
+  // 视觉换了口径不能跟着换：联系类照样记线索，内容类照样不记
+  expect(solid).toMatch(/data-lead="1"[^>]*>(?:(?!<\/a>).)*联系在后/s);
+  expect(solid).toMatch(/data-lead="0"[^>]*>(?:(?!<\/a>).)*内容在前/s);
+
+  // 条目列表里没有任何区段标题：只有 <a>，没有标题元素
+  const body = solid.slice(solid.indexOf('<div class="pp-body">'), solid.indexOf('</body>'));
   expect(body).not.toMatch(/<h[2-6][\s>]/);
   expect(body).not.toContain('联系方式');
   expect(body).not.toContain('内容链接');
+});
+
+test('图标白底关掉后，那条 CSS 规则的开关属性不再输出', async () => {
+  await putButtons(ownerToken, [
+    { title: '带图标', url: 'https://wa.me/15550109999', isLead: true },
+  ]);
+
+  const setPlate = (iconPlate: boolean) =>
+    ctx.app.inject({
+      method: 'PATCH',
+      url: `/_api/profiles/${profileId}`,
+      ...withSession(ownerToken),
+      payload: { iconPlate },
+    });
+
+  await setPlate(true);
+  expect((await page()).body).toContain('data-icon-plate');
+
+  await setPlate(false);
+  const off = (await page()).body;
+  expect(off).not.toContain('data-icon-plate=""');
+  // 图标本身还在，只是没了衬底 —— 关白底不该把品牌图形一起弄没
+  expect(off).toContain('class="ic"');
 });
 
 test('副标题留空时不渲染那一行', async () => {
@@ -124,7 +173,7 @@ test('副标题留空时不渲染那一行', async () => {
   expect(withoutSubtitle.slice(0, withoutSubtitle.indexOf('</a>'))).not.toContain('<span>通常');
 });
 
-test('单页按钮数量上限五十', async () => {
+test('单页自定义链接数量上限五十', async () => {
   const fifty = Array.from({ length: 50 }, (_, i) => ({
     title: `按钮 ${i}`,
     url: `https://example.com/${i}`,
@@ -161,13 +210,13 @@ test('按钮文字里的尖括号被转义，不会注入标签', async () => {
 test('社媒图标只填号码或邮箱，目标 URL 由系统拼装', async () => {
   const res = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/social-icons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(ownerToken),
     payload: {
-      socialIcons: [
-        { platform: 'whatsapp', value: '+1 (555) 010-9999' },
-        { platform: 'email', value: 'hi@example.com' },
-        { platform: 'instagram', value: '@mimnz' },
+      entries: [
+        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '+1 (555) 010-9999' },
+        { kind: 'social', title: 'Email', platform: 'email', value: 'hi@example.com' },
+        { kind: 'social', title: 'Instagram', platform: 'instagram', value: '@mimnz' },
       ],
     },
   });
@@ -182,26 +231,24 @@ test('社媒图标只填号码或邮箱，目标 URL 由系统拼装', async () 
 test('社媒图标的默认 is_lead 按平台给出，且可覆盖', async () => {
   await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/social-icons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(ownerToken),
     payload: {
-      socialIcons: [
-        { platform: 'whatsapp', value: '15550109999' },
-        { platform: 'instagram', value: 'mimnz' },
-        { platform: 'youtube', value: 'mimnz', isLead: true },
+      entries: [
+        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '15550109999' },
+        { kind: 'social', title: 'Instagram', platform: 'instagram', value: 'mimnz' },
+        { kind: 'social', title: 'YouTube', platform: 'youtube', value: 'mimnz', isLead: true },
       ],
     },
   });
 
   const saved = await ctx.app.inject({
     method: 'GET',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(ownerToken),
   });
   const byPlatform = Object.fromEntries(
-    saved
-      .json()
-      .socialIcons.map((i: { platform: string; isLead: boolean }) => [i.platform, i.isLead]),
+    saved.json().entries.map((i: { platform: string; isLead: boolean }) => [i.platform, i.isLead]),
   );
   expect(byPlatform).toEqual({ whatsapp: true, instagram: false, youtube: true });
 });
@@ -209,9 +256,11 @@ test('社媒图标的默认 is_lead 按平台给出，且可覆盖', async () =>
 test('清单外的平台被拒，绕过后台直接调接口也塞不进大陆 app', async () => {
   const res = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/social-icons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(ownerToken),
-    payload: { socialIcons: [{ platform: 'weixin', value: 'mimnz' }] },
+    payload: {
+      entries: [{ kind: 'social', title: 'weixin', platform: 'weixin', value: 'mimnz' }],
+    },
   });
 
   expect(res.statusCode).toBe(400);
@@ -221,12 +270,12 @@ test('清单外的平台被拒，绕过后台直接调接口也塞不进大陆 a
 test('同一个平台不能启用两次', async () => {
   const res = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/social-icons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(ownerToken),
     payload: {
-      socialIcons: [
-        { platform: 'whatsapp', value: '1' },
-        { platform: 'whatsapp', value: '2' },
+      entries: [
+        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '1' },
+        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '2' },
       ],
     },
   });
@@ -249,7 +298,7 @@ test('内置平台清单只含海外平台', async () => {
 test('归属管理员可以代改名下用户的内容', async () => {
   const res = await ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(adminToken),
     payload: { bio: '运营统一控版' },
   });
@@ -262,20 +311,24 @@ test('非归属管理员改不动别人的用户', async () => {
   for (const call of [
     {
       method: 'PATCH' as const,
-      url: `/_api/users/${userId}/profile`,
+      url: `/_api/profiles/${profileId}`,
       payload: { bio: '我乱改的' },
     },
     {
       method: 'PUT' as const,
-      url: `/_api/users/${userId}/buttons`,
-      payload: { buttons: [{ title: '我塞的', url: 'https://evil.example.com' }] },
+      url: `/_api/profiles/${profileId}/entries`,
+      payload: {
+        entries: [{ kind: 'link', title: '我塞的', url: 'https://evil.example.com' }],
+      },
     },
     {
       method: 'PUT' as const,
-      url: `/_api/users/${userId}/social-icons`,
-      payload: { socialIcons: [{ platform: 'whatsapp', value: '1' }] },
+      url: `/_api/profiles/${profileId}/entries`,
+      payload: {
+        entries: [{ kind: 'social', platform: 'whatsapp', value: '1', title: 'WhatsApp' }],
+      },
     },
-    { method: 'GET' as const, url: `/_api/users/${userId}/profile` },
+    { method: 'GET' as const, url: `/_api/profiles/${profileId}` },
   ]) {
     const res = await ctx.app.inject({ ...call, ...withSession(strangerToken) });
     expect(res.statusCode, `${call.method} ${call.url}`).toBe(403);
@@ -287,30 +340,42 @@ test('非归属管理员改不动别人的用户', async () => {
 test('保存不换按钮 id，逐按钮的历史点击不被清零', async () => {
   const created = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(ownerToken),
     payload: {
-      buttons: [
-        { title: '联系我', url: 'https://wa.me/1', isLead: true },
-        { title: '看内容', url: 'https://example.com/blog', isLead: false },
+      entries: [
+        { kind: 'link', title: '联系我', url: 'https://wa.me/1', isLead: true },
+        { kind: 'link', title: '看内容', url: 'https://example.com/blog', isLead: false },
       ],
     },
   });
-  const before = created.json().buttons as { id: string; title: string }[];
+  const before = created.json().entries as { id: string; title: string }[];
 
   // 只改了个标题就再存一次 —— 这在编辑器里等同于改主题、改简介，任何一次保存
   const again = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(ownerToken),
     payload: {
-      buttons: [
-        { id: before[0]!.id, title: '联系我（改过）', url: 'https://wa.me/1', isLead: true },
-        { id: before[1]!.id, title: '看内容', url: 'https://example.com/blog', isLead: false },
+      entries: [
+        {
+          kind: 'link',
+          id: before[0]!.id,
+          title: '联系我（改过）',
+          url: 'https://wa.me/1',
+          isLead: true,
+        },
+        {
+          kind: 'link',
+          id: before[1]!.id,
+          title: '看内容',
+          url: 'https://example.com/blog',
+          isLead: false,
+        },
       ],
     },
   });
-  const after = again.json().buttons as { id: string; title: string }[];
+  const after = again.json().entries as { id: string; title: string }[];
 
   // id 保持不变，否则 clicks.target_id 全部成为孤儿，单按钮点击率归零
   expect(after.map((b) => b.id)).toEqual(before.map((b) => b.id));
@@ -320,30 +385,30 @@ test('保存不换按钮 id，逐按钮的历史点击不被清零', async () =>
 test('重排与增删之后，留下来的按钮仍然是原来那个 id', async () => {
   const created = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(ownerToken),
     payload: {
-      buttons: [
-        { title: 'A', url: 'https://example.com/a' },
-        { title: 'B', url: 'https://example.com/b' },
+      entries: [
+        { kind: 'link', title: 'A', url: 'https://example.com/a' },
+        { kind: 'link', title: 'B', url: 'https://example.com/b' },
       ],
     },
   });
-  const [a, b] = created.json().buttons as { id: string; title: string }[];
+  const [a, b] = created.json().entries as { id: string; title: string }[];
 
   // 交换顺序、删掉 A、加一个新的
   const again = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(ownerToken),
     payload: {
-      buttons: [
-        { id: b!.id, title: 'B', url: 'https://example.com/b' },
-        { title: 'C', url: 'https://example.com/c' },
+      entries: [
+        { kind: 'link', id: b!.id, title: 'B', url: 'https://example.com/b' },
+        { kind: 'link', title: 'C', url: 'https://example.com/c' },
       ],
     },
   });
-  const after = again.json().buttons as { id: string; title: string; position: number }[];
+  const after = again.json().entries as { id: string; title: string; position: number }[];
 
   expect(after.map((x) => x.title)).toEqual(['B', 'C']);
   expect(after[0]!.id).toBe(b!.id);
@@ -355,11 +420,13 @@ test('重排与增删之后，留下来的按钮仍然是原来那个 id', async
 test('别人的按钮 id 塞进来不会被劫持，只会新建一条属于自己的', async () => {
   const victim = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(ownerToken),
-    payload: { buttons: [{ title: '我的', url: 'https://example.com/mine' }] },
+    payload: {
+      entries: [{ kind: 'link', title: '我的', url: 'https://example.com/mine' }],
+    },
   });
-  const mine = (victim.json().buttons as { id: string }[])[0]!;
+  const mine = (victim.json().entries as { id: string }[])[0]!;
 
   // 另一个用户拿着别人的按钮 id 提交
   const other = await createLoginableUser(ctx.db, 'other-user-pass', {
@@ -371,19 +438,21 @@ test('别人的按钮 id 塞进来不会被劫持，只会新建一条属于自�
 
   const res = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${other.id}/buttons`,
+    url: `/_api/profiles/${other.profileId}/entries`,
     ...withSession(otherToken),
-    payload: { buttons: [{ id: mine.id, title: '抢来的', url: 'https://evil.example.com' }] },
+    payload: {
+      entries: [{ kind: 'link', id: mine.id, title: '抢来的', url: 'https://evil.example.com' }],
+    },
   });
   expect(res.statusCode).toBe(200);
 
   // 我的按钮没被动
   const stillMine = await ctx.app.inject({
     method: 'GET',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(ownerToken),
   });
-  const list = stillMine.json().buttons as { id: string; title: string }[];
+  const list = stillMine.json().entries as { kind: 'link'; id: string; title: string }[];
   expect(list).toHaveLength(1);
   expect(list[0]).toMatchObject({ id: mine.id, title: '我的' });
 });
@@ -391,9 +460,50 @@ test('别人的按钮 id 塞进来不会被劫持，只会新建一条属于自�
 test('未登录改不了任何内容', async () => {
   const res = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
-    payload: { buttons: [] },
+    url: `/_api/profiles/${profileId}/entries`,
+    payload: {
+      entries: [],
+    },
   });
 
   expect(res.statusCode).toBe(401);
+});
+
+test('三个页面级开关都能存下来', async () => {
+  const patch = (body: Record<string, unknown>) =>
+    ctx.app.inject({
+      method: 'PATCH',
+      url: `/_api/profiles/${profileId}`,
+      ...withSession(ownerToken),
+      payload: body,
+    });
+
+  const res = await patch({ solidBackground: true, iconPlate: false, bioTypewriter: true });
+  expect(res.statusCode).toBe(200);
+  expect(res.json().profile).toMatchObject({
+    solidBackground: true,
+    iconPlate: false,
+    bioTypewriter: true,
+  });
+
+  // 重新读一遍：光看 PATCH 的返回体测不出「收了参数但没写库」
+  const reread = await ctx.app.inject({
+    method: 'GET',
+    url: `/_api/profiles/${profileId}`,
+    ...withSession(ownerToken),
+  });
+  expect(reread.json().profile).toMatchObject({
+    solidBackground: true,
+    iconPlate: false,
+    bioTypewriter: true,
+  });
+
+  // 不传的字段不该被顺手清掉
+  const partial = await patch({ displayName: '只改名字' });
+  expect(partial.json().profile).toMatchObject({
+    displayName: '只改名字',
+    solidBackground: true,
+    iconPlate: false,
+    bioTypewriter: true,
+  });
 });

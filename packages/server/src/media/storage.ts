@@ -1,5 +1,6 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { IMAGE_MAX_EDGE } from '@link-profile/shared';
 import type { MediaVariant } from '@link-profile/shared/schema';
 import sharp from 'sharp';
 
@@ -19,8 +20,6 @@ export interface StoredMedia {
   variants: MediaVariant[];
 }
 
-/** 单张图的最长边上限，按用途给。手机直出的八兆原图不该原样进首屏。 */
-export const IMAGE_MAX_EDGE = { avatar: 640, background: 1440 } as const;
 export const THUMBNAIL_EDGE = 160;
 
 /**
@@ -31,9 +30,9 @@ export const THUMBNAIL_EDGE = 160;
  */
 export async function storeImage(
   buffer: Buffer,
-  opts: { userId: string; mediaId: string; usage: keyof typeof IMAGE_MAX_EDGE },
+  opts: { profileId: string; mediaId: string; usage: keyof typeof IMAGE_MAX_EDGE },
 ): Promise<StoredMedia> {
-  const directory = path.join(opts.userId, opts.mediaId);
+  const directory = path.join(opts.profileId, opts.mediaId);
   const absolute = path.join(uploadsDir(), directory);
   await mkdir(absolute, { recursive: true });
 
@@ -101,9 +100,9 @@ export async function storeImage(
  */
 export async function storeVideo(
   buffer: Buffer,
-  opts: { userId: string; mediaId: string; durationMs: number },
+  opts: { profileId: string; mediaId: string; durationMs: number },
 ): Promise<StoredMedia> {
-  const directory = path.join(opts.userId, opts.mediaId);
+  const directory = path.join(opts.profileId, opts.mediaId);
   const absolute = path.join(uploadsDir(), directory);
   await mkdir(absolute, { recursive: true });
 

@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "bio_typewriter" boolean DEFAULT false NOT NULL;

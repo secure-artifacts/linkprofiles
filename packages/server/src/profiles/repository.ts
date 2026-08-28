@@ -1,4 +1,4 @@
-import type { ButtonView, ProfileView, SocialIconView } from '@link-profile/profile-ui';
+import type { ButtonView, ProfileView } from '@link-profile/profile-ui';
 import { loadMediaByIds, toMediaSource, toVideoSource } from './media-view.js';
 import {
   appendSource,
@@ -6,8 +6,8 @@ import {
   findSocialPlatform,
   inferPlatformFromUrl,
 } from '@link-profile/shared';
-import { buttons, socialIcons, users } from '@link-profile/shared/schema';
-import { and, asc, eq } from 'drizzle-orm';
+import { buttons, profiles } from '@link-profile/shared/schema';
+import { asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 
 /**
@@ -37,7 +37,12 @@ export interface ProfileRecord {
   view: ProfileView;
 }
 
-/** 查出可公开渲染的个人页。只有 `user` 角色拥有个人页。 */
+/**
+ * 查出可公开渲染的个人页。
+ *
+ * 不必再校验角色：`profiles` 表本身就只挂在 `role='user'` 的账号下，
+ * 管理员没有个人页这件事由建号流程保证，不需要每次渲染都 join 一次。
+ */
 export async function findProfileByShortName(
   db: Db,
   shortName: string,
@@ -45,19 +50,22 @@ export async function findProfileByShortName(
 ): Promise<ProfileRecord | null> {
   const [row] = await db
     .select({
-      id: users.id,
-      shortName: users.shortName,
-      displayName: users.displayName,
-      bio: users.bio,
-      layout: users.layout,
-      theme: users.theme,
-      avatarMediaId: users.avatarMediaId,
-      avatarPosterId: users.avatarPosterId,
-      backgroundMediaId: users.backgroundMediaId,
-      backgroundOverlay: users.backgroundOverlay,
+      id: profiles.id,
+      shortName: profiles.shortName,
+      displayName: profiles.displayName,
+      bio: profiles.bio,
+      bioTypewriter: profiles.bioTypewriter,
+      layout: profiles.layout,
+      theme: profiles.theme,
+      solidBackground: profiles.solidBackground,
+      iconPlate: profiles.iconPlate,
+      avatarMediaId: profiles.avatarMediaId,
+      avatarPosterId: profiles.avatarPosterId,
+      backgroundMediaId: profiles.backgroundMediaId,
+      backgroundOverlay: profiles.backgroundOverlay,
     })
-    .from(users)
-    .where(and(eq(users.shortName, normalizeShortName(shortName)), eq(users.role, 'user')))
+    .from(profiles)
+    .where(eq(profiles.shortName, normalizeShortName(shortName)))
     .limit(1);
 
   if (!row?.shortName) return null;
@@ -78,84 +86,85 @@ export async function findProfileByShortName(
     view: {
       displayName: row.displayName,
       bio: row.bio,
+      bioTypewriter: row.bioTypewriter,
       layout: row.layout,
       theme: row.theme,
+      solidBackground: row.solidBackground,
+      iconPlate: row.iconPlate,
       // 头像位放的是图还是视频，二者互斥
       avatar: toMediaSource(avatarRow),
       video: toVideoSource(avatarRow, posterRow),
       background: background
         ? { src: background.src, overlay: Number(row.backgroundOverlay) }
         : null,
-      socialIcons: await loadSocialIcons(db, row.id, context),
-      buttons: await loadButtons(db, row.id, context),
+      buttons: await loadEntries(db, row.id, context),
     },
   };
 }
 
-export async function loadButtons(
+/**
+ * 一个个人页的全部条目，按 position 排。
+ *
+ * 两种 kind 的地址来源不同：`link` 用用户填的 url，`social` 由平台 id 与
+ * 用户填的号码/用户名现拼。社媒平台不在内置清单里（清单调整后残留的旧行）
+ * 或值拼不出地址时整条跳过，不渲染死链。
+ */
+export async function loadEntries(
   db: Db,
-  userId: string,
+  profileId: string,
   context: RenderContext = NO_SOURCE,
 ): Promise<ButtonView[]> {
   const rows = await db
     .select({
       id: buttons.id,
+      kind: buttons.kind,
       title: buttons.title,
       subtitle: buttons.subtitle,
       url: buttons.url,
+      platform: buttons.platform,
+      value: buttons.value,
       isLead: buttons.isLead,
       passSource: buttons.passSource,
     })
     .from(buttons)
-    .where(eq(buttons.userId, userId))
+    .where(eq(buttons.profileId, profileId))
     .orderBy(asc(buttons.position));
 
-  return rows.map(({ passSource, ...r }) => {
-    const url = shouldPass(passSource, context) ? appendSource(r.url, context.source) : r.url;
-    // 品牌图形从目标地址认出来，用户不必为此多填一个字段。
-    return { ...r, url, platform: inferPlatformFromUrl(url) };
-  });
+  const views: ButtonView[] = [];
+  for (const row of rows) {
+    const target = resolveUrl(row);
+    if (!target) continue;
+    const url = shouldPass(row.passSource, context) ? appendSource(target, context.source) : target;
+
+    views.push({
+      id: row.id,
+      kind: row.kind,
+      title: row.title,
+      subtitle: row.subtitle,
+      url,
+      isLead: row.isLead,
+      // link 的品牌图形从目标地址认出来，用户不必为此多填一个字段；
+      // social 本来就带着平台 id。
+      platform: row.kind === 'social' ? row.platform : inferPlatformFromUrl(url),
+    });
+  }
+  return views;
+}
+
+/** 拼不出地址就返回 null，调用方整条跳过。 */
+function resolveUrl(row: {
+  kind: 'link' | 'social';
+  url: string | null;
+  platform: string | null;
+  value: string | null;
+}): string | null {
+  if (row.kind === 'link') return row.url;
+  if (!row.platform || !row.value) return null;
+  if (!findSocialPlatform(row.platform)) return null;
+  return buildSocialUrl(row.platform, row.value);
 }
 
 /** 逐条的开关优先；关着的时候由超级管理员的全局默认兜底。 */
 function shouldPass(passSource: boolean, context: RenderContext): boolean {
   return passSource || context.passthroughDefault;
-}
-
-/**
- * 社媒图标存的是用户填的号码 / 邮箱 / 用户名，目标 URL 在这里按平台拼装。
- * 平台不在内置清单里（例如清单调整后残留的旧行）就整条跳过，不渲染死链。
- */
-export async function loadSocialIcons(
-  db: Db,
-  userId: string,
-  context: RenderContext = NO_SOURCE,
-): Promise<SocialIconView[]> {
-  const rows = await db
-    .select({
-      id: socialIcons.id,
-      platform: socialIcons.platform,
-      value: socialIcons.value,
-      isLead: socialIcons.isLead,
-      passSource: socialIcons.passSource,
-    })
-    .from(socialIcons)
-    .where(eq(socialIcons.userId, userId))
-    .orderBy(asc(socialIcons.position));
-
-  const views: SocialIconView[] = [];
-  for (const row of rows) {
-    const platform = findSocialPlatform(row.platform);
-    const built = buildSocialUrl(row.platform, row.value);
-    if (!platform || !built) continue;
-    const url = shouldPass(row.passSource, context) ? appendSource(built, context.source) : built;
-    views.push({
-      id: row.id,
-      platform: row.platform,
-      url,
-      label: platform.label,
-      isLead: row.isLead,
-    });
-  }
-  return views;
 }

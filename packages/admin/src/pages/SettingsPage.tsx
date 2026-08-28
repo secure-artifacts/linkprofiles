@@ -3,11 +3,13 @@ import { request } from '../api/client.js';
 import type { AppSettings } from '../api/types.js';
 import { Alert } from '../ui/Alert.js';
 import { Spinner } from '../ui/Spinner.js';
-import { Switch } from '../ui/Switch.js';
+import { Checkbox } from '../ui/Checkbox.js';
 import { useToast } from '../ui/Toast.js';
+import { useBreadcrumb } from '../nav/breadcrumb.js';
 
 /** 全站设置。只有超级管理员进得来。 */
 export function SettingsPage() {
+  useBreadcrumb([{ label: '全站设置' }]);
   const toast = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
@@ -27,28 +29,27 @@ export function SettingsPage() {
       <div className="rounded-[var(--radius-panel)] border border-border bg-surface p-5">
         <h2 className="mb-4 text-sm font-semibold text-fg">来源透传</h2>
         <div className="flex flex-col gap-4">
-          <label className="flex items-center gap-3">
-            <Switch
-              checked={settings.sourcePassthroughDefault}
-              onChange={async (checked) => {
-                try {
-                  setSettings(
-                    await request<AppSettings>('/settings', {
-                      method: 'PATCH',
-                      body: { sourcePassthroughDefault: checked },
-                    }),
-                  );
-                  toast.success('已保存');
-                } catch (err) {
-                  toast.error((err as Error).message);
-                }
-              }}
-            />
-            <span className="text-[13px] text-fg">默认对所有按钮开启来源透传</span>
-          </label>
+          <Checkbox
+            checked={settings.sourcePassthroughDefault}
+            onChange={async (checked) => {
+              try {
+                setSettings(
+                  await request<AppSettings>('/settings', {
+                    method: 'PATCH',
+                    body: { sourcePassthroughDefault: checked },
+                  }),
+                );
+                toast.success('已保存');
+              } catch (err) {
+                toast.error((err as Error).message);
+              }
+            }}
+          >
+            默认对所有条目开启来源透传
+          </Checkbox>
 
           <p className="text-[13px] text-muted">
-            按钮可以逐条覆盖这个默认值。开启后，访客带{' '}
+            条目可以逐条覆盖这个默认值。开启后，访客带{' '}
             <code className="rounded bg-surface-hover px-1 py-0.5 font-mono text-[12px]">
               ?src=
             </code>{' '}

@@ -8,10 +8,10 @@ import { collectVisitorFacts } from './visitor.js';
  */
 export async function recordPageView(
   app: FastifyInstance,
-  userId: string,
+  profileId: string,
   req: FastifyRequest,
   source: string | null | undefined,
 ): Promise<void> {
   const facts = await collectVisitorFacts(req, source, app.geo);
-  await app.db.insert(pageViews).values({ userId, ...facts });
+  await app.db.insert(pageViews).values({ profileId, ...facts });
 }

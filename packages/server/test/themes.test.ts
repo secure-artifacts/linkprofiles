@@ -12,6 +12,7 @@ import { makePng, multipart } from './helpers/media-fixtures.js';
 let ctx: TestContext;
 let token: string;
 let userId: string;
+let profileId: string;
 let uploads: string;
 
 beforeAll(async () => {
@@ -35,13 +36,14 @@ beforeEach(async () => {
     displayName: 'mimnz',
   });
   userId = user.id;
+  profileId = user.profileId!;
   token = (await login(ctx, 'mimnz', 'user-pass')).token;
 });
 
 const patch = (payload: Record<string, unknown>) =>
   ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(token),
     payload,
   });
@@ -66,7 +68,7 @@ async function uploadBackground() {
   );
   const res = await ctx.app.inject({
     method: 'POST',
-    url: `/_api/users/${userId}/media`,
+    url: `/_api/profiles/${profileId}/media`,
     ...withSession(token),
     headers,
     payload,
@@ -156,7 +158,7 @@ test('清空背景图后回到主题渐变', async () => {
 
   const cleared = await ctx.app.inject({
     method: 'DELETE',
-    url: `/_api/users/${userId}/media/background`,
+    url: `/_api/profiles/${profileId}/media/background`,
     ...withSession(token),
   });
   expect(cleared.statusCode).toBe(204);

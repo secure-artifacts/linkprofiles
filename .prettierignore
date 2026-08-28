@@ -2,6 +2,8 @@ pnpm-lock.yaml
 dist/
 node_modules/
 drizzle/
+# 构建产物，头部写着「请勿手改」。prettier 改它的引号风格，下次 build 又改回来，来回抖动
+packages/profile-ui/src/generated/
 .claude/
 .scratch/
 docs/

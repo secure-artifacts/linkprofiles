@@ -46,14 +46,41 @@ export interface TargetUser {
   owningAdminId: string | null;
 }
 
-export type UserAction = 'read' | 'update' | 'delete' | 'update:shortName';
+export type UserAction =
+  | 'read'
+  /** 改页面内容、改账号备注 */
+  | 'update'
+  /** 改个人页地址。会让已发出去的链接失效，所以单列一档 */
+  | 'update:shortName'
+  /** 给这个账号新建一个个人页 */
+  | 'profile:create'
+  /** 删一个个人页。地址进墓碑、永不再分配，媒体文件一并从磁盘删除 */
+  | 'profile:delete'
+  /** 删整个账号 */
+  | 'delete';
+
+/**
+ * 用户对自己做得了的事。
+ *
+ * 白名单而不是黑名单：以后加新动作时默认是拒绝，得有人显式想清楚才放进来。
+ * 反过来写的话，新增一个动作就悄悄对所有人开放了。
+ *
+ * 建页面与改地址在列表里，删除不在 —— 删是唯一不可逆的那个（地址进墓碑
+ * 永不再分配，媒体从磁盘删掉），留给管理员。
+ */
+const SELF_SERVE_ACTIONS: readonly UserAction[] = [
+  'read',
+  'update',
+  'update:shortName',
+  'profile:create',
+];
 
 /**
  * 能不能对这个具体的用户下手。
  *
  * - 超级管理员不受限
  * - 管理员只能碰归属于自己的用户
- * - 用户只能碰自己，且改不了自己的 short_name
+ * - 用户只能碰自己，且只做得了 `SELF_SERVE_ACTIONS` 里那几件
  */
 export function canTouchUser(actor: CurrentUser, target: TargetUser, action: UserAction): boolean {
   if (actor.role === 'superadmin') return true;
@@ -65,8 +92,7 @@ export function canTouchUser(actor: CurrentUser, target: TargetUser, action: Use
   }
 
   if (target.id !== actor.id) return false;
-  // 用户改不了自己的 short_name，避免手滑把已印在物料上的链接搞失效
-  return action !== 'update:shortName';
+  return SELF_SERVE_ACTIONS.includes(action);
 }
 
 /**

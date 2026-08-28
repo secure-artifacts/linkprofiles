@@ -9,7 +9,22 @@ const APPLIED_TABLE = '__migrations';
  * 把尚未执行的迁移灌进当前连接所指的 schema，并记录已执行的文件名。
  * 幂等：重复执行不会重放已应用的迁移。
  */
-export async function applyMigrations(sql: Sql, dir = migrationsDir()): Promise<string[]> {
+export interface ApplyMigrationsOptions {
+  /**
+   * 只跑到这个迁移为止（含）。
+   *
+   * 生产与测试都不传，跑全部。留这个口子是为了让迁移本身可测：先跑到上一版、
+   * 灌一批旧形状的数据、再跑目标迁移，才测得到「存量数据被正确搬运」——
+   * 而测试库总是从空 schema 一次跑完，那些自校验永远是 0 行对 0 行。
+   */
+  upTo?: string;
+}
+
+export async function applyMigrations(
+  sql: Sql,
+  dir = migrationsDir(),
+  options: ApplyMigrationsOptions = {},
+): Promise<string[]> {
   await sql.unsafe(
     `create table if not exists "${APPLIED_TABLE}" (
        name text primary key,
@@ -24,6 +39,7 @@ export async function applyMigrations(sql: Sql, dir = migrationsDir()): Promise<
   const applied: string[] = [];
   for (const migration of await readMigrations(dir)) {
     if (already.has(migration.name)) continue;
+    if (options.upTo && migration.name > options.upTo) break;
     await sql.begin(async (tx) => {
       for (const statement of migration.statements) {
         await tx.unsafe(statement);

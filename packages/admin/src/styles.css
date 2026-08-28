@@ -21,6 +21,8 @@
   --danger-soft: oklch(0.94 0.045 25);
   --warning: oklch(0.62 0.14 70);
   --warning-soft: oklch(0.94 0.045 80);
+  /* --warning 是给描边与图形用的，压到小字上对比度不够，正文另取一档 */
+  --warning-fg: oklch(0.4 0.12 70);
 
   --radius-control: 6px;
   --radius-panel: 10px;
@@ -45,6 +47,7 @@
   --color-danger-soft: var(--danger-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-warning-fg: var(--warning-fg);
   --radius-control: var(--radius-control);
   --radius-panel: var(--radius-panel);
   --font-display: var(--font-display);

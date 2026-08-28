@@ -25,17 +25,14 @@ beforeEach(async () => {
   await createLoginableUser(ctx.db, 'super-pass', {
     role: 'superadmin',
     account: 'super',
-    shortName: null,
   });
   const alice = await createLoginableUser(ctx.db, 'alice-pass', {
     role: 'admin',
     account: 'alice',
-    shortName: null,
   });
   const bob = await createLoginableUser(ctx.db, 'bob-pass', {
     role: 'admin',
     account: 'bob',
-    shortName: null,
   });
   aliceId = alice.id;
   bobId = bob.id;
@@ -58,7 +55,11 @@ async function createUserAs(token: string, shortName: string) {
     },
   });
   expect(res.statusCode).toBe(201);
-  return res.json() as { id: string; owningAdminId: string | null };
+  return res.json() as {
+    id: string;
+    owningAdminId: string | null;
+    firstProfile: { id: string; shortName: string };
+  };
 }
 
 test('创建者自动成为归属管理员', async () => {
@@ -75,16 +76,14 @@ test('管理员的列表只返回归属于自己的用户', async () => {
     url: '/_api/users',
     ...withSession(aliceToken),
   });
-  expect(forAlice.json().users.map((u: { shortName: string }) => u.shortName)).toEqual([
-    'alice-one',
-  ]);
+  expect(forAlice.json().users.map((u: { label: string }) => u.label)).toEqual(['alice-one']);
 
   const forBob = await ctx.app.inject({
     method: 'GET',
     url: '/_api/users',
     ...withSession(bobToken),
   });
-  expect(forBob.json().users.map((u: { shortName: string }) => u.shortName)).toEqual(['bob-one']);
+  expect(forBob.json().users.map((u: { label: string }) => u.label)).toEqual(['bob-one']);
 });
 
 test('管理员访问非名下用户的任一接口都被拒', async () => {
@@ -95,7 +94,7 @@ test('管理员访问非名下用户的任一接口都被拒', async () => {
     { method: 'PATCH' as const, url: `/_api/users/${bobsUser.id}`, payload: { label: '抢过来' } },
     {
       method: 'PATCH' as const,
-      url: `/_api/users/${bobsUser.id}`,
+      url: `/_api/profiles/${bobsUser.firstProfile.id}/short-name`,
       payload: { shortName: 'stolen-name' },
     },
     { method: 'DELETE' as const, url: `/_api/users/${bobsUser.id}` },
@@ -117,7 +116,7 @@ test('管理员访问非名下用户的任一接口都被拒', async () => {
     url: `/_api/users/${bobsUser.id}`,
     ...withSession(bobToken),
   });
-  expect(check.json()).toMatchObject({ shortName: 'bob-one', label: 'bob-one' });
+  expect(check.json()).toMatchObject({ label: 'bob-one' });
 });
 
 test('超级管理员不受归属限制，看得到全部用户', async () => {
@@ -133,7 +132,7 @@ test('超级管理员不受归属限制，看得到全部用户', async () => {
   expect(
     res
       .json()
-      .users.map((u: { shortName: string }) => u.shortName)
+      .users.map((u: { label: string }) => u.label)
       .sort(),
   ).toEqual(['alice-one', 'bob-one']);
 });

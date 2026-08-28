@@ -7,6 +7,7 @@ import { login, withSession } from './helpers/http.js';
 
 let ctx: TestContext;
 let userId: string;
+let profileId: string;
 let token: string;
 /** 记下地域查询实际收到的 IP，用来证明「先查后截断」的顺序。 */
 let geoSawIps: (string | null)[] = [];
@@ -42,6 +43,7 @@ beforeEach(async () => {
     displayName: 'mimnz',
   });
   userId = user.id;
+  profileId = user.profileId!;
   token = (await login(ctx, 'mimnz', 'user-pass')).token;
 });
 
@@ -59,21 +61,21 @@ const visit = (url = '/mimnz', headers: Record<string, string> = {}) =>
 async function addButtons() {
   await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(token),
     payload: {
-      buttons: [
-        { title: '联系我', url: 'https://wa.me/15550109999', isLead: true },
-        { title: '看内容', url: 'https://example.com/blog', isLead: false },
+      entries: [
+        { kind: 'link', title: '联系我', url: 'https://wa.me/15550109999', isLead: true },
+        { kind: 'link', title: '看内容', url: 'https://example.com/blog', isLead: false },
       ],
     },
   });
   const saved = await ctx.app.inject({
     method: 'GET',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(token),
   });
-  const list = saved.json().buttons as { id: string; isLead: boolean }[];
+  const list = saved.json().entries as { id: string; isLead: boolean }[];
   return { lead: list.find((b) => b.isLead)!, plain: list.find((b) => !b.isLead)! };
 }
 
@@ -92,7 +94,7 @@ test('公开页每渲染一次写一条页面浏览', async () => {
 
   const rows = await ctx.db.select().from(pageViews);
   expect(rows).toHaveLength(3);
-  expect(rows.every((r) => r.userId === userId)).toBe(true);
+  expect(rows.every((r) => r.profileId === profileId)).toBe(true);
 });
 
 test('不做任何访客去重，同一个人刷十次就是十条', async () => {
@@ -179,23 +181,31 @@ test('每次点击写一条点击记录，并标明是否计入线索', async ()
   expect(rows.every((r) => r.targetKind === 'button')).toBe(true);
 });
 
-test('点击记录关联到具体按钮或社媒图标', async () => {
-  const { lead: button } = await addButtons();
+test('点击记录关联到具体条目，链接与社媒各记各的', async () => {
+  // 合表之后是整份列表一次提交，两种 kind 得一起送 —— 只送一半会把另一半删掉
   await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/social-icons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(token),
-    payload: { socialIcons: [{ platform: 'whatsapp', value: '15550109999' }] },
+    payload: {
+      entries: [
+        { kind: 'link', title: '联系我', url: 'https://wa.me/15550109999', isLead: true },
+        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '15550109999' },
+      ],
+    },
   });
   const profile = await ctx.app.inject({
     method: 'GET',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(token),
   });
-  const icon = profile.json().socialIcons[0] as { id: string };
+  const entries = profile.json().entries as { id: string; kind: string }[];
+  const button = entries.find((e) => e.kind === 'link')!;
+  const icon = entries.find((e) => e.kind === 'social')!;
 
-  await click({ kind: 'button', id: button.id });
-  await click({ kind: 'social', id: icon.id });
+  // 客户端传什么 kind 都不算数，服务端按库里的 buttons.kind 落库
+  await click({ id: button.id });
+  await click({ id: icon.id });
 
   const rows = await ctx.db.select().from(clicks);
   expect(rows.map((r) => `${r.targetKind}:${r.targetId}`).sort()).toEqual(
@@ -220,9 +230,11 @@ test('落库时把当时的 is_lead 定死，事后改标记不影响历史数�
   // 用户把这个按钮改成非联系类
   await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${userId}/buttons`,
+    url: `/_api/profiles/${profileId}/entries`,
     ...withSession(token),
-    payload: { buttons: [{ title: '联系我', url: 'https://wa.me/15550109999', isLead: false }] },
+    payload: {
+      entries: [{ kind: 'link', title: '联系我', url: 'https://wa.me/15550109999', isLead: false }],
+    },
   });
 
   const [row] = await ctx.db.select().from(clicks);
@@ -260,7 +272,7 @@ test('没有 GeoLite2 库时地域为空，其余埋点照常写入', async () =
     });
 
     const [row] = await noGeoCtx.db.select().from(pageViews);
-    expect(row?.userId).toBe(user.id);
+    expect(row?.profileId).toBe(user.profileId);
     expect(row?.country).toBeNull();
     expect(row?.city).toBeNull();
     // 少一个维度，但 IP 照样截断、UA 照样解析
@@ -269,4 +281,27 @@ test('没有 GeoLite2 库时地域为空，其余埋点照常写入', async () =
   } finally {
     await noGeoCtx.close();
   }
+});
+
+test('落库的 target_kind 以库里为准，客户端说了不算', async () => {
+  await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/profiles/${profileId}/entries`,
+    ...withSession(token),
+    payload: {
+      entries: [{ kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '15550109999' }],
+    },
+  });
+  const profile = await ctx.app.inject({
+    method: 'GET',
+    url: `/_api/profiles/${profileId}`,
+    ...withSession(token),
+  });
+  const social = (profile.json().entries as { id: string; kind: string }[])[0]!;
+
+  // 谎称这是个普通按钮
+  await click({ kind: 'button', id: social.id });
+
+  const [row] = await ctx.db.select().from(clicks);
+  expect(row?.targetKind).toBe('social');
 });

@@ -1,23 +1,10 @@
-import type { ReactNode } from 'react';
 import { Avatar } from './Avatar.js';
-import { ButtonList, SocialIcons } from './Buttons.js';
-import type { Layout, ProfileView } from './types.js';
-
-/**
- * 社媒图标在哪一层渲染，因布局而异（依据设计稿）：
- * Classic / Banner / Cutout 放在头部内，Hero / Shape 放在头部之下。
- */
-const SOCIALS_IN_HEADER: Record<Layout, boolean> = {
-  classic: true,
-  hero: false,
-  banner: true,
-  cutout: true,
-  shape: false,
-};
+import { ButtonList } from './Buttons.js';
+import { MutedIcon, SoundIcon } from './Icon.js';
+import type { ProfileView } from './types.js';
 
 interface HeaderProps {
   profile: ProfileView;
-  socials: ReactNode;
   priority: boolean;
 }
 
@@ -25,12 +12,29 @@ function Name({ profile }: { profile: ProfileView }) {
   return (
     <>
       <h1 className="pp-name">{profile.displayName}</h1>
-      {profile.bio ? <p className="pp-bio">{profile.bio}</p> : null}
+      <Bio profile={profile} />
     </>
   );
 }
 
-function Header({ profile, socials, priority }: HeaderProps) {
+/**
+ * 简介。
+ *
+ * 全文无条件输出，不是先吐个空节点再靠 JS 拼出来 —— 没有 JS 时它就是今天的
+ * 静态简介。打字机只是把已经在 DOM 里的字先藏起来再逐个放出，见 ADR-0012。
+ *
+ * banner 布局把它挪到 `.below` 里，位置不同但节点本身是同一个，所以抽出来。
+ */
+function Bio({ profile }: { profile: ProfileView }) {
+  if (!profile.bio) return null;
+  return (
+    <p className="pp-bio" {...(profile.bioTypewriter ? { 'data-tw': '' } : {})}>
+      {profile.bio}
+    </p>
+  );
+}
+
+function Header({ profile, priority }: HeaderProps) {
   const avatar = (
     <Avatar
       media={profile.avatar}
@@ -63,8 +67,7 @@ function Header({ profile, socials, priority }: HeaderProps) {
             </div>
           </div>
           <div className="below">
-            {profile.bio ? <p className="pp-bio">{profile.bio}</p> : null}
-            {socials}
+            <Bio profile={profile} />
           </div>
         </div>
       );
@@ -75,7 +78,6 @@ function Header({ profile, socials, priority }: HeaderProps) {
           {avatar}
           <div className="nm">
             <Name profile={profile} />
-            {socials}
           </div>
         </div>
       );
@@ -96,7 +98,6 @@ function Header({ profile, socials, priority }: HeaderProps) {
         <div className="hd hd-cls">
           {avatar}
           <Name profile={profile} />
-          {socials}
         </div>
       );
   }
@@ -113,9 +114,6 @@ export interface ProfilePageProps {
  * 因此不得依赖任何浏览器专有 API（见 ADR-0004）。
  */
 export function ProfilePage({ profile, priority = false }: ProfilePageProps) {
-  const inHeader = SOCIALS_IN_HEADER[profile.layout] ?? true;
-  const socials = profile.socialIcons.length ? <SocialIcons icons={profile.socialIcons} /> : null;
-
   // 背景图覆盖主题渐变；遮罩暗度由用户调，样式规则在 styles.css 的 [data-bg-image] 上。
   const backgroundProps = profile.background
     ? {
@@ -128,12 +126,32 @@ export function ProfilePage({ profile, priority = false }: ProfilePageProps) {
     : {};
 
   return (
-    <div className="pp" data-t={profile.theme} data-l={profile.layout} {...backgroundProps}>
+    <div
+      className="pp"
+      data-t={profile.theme}
+      data-l={profile.layout}
+      {...(profile.iconPlate ? { 'data-icon-plate': '' } : {})}
+      {...backgroundProps}
+    >
       <div className="pp-shell">
-        <Header profile={profile} priority={priority} socials={inHeader ? socials : null} />
-        {!inHeader && socials ? <div className="hd">{socials}</div> : null}
+        {/*
+          视频头像默认静音自动播放（浏览器不给未静音的视频自动播放），
+          这个按钮是访客开声音的唯一入口。两枚图标都渲染出来，显示哪一枚
+          由 CSS 按 aria-pressed 选；点击行为由内联脚本接上。
+        */}
+        {profile.video ? (
+          <button className="pp-mute" type="button" aria-pressed="false" aria-label="开启声音">
+            <span className="off">
+              <MutedIcon />
+            </span>
+            <span className="on">
+              <SoundIcon />
+            </span>
+          </button>
+        ) : null}
+        <Header profile={profile} priority={priority} />
         <div className="pp-body">
-          <ButtonList buttons={profile.buttons} />
+          <ButtonList buttons={profile.buttons} solidBackground={profile.solidBackground} />
         </div>
       </div>
     </div>

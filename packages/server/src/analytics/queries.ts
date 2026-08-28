@@ -16,7 +16,7 @@ import type { Sql } from 'postgres';
 
 export interface QueryScope {
   /** 要看的用户。空数组表示可见范围里一个用户都没有。 */
-  userIds: string[];
+  profileIds: string[];
   from: Date;
   to: Date;
   timeZone: string;
@@ -46,6 +46,7 @@ export interface DimensionRow {
 
 export interface ButtonRow {
   id: string;
+  kind: 'link' | 'social';
   title: string;
   isLead: boolean;
   clicks: number;
@@ -61,7 +62,7 @@ function ratio(numerator: number, denominator: number): number {
 }
 
 export async function queryTotals(sql: Sql, scope: QueryScope): Promise<Totals> {
-  if (scope.userIds.length === 0) return EMPTY_TOTALS;
+  if (scope.profileIds.length === 0) return EMPTY_TOTALS;
 
   const [row] = await sql<{ page_views: number; clicks: number; leads: number }[]>`
     select
@@ -71,13 +72,13 @@ export async function queryTotals(sql: Sql, scope: QueryScope): Promise<Totals> 
     from (
       select count(*)::int as page_views, 0 as clicks, 0 as leads
       from page_views
-      where user_id = any(${scope.userIds}::uuid[])
+      where profile_id = any(${scope.profileIds}::uuid[])
         and occurred_at >= ${scope.from.toISOString()}::timestamptz
         and occurred_at < ${scope.to.toISOString()}::timestamptz
       union all
       select 0, count(*)::int, count(*) filter (where is_lead)::int
       from clicks
-      where user_id = any(${scope.userIds}::uuid[])
+      where profile_id = any(${scope.profileIds}::uuid[])
         and occurred_at >= ${scope.from.toISOString()}::timestamptz
         and occurred_at < ${scope.to.toISOString()}::timestamptz
       union all
@@ -86,7 +87,7 @@ export async function queryTotals(sql: Sql, scope: QueryScope): Promise<Totals> 
         coalesce(sum(clicks), 0)::int,
         coalesce(sum(leads), 0)::int
       from daily_summaries
-      where user_id = any(${scope.userIds}::uuid[])
+      where profile_id = any(${scope.profileIds}::uuid[])
         and day >= (${scope.from.toISOString()}::timestamptz at time zone ${scope.timeZone})::date
         and day <= (${scope.to.toISOString()}::timestamptz at time zone ${scope.timeZone})::date
     ) parts
@@ -106,7 +107,7 @@ export async function queryTrend(
   scope: QueryScope,
   granularity: Granularity,
 ): Promise<TrendPoint[]> {
-  if (scope.userIds.length === 0) return [];
+  if (scope.profileIds.length === 0) return [];
 
   const rows = await sql<{ bucket: string; page_views: number; clicks: number; leads: number }[]>`
     with detail as (
@@ -114,7 +115,7 @@ export async function queryTrend(
         date_trunc(${granularity}, occurred_at at time zone ${scope.timeZone}) as bucket,
         1 as page_views, 0 as clicks, 0 as leads
       from page_views
-      where user_id = any(${scope.userIds}::uuid[])
+      where profile_id = any(${scope.profileIds}::uuid[])
         and occurred_at >= ${scope.from.toISOString()}::timestamptz
         and occurred_at < ${scope.to.toISOString()}::timestamptz
       union all
@@ -122,7 +123,7 @@ export async function queryTrend(
         date_trunc(${granularity}, occurred_at at time zone ${scope.timeZone}),
         0, 1, case when is_lead then 1 else 0 end
       from clicks
-      where user_id = any(${scope.userIds}::uuid[])
+      where profile_id = any(${scope.profileIds}::uuid[])
         and occurred_at >= ${scope.from.toISOString()}::timestamptz
         and occurred_at < ${scope.to.toISOString()}::timestamptz
     ),
@@ -132,7 +133,7 @@ export async function queryTrend(
         page_views, clicks, leads
       from daily_summaries
       where ${granularity} = 'day'
-        and user_id = any(${scope.userIds}::uuid[])
+        and profile_id = any(${scope.profileIds}::uuid[])
         and day >= (${scope.from.toISOString()}::timestamptz at time zone ${scope.timeZone})::date
         and day <= (${scope.to.toISOString()}::timestamptz at time zone ${scope.timeZone})::date
     )
@@ -160,7 +161,7 @@ export async function queryTrend(
  */
 export async function queryHourlyLeads(sql: Sql, scope: QueryScope): Promise<number[]> {
   const buckets = Array.from({ length: 24 }, () => 0);
-  if (scope.userIds.length === 0) return buckets;
+  if (scope.profileIds.length === 0) return buckets;
 
   const rows = await sql<{ hour: number; leads: number }[]>`
     select
@@ -168,7 +169,7 @@ export async function queryHourlyLeads(sql: Sql, scope: QueryScope): Promise<num
       count(*)::int as leads
     from clicks
     where is_lead
-      and user_id = any(${scope.userIds}::uuid[])
+      and profile_id = any(${scope.profileIds}::uuid[])
       and occurred_at >= ${scope.from.toISOString()}::timestamptz
       and occurred_at < ${scope.to.toISOString()}::timestamptz
     group by hour
@@ -186,27 +187,27 @@ export async function queryDimension(
   scope: QueryScope,
   dimension: Dimension,
 ): Promise<DimensionRow[]> {
-  if (scope.userIds.length === 0) return [];
+  if (scope.profileIds.length === 0) return [];
 
   const column = sql(dimension);
   const rows = await sql<{ key: string; page_views: number; clicks: number; leads: number }[]>`
     with detail as (
       select coalesce(${column}::text, '') as key, 1 as page_views, 0 as clicks, 0 as leads
       from page_views
-      where user_id = any(${scope.userIds}::uuid[])
+      where profile_id = any(${scope.profileIds}::uuid[])
         and occurred_at >= ${scope.from.toISOString()}::timestamptz
         and occurred_at < ${scope.to.toISOString()}::timestamptz
       union all
       select coalesce(${column}::text, ''), 0, 1, case when is_lead then 1 else 0 end
       from clicks
-      where user_id = any(${scope.userIds}::uuid[])
+      where profile_id = any(${scope.profileIds}::uuid[])
         and occurred_at >= ${scope.from.toISOString()}::timestamptz
         and occurred_at < ${scope.to.toISOString()}::timestamptz
     ),
     summarised as (
       select coalesce(${column}::text, '') as key, page_views, clicks, leads
       from daily_summaries
-      where user_id = any(${scope.userIds}::uuid[])
+      where profile_id = any(${scope.profileIds}::uuid[])
         and day >= (${scope.from.toISOString()}::timestamptz at time zone ${scope.timeZone})::date
         and day <= (${scope.to.toISOString()}::timestamptz at time zone ${scope.timeZone})::date
     )
@@ -240,27 +241,35 @@ export async function queryButtons(
   scope: QueryScope,
   pageViews: number,
 ): Promise<ButtonRow[]> {
-  if (scope.userIds.length === 0) return [];
+  if (scope.profileIds.length === 0) return [];
 
-  const rows = await sql<{ id: string; title: string; is_lead: boolean; clicks: number }[]>`
+  /*
+   * 不按 target_kind 过滤：合表之后只有 buttons 一张表，target_id 能 join 上
+   * 就说明点的是这一行。历史上 target_kind='social' 的点击因此自动归位到
+   * 合并后的条目上，社媒条目也第一次有了逐条明细。
+   */
+  const rows = await sql<
+    { id: string; kind: string; title: string; is_lead: boolean; clicks: number }[]
+  >`
     select
       b.id,
+      b.kind,
       b.title,
       b.is_lead,
       count(c.id)::int as clicks
     from buttons b
     left join clicks c
       on c.target_id = b.id
-      and c.target_kind = 'button'
       and c.occurred_at >= ${scope.from.toISOString()}::timestamptz
       and c.occurred_at < ${scope.to.toISOString()}::timestamptz
-    where b.user_id = any(${scope.userIds}::uuid[])
-    group by b.id, b.title, b.is_lead, b.position
+    where b.profile_id = any(${scope.profileIds}::uuid[])
+    group by b.id, b.kind, b.title, b.is_lead, b.position
     order by b.position
   `;
 
   return rows.map((r) => ({
     id: r.id,
+    kind: r.kind === 'social' ? 'social' : 'link',
     title: r.title,
     isLead: r.is_lead,
     clicks: r.clicks,

@@ -7,12 +7,23 @@ export const VIDEO_MAX_BYTES = 10 * 1024 * 1024;
 export const VIDEO_MAX_DURATION_MS = 15_000;
 export const VIDEO_MIME_TYPES = ['video/mp4'] as const;
 
+/**
+ * 单张图落盘时的最长边上限，按用途给。手机直出的八兆原图不该原样进首屏。
+ *
+ * 放在 shared 而不是 server：服务端拿它压图，后台拿它在上传前如实告知用户
+ * 「最终会被压到多大」—— 同一个数字，两边不该各写一份。
+ */
+export const IMAGE_MAX_EDGE = { avatar: 640, background: 1440 } as const;
+
+/** 裁切框的宽高比，按用途给。背景图按最窄的手机竖屏取。 */
+export const CROP_ASPECT = { avatar: 1, background: 375 / 812 } as const;
+
 export type VideoRejection =
   | { reason: 'format'; message: string }
   | { reason: 'size'; message: string }
   | { reason: 'duration'; message: string };
 
-function mb(bytes: number): string {
+export function mb(bytes: number): string {
   return `${Math.round(bytes / 1024 / 1024)} MB`;
 }
 

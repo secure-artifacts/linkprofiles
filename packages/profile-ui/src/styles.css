@@ -52,6 +52,44 @@
     display: flex;
     flex-direction: column;
     flex: 1;
+    /* 静音按钮的定位锚点；桌面端那层背景模糊也靠它把卡片压在上面 */
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 视频头像的静音开关。浮在卡片右上角，五种布局位置一致。 */
+  .pp-mute {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    color: #fff;
+    /* 自带深色底：视频内容什么颜色都可能，跟着主题走会有看不见的组合 */
+    background: rgb(0 0 0 / 0.42);
+    backdrop-filter: blur(6px);
+  }
+  .pp-mute svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+  /* 两枚图标都在 DOM 里，按 aria-pressed 选一枚显示——公开页没有 JS 能换图标 */
+  .pp-mute .on {
+    display: none;
+  }
+  .pp-mute[aria-pressed='true'] .off {
+    display: none;
+  }
+  .pp-mute[aria-pressed='true'] .on {
+    display: block;
   }
 
   .hd {
@@ -82,29 +120,7 @@
     max-width: 29ch;
   }
 
-  .pp-soc {
-    display: flex;
-    gap: 7px;
-    margin: 16px 0 22px;
-    flex-wrap: wrap;
-  }
-  .pp-soc a {
-    width: 36px;
-    height: 36px;
-    border-radius: 11px;
-    display: grid;
-    place-items: center;
-    background: #fff;
-    text-decoration: none;
-    box-shadow: 0 1px 3px rgb(16 20 28 / 0.18);
-  }
-  .pp-soc svg {
-    width: 17px;
-    height: 17px;
-    display: block;
-  }
-
-  /* 一级：联系类渠道，实心卡片。分级只由 is_lead 决定，与位置无关。 */
+  /* 实心卡片。由 solid_background 决定，与「算不算线索」无关。 */
   .pp-lead {
     display: flex;
     align-items: center;
@@ -125,8 +141,6 @@
     flex: none;
     display: grid;
     place-items: center;
-    background: #fff;
-    box-shadow: inset 0 0 0 1px rgb(16 20 28 / 0.1);
   }
   .pp-lead .ic svg {
     width: 18px;
@@ -161,7 +175,7 @@
     display: block;
   }
 
-  /* 二级：内容类链接，描边行。 */
+  /* 描边行。与实心卡片同构，只差没有底色 —— 副标题两者都能有。 */
   .pp-link {
     display: flex;
     align-items: center;
@@ -173,6 +187,24 @@
     padding: 12px 15px;
     font-size: 14px;
   }
+  .pp-link .tx {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .pp-link .tx b {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 14.5px;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .pp-link .tx span {
+    font-size: 11.5px;
+    line-height: 1.2;
+    opacity: 0.62;
+  }
   .pp-link .ic {
     width: 24px;
     height: 24px;
@@ -180,6 +212,17 @@
     flex: none;
     display: grid;
     place-items: center;
+  }
+
+  /*
+   * 图标白底。只管底色与描边，盒子尺寸留在上面各自的 .ic 规则里 ——
+   * 关掉白底不该让图标占位跟着变，否则整行布局会跳。
+   *
+   * 品牌图形的颜色是构建期烧死的注册品牌色，不跟主题走：关掉白底后
+   * 纯黑的 X / Threads / TikTok 压在深色主题上会很难辨认，后台开关旁
+   * 有对应的提示文案。
+   */
+  .pp[data-icon-plate] .ic {
     background: #fff;
     box-shadow: inset 0 0 0 1px rgb(16 20 28 / 0.1);
   }
@@ -187,12 +230,6 @@
     width: 15px;
     height: 15px;
     display: block;
-  }
-  .pp-link .lb {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .pp-link .go {
     margin-left: auto;
@@ -222,9 +259,6 @@
   }
   .hd-cls .pp-name {
     margin-top: 16px;
-  }
-  .hd-cls .pp-soc {
-    justify-content: center;
   }
 
   .hd-hero {
@@ -364,6 +398,8 @@
    * 用比背景略亮一档的同色系，让形状仍然读得出来。
    */
   .av-empty {
+    display: grid;
+    place-items: center;
     background: var(--bg);
     box-shadow:
       inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent),
@@ -373,6 +409,13 @@
    * 铺满整块区域的那几个空位不描边：Hero 的整屏头图、Banner 的横幅、
    * Cutout 的人像位，画一圈硬边框只会像个错位的方块。
    */
+  .av-empty svg {
+    width: 44%;
+    height: 44%;
+    max-width: 112px;
+    max-height: 112px;
+  }
+
   .hd-hero .av-empty,
   .hd-ban .bn.av-empty {
     box-shadow: none;
@@ -384,6 +427,72 @@
     background:
       linear-gradient(to top, transparent 0%, color-mix(in srgb, var(--text) 7%, transparent) 100%),
       var(--bg);
+  }
+
+  /*
+   * 桌面端：内容收成一张居中的卡片，背景退为它外围的陪衬。
+   *
+   * 横向居中与宽度本来就有（.pp-shell 的 max-width + margin auto），这里补的
+   * 是另外三样：不让 flex:1 把它拉满整屏、给它自己的底色与圆角让它读起来像
+   * 一个物件、上下留白。
+   *
+   * 卡片底色用 var(--bg)（主题渐变本身）而不是白色：nocturne 这类深底浅字的
+   * 主题，文字对比度是照着 --bg 调的，铺一层白会让浅色文字直接看不见。
+   *
+   * overflow: hidden 顺手把 hero / banner 那种贴边头图的上圆角裁好，
+   * 不用逐个布局去改。
+   */
+  @media (min-width: 768px) {
+    .pp {
+      padding: 56px 24px;
+    }
+    .pp-shell {
+      flex: none;
+      /*
+       * 垂直居中用 auto margin 而不是父级的 justify-content: center。
+       * 内容高过视口时 auto margin 会退成 0、卡片从顶部开始；换成
+       * justify-content 则会把超出的部分从顶上裁掉，滚都滚不回去。
+       */
+      margin: auto;
+      background: var(--bg);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow:
+        inset 0 1px 0 0 rgb(255 255 255 / 0.08),
+        0 40px 100px -40px rgb(0 0 0 / 0.5);
+    }
+
+    /*
+     * 背景图在桌面端退成一层模糊打底。卡片有了自己的不透明底色之后那张图
+     * 只在外围可见，糊掉比铺一张被拉伸的清晰大图耐看得多。
+     *
+     * 必须挪到 ::before 上才能只糊背景 —— filter 加在 .pp 上会把文字一起糊。
+     * position 取 fixed 而不是 absolute：.pp 的 overflow-x: hidden 会把
+     * overflow-y 一并提升成 auto，绝对定位的放大层会被这个滚动容器裁掉；
+     * fixed 不受非 transform 祖先的 overflow 影响，也正好复刻 .pp 原本
+     * background-attachment: fixed 的锚定行为。
+     */
+    .pp[data-bg-image] {
+      background-image: none;
+    }
+    .pp[data-bg-image]::before {
+      content: '';
+      position: fixed;
+      /*
+       * blur 会在边缘采样到画面外的空白，糊出一圈渐隐的漏边，所以要往外扩一圈
+       * 盖住它。用负 inset 而不是 transform: scale —— 要盖住的是模糊半径，那是
+       * 个恒定像素值；按比例缩放的余量会随视口变，矮窗口下（比如 800×420）
+       * 反而不够，漏边又回来了。
+       */
+      inset: -48px;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgb(0 0 0 / var(--overlay, 0.4)) 0%, rgb(0 0 0 / var(--overlay, 0.4)) 100%),
+        var(--bg-image);
+      background-size: cover;
+      background-position: center;
+      filter: blur(28px);
+    }
   }
 
   @media (prefers-reduced-motion: no-preference) {

@@ -25,27 +25,27 @@ export interface BackgroundImage {
   overlay: number;
 }
 
-/** 页面主体里的一个可点击条目。 */
+/** 自己填地址的链接，还是从内置清单启用的社媒入口。 */
+export type ButtonKind = 'link' | 'social';
+
+/**
+ * 页面主体里的一个可点击条目。
+ *
+ * 社媒入口不再是头部那排小图标，与普通链接渲染成同一种卡片，
+ * 只差地址从哪来。见 ADR-0011。
+ */
 export interface ButtonView {
   id: string;
+  /** 只影响埋点口径与后台表单，渲染分支不看它。 */
+  kind: ButtonKind;
   title: string;
-  /** 留空则不渲染副标题那一行 */
+  /** 留空则不渲染副标题那一行。实心卡片与描边行都可以有。 */
   subtitle: string;
   url: string;
-  /** 联系类渠道。决定两级视觉，也决定这次点击算不算线索。 */
+  /** 联系类渠道。只决定这次点击算不算线索，**不决定长相**。 */
   isLead: boolean;
   /** 有品牌图形时在左侧渲染一枚，取值为内置清单里的平台 id */
   platform?: string | null;
-}
-
-/** 头部的图标式入口。 */
-export interface SocialIconView {
-  id: string;
-  platform: string;
-  /** 系统按平台拼好的目标地址 */
-  url: string;
-  label: string;
-  isLead: boolean;
 }
 
 /**
@@ -57,13 +57,18 @@ export interface SocialIconView {
 export interface ProfileView {
   displayName: string;
   bio: string;
+  /** 简介是否逐字打出。关掉或访客设了减少动效时，全文静态显示。 */
+  bioTypewriter: boolean;
   layout: Layout;
   theme: Theme;
+  /** 条目一律实心卡片，还是一律描边行。整页统一，不逐条配，见 ADR-0013。 */
+  solidBackground: boolean;
+  /** 条目左侧品牌图形背后垫不垫那枚白色衬底。与 solidBackground 相互独立。 */
+  iconPlate: boolean;
   /** 头像位。Hero / Banner / Cutout 用它当头图。缺失时以主题渐变填充。 */
   avatar: MediaSource | null;
   /** 头像位放视频时用它，与 avatar 互斥。 */
   video: VideoSource | null;
   background: BackgroundImage | null;
-  socialIcons: readonly SocialIconView[];
   buttons: readonly ButtonView[];
 }

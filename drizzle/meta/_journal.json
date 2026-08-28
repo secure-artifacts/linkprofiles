@@ -57,6 +57,41 @@
       "when": 1787849429143,
       "tag": "0007_overconfident_marten_broadcloak",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787882193654,
+      "tag": "0008_split_profiles_from_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787887059896,
+      "tag": "0009_short_name_change_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787891094572,
+      "tag": "0010_merge_social_icons_into_buttons",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787892748820,
+      "tag": "0011_bio_typewriter_flag",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787931489430,
+      "tag": "0012_page_level_entry_style",
+      "breakpoints": true
     }
   ]
 }

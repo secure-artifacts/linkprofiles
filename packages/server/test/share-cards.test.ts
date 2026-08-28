@@ -10,6 +10,7 @@ import { makePng, multipart } from './helpers/media-fixtures.js';
 
 let ctx: TestContext;
 let userId: string;
+let profileId: string;
 let token: string;
 let uploads: string;
 
@@ -44,6 +45,7 @@ beforeEach(async () => {
     bio: '我是一个基督徒，来自美国',
   });
   userId = user.id;
+  profileId = user.profileId!;
   token = (await login(ctx, 'mimnz', 'user-pass')).token;
 });
 
@@ -92,7 +94,7 @@ test('预览图取用户的头像', async () => {
   );
   await ctx.app.inject({
     method: 'POST',
-    url: `/_api/users/${userId}/media`,
+    url: `/_api/profiles/${profileId}/media`,
     ...withSession(token),
     headers,
     payload,
@@ -105,7 +107,7 @@ test('预览图取用户的头像', async () => {
 test('没有素材时预览图回落到与主题一致的占位图', async () => {
   await ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(token),
     payload: { theme: 'nocturne' },
   });
@@ -158,7 +160,7 @@ test('爬虫抓取不产生埋点记录，与 12 的规则一致', async () => {
 test('简介为空时描述有个说得过去的兜底', async () => {
   await ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(token),
     payload: { bio: '' },
   });
@@ -170,7 +172,7 @@ test('简介为空时描述有个说得过去的兜底', async () => {
 test('显示名里的引号与尖括号被转义，不会撑破 meta 标签', async () => {
   await ctx.app.inject({
     method: 'PATCH',
-    url: `/_api/users/${userId}/profile`,
+    url: `/_api/profiles/${profileId}`,
     ...withSession(token),
     payload: { displayName: '"><script>alert(1)</script>' },
   });

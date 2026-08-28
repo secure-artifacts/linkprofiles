@@ -17,6 +17,18 @@ export async function loadMediaByIds(
 }
 
 /**
+ * 缩略图地址。列表、卡片这类只需要一枚小图的地方用它。
+ *
+ * `toMediaSource` 刻意把缩略图挡在外面（它服务的是首屏大图），所以这里单开一个。
+ * 缩略图在 `media/storage.ts` 落盘时就已经生成了。
+ */
+export function toThumbnailUrl(row: MediaRow | undefined): string | null {
+  if (!row || row.kind !== 'image') return null;
+  const thumb = row.variants.find((v) => v.thumbnail);
+  return thumb ? publicUrl(thumb.path) : null;
+}
+
+/**
  * 图片 → `<picture>` 的候选源。AVIF 在前、WebP 兜底，缩略图不参与首屏。
  * `<img>` 的 src 用 WebP：不认识 AVIF 的浏览器落在这一档。
  */

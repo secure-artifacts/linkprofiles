@@ -18,15 +18,17 @@ COPY . .
 RUN pnpm --filter @link-profile/server build \
  && pnpm --filter @link-profile/admin build
 
+# pnpm 的 node_modules 是软链布局，软链里的相对路径按它原本的深度算，
+# 直接 COPY 到别的深度会整片断链。deploy 把生产依赖展平成一份独立目录。
+RUN pnpm --filter @link-profile/server deploy --prod --legacy /deploy
+
 # ---------- 运行 ----------
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
-# server 产物由 tsup 打包，workspace 依赖已内联；只需带上原生模块。
-COPY --from=build /app/packages/server/package.json ./package.json
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/packages/server/node_modules ./node_modules
+COPY --from=build /deploy/node_modules ./node_modules
+COPY --from=build /deploy/package.json ./package.json
 COPY --from=build /app/packages/server/dist ./dist
 COPY --from=build /app/packages/admin/dist ./public/_admin
 COPY --from=build /app/drizzle ./drizzle
@@ -35,6 +37,9 @@ COPY --from=build /app/drizzle ./drizzle
 ENV MIGRATIONS_DIR=/app/drizzle
 ENV ADMIN_DIST=/app/public/_admin
 ENV UPLOADS_DIR=/app/uploads
+
+# 空卷首次挂载会继承镜像里该路径的属主，不预先 chown 则 node 用户写不进去
+RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
 
 # 只监听 HTTP，TLS 与反向代理交由运维
 EXPOSE 3000
