@@ -1,21 +1,16 @@
 import { THEMES } from '@link-profile/profile-ui';
 import { layoutEnum, themeEnum } from '@link-profile/shared/schema';
-import {
-  Alert,
-  Button,
-  Card,
-  Flex,
-  Input,
-  Segmented,
-  Space,
-  Spin,
-  Typography,
-  message,
-} from 'antd';
+import { Check } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { request } from '../api/client.js';
 import type { AppSettings, EditableProfile, SocialPlatformInfo } from '../api/types.js';
 import { PreviewFrame } from '../preview/PreviewFrame.js';
+import { Alert } from '../ui/Alert.js';
+import { Button } from '../ui/Button.js';
+import { Input, Textarea } from '../ui/Input.js';
+import { Spinner } from '../ui/Spinner.js';
+import { useToast } from '../ui/Toast.js';
 import { ButtonsEditor } from './editor/ButtonsEditor.js';
 import { MediaEditor } from './editor/MediaEditor.js';
 import { SocialIconsEditor } from './editor/SocialIconsEditor.js';
@@ -42,6 +37,7 @@ interface EditorPageProps {
  * 公开页同一批组件，见 `PreviewFrame` 与 ADR-0004。
  */
 export function EditorPage({ userId, editingSelf }: EditorPageProps) {
+  const toast = useToast();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [platforms, setPlatforms] = useState<SocialPlatformInfo[]>([]);
   const [caveat, setCaveat] = useState('');
@@ -73,8 +69,8 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
   // 草稿一变就重新算一份预览用的视图。没有 debounce：改一个字那边就跟着动。
   const preview = useMemo(() => (draft ? draftToProfileView(draft) : null), [draft]);
 
-  if (error) return <Alert type="error" showIcon message="打不开这个页面" description={error} />;
-  if (!draft || !preview) return <Spin />;
+  if (error) return <Alert tone="danger" message="打不开这个页面" description={error} />;
+  if (!draft || !preview) return <Spinner fullscreen />;
 
   /**
    * 草稿更新一律走函数式：同一个事件循环里发生两次更新时，
@@ -115,74 +111,96 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
       });
 
       await load();
-      message.success('已保存，刷新公开页即可看到');
+      toast.success('已保存，刷新公开页即可看到');
     } catch (err) {
-      message.error((err as Error).message);
+      toast.error((err as Error).message);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Flex gap="large" align="flex-start" wrap>
-      <Space direction="vertical" size="middle" style={{ flex: '1 1 480px', minWidth: 380 }}>
-        <Flex justify="space-between" align="center" gap="small" wrap>
-          <Typography.Title level={4} style={{ margin: 0 }}>
+    <div className="flex flex-wrap items-start gap-6">
+      <div className="flex min-w-[380px] flex-1 flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="font-display text-[22px] font-semibold text-fg">
             {editingSelf ? '我的个人页' : '代改个人页'}
-          </Typography.Title>
-          <Space>
+          </h1>
+          <div className="flex gap-2">
             {draft.fields.shortName ? (
-              <Button href={`/${draft.fields.shortName}`} target="_blank">
+              <a
+                href={`/${draft.fields.shortName}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 items-center justify-center rounded-[var(--radius-control)]
+                  border border-border bg-surface px-3 text-[13px] font-medium text-fg
+                  hover:bg-surface-hover focus-visible:outline focus-visible:outline-2
+                  focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
                 打开公开页
-              </Button>
+              </a>
             ) : null}
-            <Button type="primary" loading={saving} onClick={() => void save()}>
+            <Button variant="primary" size="sm" loading={saving} onClick={() => void save()}>
               保存
             </Button>
-          </Space>
-        </Flex>
+          </div>
+        </div>
 
-        <Card size="small" title="基本信息">
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <Panel title="基本信息">
+          <div className="flex flex-col gap-3">
             <Input
               value={draft.fields.displayName}
               onChange={(e) => patchFields({ displayName: e.target.value })}
               placeholder="显示名，访客在头像下方看到的名字"
               maxLength={60}
             />
-            <Input.TextArea
+            <Textarea
               value={draft.fields.bio}
               onChange={(e) => patchFields({ bio: e.target.value })}
               placeholder="简介"
               maxLength={300}
-              autoSize={{ minRows: 2, maxRows: 4 }}
+              rows={3}
             />
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            <p className="text-[12px] text-muted">
               页面地址：/{draft.fields.shortName ?? '—'}
               {editingSelf ? '（地址由管理员维护，改动会使已发出的链接失效）' : ''}
-            </Typography.Text>
-          </Space>
-        </Card>
+            </p>
+          </div>
+        </Panel>
 
-        <Card size="small" title="布局">
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
-            <Segmented
-              block
-              value={draft.fields.layout}
-              options={layoutEnum.enumValues.map((value) => ({
-                value,
-                label: LAYOUT_LABELS[value] ?? value,
-              }))}
-              onChange={(value) => patchFields({ layout: value as typeof draft.fields.layout })}
-            />
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              布局只决定头像与头图区域的形状和占比，不决定配色。没传头图时该区域用主题渐变填充。
-            </Typography.Text>
-          </Space>
-        </Card>
+        <Panel
+          title="布局"
+          hint="布局只决定头像与头图区域的形状和占比，不决定配色。没传头图时该区域用主题渐变填充。"
+        >
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {layoutEnum.enumValues.map((value) => {
+              const active = draft.fields.layout === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => patchFields({ layout: value })}
+                  aria-pressed={active}
+                  className={`relative rounded-[var(--radius-control)] border p-2 text-left transition-colors
+                    ${active ? 'border-accent ring-1 ring-accent' : 'border-border hover:bg-surface-hover'}`}
+                >
+                  {active ? (
+                    <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-accent text-accent-fg">
+                      <Check className="size-2.5" strokeWidth={3} />
+                    </span>
+                  ) : null}
+                  <LayoutGlyph layout={value} />
+                  <span className="mt-1.5 block text-[12px] font-medium text-fg">
+                    {LAYOUT_LABELS[value] ?? value}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </Panel>
 
-        <Card size="small" title="主题">
-          <Flex gap="small" wrap>
+        <Panel title="主题" hint="一组主题包含背景渐变、文字与按钮颜色，圆角是主题的一部分。">
+          <div className="flex flex-wrap gap-2.5">
             {themeEnum.enumValues.map((value) => {
               const tokens = THEMES[value];
               const active = draft.fields.theme === value;
@@ -192,61 +210,115 @@ export function EditorPage({ userId, editingSelf }: EditorPageProps) {
                   type="button"
                   onClick={() => patchFields({ theme: value })}
                   aria-pressed={active}
-                  style={{
-                    cursor: 'pointer',
-                    padding: 0,
-                    borderRadius: 12,
-                    border: active ? '2px solid #1677ff' : '1px solid rgba(0,0,0,.15)',
-                    overflow: 'hidden',
-                    width: 92,
-                    background: 'transparent',
-                  }}
+                  className={`w-24 overflow-hidden rounded-[var(--radius-control)] border transition-colors
+                    ${active ? 'border-accent ring-1 ring-accent' : 'border-border hover:bg-surface-hover'}`}
                 >
                   <span
+                    className="block h-11"
                     style={{
-                      display: 'block',
-                      height: 44,
                       background: `linear-gradient(168deg, ${tokens.gradient[0]} 0%, ${tokens.gradient[1]} 52%, ${tokens.gradient[2]} 100%)`,
                     }}
                   />
-                  <span style={{ display: 'block', fontSize: 12, padding: '4px 0' }}>
-                    {tokens.label}
-                  </span>
+                  <span className="block px-1 py-1 text-[12px] text-fg">{tokens.label}</span>
                 </button>
               );
             })}
-          </Flex>
-        </Card>
+          </div>
+        </Panel>
 
-        <Card size="small" title="素材">
+        <Panel title="素材">
           <MediaEditor draft={draft} onChange={patch} onChangeFields={patchFields} />
-        </Card>
+        </Panel>
 
-        <Card size="small" title="按钮">
+        <Panel title="按钮">
           <ButtonsEditor
             buttons={draft.buttons}
             onChange={(buttons) => patch({ buttons })}
             passthroughCaveat={caveat}
           />
-        </Card>
+        </Panel>
 
-        <Card size="small" title="社媒图标">
+        <Panel title="社媒图标">
           <SocialIconsEditor
             platforms={platforms}
             icons={draft.socialIcons}
             onChange={(socialIcons) => patch({ socialIcons })}
             passthroughCaveat={caveat}
           />
-        </Card>
-      </Space>
+        </Panel>
+      </div>
 
-      <Space direction="vertical" align="center" style={{ position: 'sticky', top: 24 }}>
+      <div className="sticky top-6 flex flex-col items-center gap-2">
         <PreviewFrame profile={preview} />
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          375px 实时预览 · 未保存的改动也看得到
-        </Typography.Text>
-      </Space>
-    </Flex>
+        <p className="text-[12px] text-muted">375px 实时预览 · 未保存的改动也看得到</p>
+      </div>
+    </div>
+  );
+}
+
+function Panel({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <section className="rounded-[var(--radius-panel)] border border-border bg-surface p-4">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-semibold text-fg">{title}</h2>
+        {hint ? <p className="text-[12px] text-muted">{hint}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** 五种布局的形状意向图：不追求像素级还原，只求一眼看出五者不同。 */
+function LayoutGlyph({ layout }: { layout: string }) {
+  const base = 'flex h-14 w-full flex-col items-center justify-center gap-1 rounded-[4px] bg-bg';
+  switch (layout) {
+    case 'hero':
+      return (
+        <div className={`${base} relative overflow-hidden !justify-end !gap-0.5 pb-1.5`}>
+          <span className="absolute inset-0 top-0 h-9 bg-accent-soft" />
+          <Bars />
+        </div>
+      );
+    case 'banner':
+      return (
+        <div className={`${base} !justify-start gap-1 pt-1.5`}>
+          <span className="h-4 w-[85%] rounded-[2px] bg-accent-soft" />
+          <Bars />
+        </div>
+      );
+    case 'cutout':
+      return (
+        <div className={`${base} relative items-start !justify-start px-1.5 pt-1.5`}>
+          <span className="absolute right-1.5 top-1.5 h-8 w-6 rounded-t-full bg-accent-soft" />
+          <Bars align="left" />
+        </div>
+      );
+    case 'shape':
+      return (
+        <div className={`${base} !justify-start gap-1 pt-1.5`}>
+          <span className="h-6 w-8 rounded-tl-lg rounded-br-lg rounded-tr-sm rounded-bl-sm bg-accent-soft" />
+          <Bars />
+        </div>
+      );
+    case 'classic':
+    default:
+      return (
+        <div className={base}>
+          <span className="size-4 rounded-full bg-accent-soft" />
+          <Bars />
+        </div>
+      );
+  }
+}
+
+function Bars({ align = 'center' }: { align?: 'center' | 'left' }) {
+  return (
+    <div
+      className={`flex w-[70%] flex-col gap-[3px] ${align === 'left' ? 'items-start' : 'items-center'}`}
+    >
+      <span className="h-[3px] w-full rounded-full bg-border" />
+      <span className="h-[3px] w-2/3 rounded-full bg-border" />
+    </div>
   );
 }
 

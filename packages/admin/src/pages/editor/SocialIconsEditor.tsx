@@ -1,5 +1,9 @@
-import { Checkbox, Flex, Input, List, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import type { SocialIconDraft, SocialPlatformInfo } from '../../api/types.js';
+import { Checkbox } from '../../ui/Checkbox.js';
+import { Input } from '../../ui/Input.js';
+import { Switch } from '../../ui/Switch.js';
+import { Tag } from '../../ui/Tag.js';
+import { Tooltip } from '../../ui/Tooltip.js';
 import { localId } from './draft.js';
 
 interface SocialIconsEditorProps {
@@ -8,6 +12,9 @@ interface SocialIconsEditorProps {
   onChange: (icons: SocialIconDraft[]) => void;
   passthroughCaveat: string;
 }
+
+/** 通讯类平台排在前一组，其余归到「社交与内容」，纯粹为了浏览方便，不影响启用逻辑。 */
+const MESSAGING_PLATFORM_IDS = new Set(['whatsapp', 'messenger', 'telegram', 'signal', 'email']);
 
 /**
  * 社媒图标：从内置清单里逐个启用。
@@ -43,60 +50,99 @@ export function SocialIconsEditor({
   const update = (platformId: string, patch: Partial<SocialIconDraft>) =>
     onChange(icons.map((icon) => (icon.platform === platformId ? { ...icon, ...patch } : icon)));
 
-  return (
-    <List
-      size="small"
-      dataSource={platforms}
-      renderItem={(platform) => {
-        const icon = byPlatform.get(platform.id);
+  const messaging = platforms.filter((p) => MESSAGING_PLATFORM_IDS.has(p.id));
+  const social = platforms.filter((p) => !MESSAGING_PLATFORM_IDS.has(p.id));
 
-        return (
-          <List.Item>
-            <Space direction="vertical" size={6} style={{ width: '100%' }}>
-              <Flex align="center" gap="small">
-                <Switch
-                  checked={Boolean(icon)}
-                  onChange={(checked) => toggle(platform, checked)}
-                  aria-label={`启用 ${platform.label}`}
-                />
-                <Tag color={platform.brandHex} style={{ marginInlineEnd: 0 }}>
-                  {platform.label}
-                </Tag>
-              </Flex>
+  return (
+    <div className="flex flex-col gap-5">
+      <PlatformGroup
+        title="通讯与联系"
+        platforms={messaging}
+        byPlatform={byPlatform}
+        onToggle={toggle}
+        onUpdate={update}
+        passthroughCaveat={passthroughCaveat}
+      />
+      <PlatformGroup
+        title="社交与内容"
+        platforms={social}
+        byPlatform={byPlatform}
+        onToggle={toggle}
+        onUpdate={update}
+        passthroughCaveat={passthroughCaveat}
+      />
+    </div>
+  );
+}
+
+function PlatformGroup({
+  title,
+  platforms,
+  byPlatform,
+  onToggle,
+  onUpdate,
+  passthroughCaveat,
+}: {
+  title: string;
+  platforms: SocialPlatformInfo[];
+  byPlatform: Map<string, SocialIconDraft>;
+  onToggle: (platform: SocialPlatformInfo, enabled: boolean) => void;
+  onUpdate: (platformId: string, patch: Partial<SocialIconDraft>) => void;
+  passthroughCaveat: string;
+}) {
+  if (platforms.length === 0) return null;
+  return (
+    <div>
+      <h3 className="mb-2 text-[12px] font-medium text-muted">{title}</h3>
+      <div className="flex flex-col divide-y divide-border rounded-[var(--radius-control)] border border-border">
+        {platforms.map((platform) => {
+          const icon = byPlatform.get(platform.id);
+          return (
+            <div key={platform.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+              <Switch
+                checked={Boolean(icon)}
+                onChange={(checked) => onToggle(platform, checked)}
+                aria-label={`启用 ${platform.label}`}
+              />
+              <Tag hex={platform.brandHex}>{platform.label}</Tag>
 
               {icon ? (
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                  <Input
-                    value={icon.value}
-                    onChange={(e) => update(platform.id, { value: e.target.value })}
-                    placeholder={platform.inputHint}
-                  />
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    只填{inputNoun(platform.inputKind)}就行，链接由系统拼好
-                  </Typography.Text>
-                  <Flex gap="middle" wrap>
-                    <Checkbox
-                      checked={icon.isLead}
-                      onChange={(e) => update(platform.id, { isLead: e.target.checked })}
-                    >
-                      计入线索
-                    </Checkbox>
-                    <Tooltip title={passthroughCaveat}>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                  <div className="min-w-[180px] flex-1">
+                    <Input
+                      value={icon.value}
+                      onChange={(e) => onUpdate(platform.id, { value: e.target.value })}
+                      placeholder={platform.inputHint}
+                    />
+                    <p className="mt-1 text-[11px] text-muted">
+                      只填{inputNoun(platform.inputKind)}就行，链接由系统拼好
+                    </p>
+                  </div>
+                  <Checkbox
+                    checked={icon.isLead}
+                    onChange={(checked) => onUpdate(platform.id, { isLead: checked })}
+                  >
+                    计入线索
+                  </Checkbox>
+                  <Tooltip content={passthroughCaveat}>
+                    <span>
                       <Checkbox
                         checked={icon.passSource}
-                        onChange={(e) => update(platform.id, { passSource: e.target.checked })}
+                        onChange={(checked) => onUpdate(platform.id, { passSource: checked })}
                       >
                         透传来源
                       </Checkbox>
-                    </Tooltip>
-                  </Flex>
-                </Space>
-              ) : null}
-            </Space>
-          </List.Item>
-        );
-      }}
-    />
+                    </span>
+                  </Tooltip>
+                </div>
+              ) : (
+                <span className="flex-1" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

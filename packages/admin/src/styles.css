@@ -1,0 +1,72 @@
+@import 'tailwindcss';
+
+/*
+ * 后台设计系统。破例范围以包为界，同 ADR-0002 的隔离原则：tailwind 配置
+ * 只存在于本包，不向 profile-ui 渗透。取代 antd，见 ADR-0007。
+ *
+ * Token 取值来自 Open Design 出的 brand-spec.md（技术工具型方向）：
+ * 冷灰绿中性色打底，苔绿只用于当前状态、主操作与聚焦反馈。
+ */
+:root {
+  --bg: oklch(0.972 0.006 104);
+  --surface: oklch(0.995 0.003 104);
+  --surface-hover: oklch(0.96 0.008 110);
+  --fg: oklch(0.245 0.022 156);
+  --muted: oklch(0.535 0.018 150);
+  --border: oklch(0.875 0.012 125);
+  --accent: oklch(0.455 0.105 151);
+  --accent-fg: oklch(0.99 0.003 104);
+  --accent-soft: oklch(0.93 0.035 151);
+  --danger: oklch(0.5 0.16 25);
+  --danger-soft: oklch(0.94 0.045 25);
+  --warning: oklch(0.62 0.14 70);
+  --warning-soft: oklch(0.94 0.045 80);
+
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --shadow-float: 0 12px 32px -16px oklch(0.245 0.022 156 / 0.28);
+
+  --font-display: 'IBM Plex Sans', 'Noto Sans SC', 'PingFang SC', sans-serif;
+  --font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 表格行高与危险操作降级为次要文字色，仅确认态增强，见 brand-spec 规则 5。 */
+table {
+  font-variant-numeric: tabular-nums;
+}

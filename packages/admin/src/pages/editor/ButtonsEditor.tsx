@@ -16,8 +16,13 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MAX_BUTTONS_PER_USER } from '@link-profile/shared';
-import { Alert, Button, Card, Checkbox, Flex, Input, Space, Tooltip, Typography } from 'antd';
+import { GripVertical, X } from 'lucide-react';
 import type { ButtonDraft } from '../../api/types.js';
+import { Alert } from '../../ui/Alert.js';
+import { Button } from '../../ui/Button.js';
+import { Input } from '../../ui/Input.js';
+import { Switch } from '../../ui/Switch.js';
+import { Tooltip } from '../../ui/Tooltip.js';
 import { localId } from './draft.js';
 
 interface ButtonsEditorProps {
@@ -52,15 +57,15 @@ export function ButtonsEditor({ buttons, onChange, passthroughCaveat }: ButtonsE
   const atLimit = buttons.length >= MAX_BUTTONS_PER_USER;
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+    <div className="flex flex-col gap-3">
+      <p className="text-[12px] text-muted">
         拖拽调整顺序。勾上「联系类渠道」的按钮在页面上是实心卡片并计入线索，
         其余是描边行。两者可以混排，页面上没有区段标题。
-      </Typography.Paragraph>
+      </p>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={buttons.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+          <div className="flex flex-col gap-2.5">
             {buttons.map((button) => (
               <SortableButtonCard
                 key={button.id}
@@ -70,34 +75,28 @@ export function ButtonsEditor({ buttons, onChange, passthroughCaveat }: ButtonsE
                 onRemove={() => onChange(buttons.filter((b) => b.id !== button.id))}
               />
             ))}
-          </Space>
+          </div>
         </SortableContext>
       </DndContext>
 
       {atLimit ? (
-        <Alert type="info" showIcon message={`单页按钮数量上限 ${MAX_BUTTONS_PER_USER} 个`} />
+        <Alert tone="info" message={`单页按钮数量上限 ${MAX_BUTTONS_PER_USER} 个`} />
       ) : null}
 
       <Button
-        block
+        variant="default"
         disabled={atLimit}
+        className="w-full"
         onClick={() =>
           onChange([
             ...buttons,
-            {
-              id: localId(),
-              title: '',
-              subtitle: '',
-              url: '',
-              isLead: false,
-              passSource: false,
-            },
+            { id: localId(), title: '', subtitle: '', url: '', isLead: false, passSource: false },
           ])
         }
       >
         添加按钮
       </Button>
-    </Space>
+    </div>
   );
 }
 
@@ -119,31 +118,38 @@ function SortableButtonCard({
   });
 
   return (
-    <Card
+    <div
       ref={setNodeRef}
-      size="small"
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.6 : 1,
       }}
-      title={
-        <span
+      className="rounded-[var(--radius-panel)] border border-border bg-bg p-3"
+    >
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <button
+          type="button"
           {...attributes}
           {...listeners}
-          style={{ cursor: 'grab', userSelect: 'none' }}
           aria-label="拖拽排序"
+          className="flex cursor-grab items-center gap-1.5 rounded-[4px] px-1 py-0.5 text-[13px] font-medium
+            text-fg hover:bg-surface-hover active:cursor-grabbing"
         >
-          ⠿ {button.title || '未命名按钮'}
-        </span>
-      }
-      extra={
-        <Button size="small" danger type="text" onClick={onRemove}>
-          删除
-        </Button>
-      }
-    >
-      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+          <GripVertical className="size-4 text-muted" />
+          {button.title || '未命名按钮'}
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label="删除这个按钮"
+          className="flex size-6 items-center justify-center rounded-[4px] text-danger hover:bg-danger-soft"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-2">
         <Input
           value={button.title}
           onChange={(e) => onChange({ title: e.target.value })}
@@ -164,23 +170,27 @@ function SortableButtonCard({
           onChange={(e) => onChange({ url: e.target.value })}
           placeholder="目标链接"
         />
-        <Flex gap="middle" wrap>
-          <Checkbox
-            checked={button.isLead}
-            onChange={(e) => onChange({ isLead: e.target.checked })}
-          >
+        <div className="mt-1 flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-[13px] text-fg">
+            <Switch
+              checked={button.isLead}
+              onChange={(checked) => onChange({ isLead: checked })}
+              aria-label="联系类渠道（计入线索）"
+            />
             联系类渠道（计入线索）
-          </Checkbox>
-          <Tooltip title={passthroughCaveat}>
-            <Checkbox
-              checked={button.passSource}
-              onChange={(e) => onChange({ passSource: e.target.checked })}
-            >
+          </label>
+          <Tooltip content={passthroughCaveat}>
+            <label className="flex items-center gap-2 text-[13px] text-fg">
+              <Switch
+                checked={button.passSource}
+                onChange={(checked) => onChange({ passSource: checked })}
+                aria-label="把来源透传给目标网站"
+              />
               把来源透传给目标网站
-            </Checkbox>
+            </label>
           </Tooltip>
-        </Flex>
-      </Space>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }
