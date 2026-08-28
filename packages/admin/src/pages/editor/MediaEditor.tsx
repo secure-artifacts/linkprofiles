@@ -88,9 +88,16 @@ export function MediaEditor({ draft, onChange, onChangeFields }: MediaEditorProp
     onChange({ pendingAvatarPoster: asPending(file) });
   };
 
-  const avatarName = draft.pendingAvatar?.file.name ?? (draft.savedAvatarUrl ? '已上传' : null);
-  const backgroundName =
-    draft.pendingBackground?.file.name ?? (draft.savedBackgroundUrl ? '已上传' : null);
+  const avatarStatus = draft.pendingAvatar
+    ? `已上传 ${draft.pendingAvatar.file.name}`
+    : draft.savedAvatarUrl
+      ? '已上传'
+      : null;
+  const backgroundStatus = draft.pendingBackground
+    ? `已上传 ${draft.pendingBackground.file.name}`
+    : draft.savedBackgroundUrl
+      ? '已上传'
+      : null;
   const hasBackground = Boolean(draft.pendingBackground ?? draft.savedBackgroundUrl);
 
   return (
@@ -100,7 +107,7 @@ export function MediaEditor({ draft, onChange, onChangeFields }: MediaEditorProp
           label="头像位"
           hint={`图片会自动压缩；也可以放一段短视频（mp4，≤${VIDEO_MAX_BYTES / MB} MB、≤${VIDEO_MAX_DURATION_MS / 1000} 秒），页面上自动循环、静音播放。图片上限 ${IMAGE_MAX_BYTES / MB} MB。`}
           accept="image/*,video/mp4"
-          fileName={avatarName}
+          status={avatarStatus}
           loading={extracting}
           onPick={pickAvatar}
           onClear={() =>
@@ -111,7 +118,7 @@ export function MediaEditor({ draft, onChange, onChangeFields }: MediaEditorProp
           label="背景图"
           hint="上传后覆盖主题的背景渐变，按钮色与文字色仍然跟着主题走。"
           accept="image/*"
-          fileName={backgroundName}
+          status={backgroundStatus}
           onPick={pickBackground}
           onClear={() => onChange({ pendingBackground: null, savedBackgroundUrl: null })}
         />
@@ -169,7 +176,7 @@ function MediaSlot({
   label,
   hint,
   accept,
-  fileName,
+  status,
   loading,
   onPick,
   onClear,
@@ -177,7 +184,7 @@ function MediaSlot({
   label: string;
   hint: string;
   accept: string;
-  fileName: string | null;
+  status: string | null;
   loading?: boolean;
   onPick: (file: File) => void | Promise<void>;
   onClear: () => void;
@@ -186,14 +193,14 @@ function MediaSlot({
   return (
     <div
       className={`flex flex-col gap-2 rounded-[var(--radius-control)] border p-3
-        ${fileName ? 'border-border bg-surface' : 'border-dashed border-border bg-bg'}`}
+        ${status ? 'border-border bg-surface' : 'border-dashed border-border bg-bg'}`}
     >
       <div className="flex items-center gap-2">
         <ImagePlus className="size-4 text-muted" />
         <span className="text-[13px] font-medium text-fg">{label}</span>
       </div>
       <p className="text-[12px] text-muted">{hint}</p>
-      {fileName ? <p className="truncate text-[12px] text-fg">已上传 {fileName}</p> : null}
+      {status ? <p className="truncate text-[12px] text-fg">{status}</p> : null}
       <div className="flex gap-2">
         <input
           ref={inputRef}
@@ -212,9 +219,9 @@ function MediaSlot({
           loading={loading}
           onClick={() => inputRef.current?.click()}
         >
-          {fileName ? '换一个' : '选择图片或视频'}
+          {status ? '换一个' : '选择图片或视频'}
         </Button>
-        {fileName ? (
+        {status ? (
           <Button variant="ghost" size="sm" onClick={onClear}>
             清空
           </Button>

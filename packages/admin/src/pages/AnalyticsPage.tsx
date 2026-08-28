@@ -129,30 +129,47 @@ export function AnalyticsPage({ userId }: AnalyticsPageProps) {
  * 把趋势桶补齐成区间内每天连续一根，缺失的天填零值。
  *
  * 后端 `queryTrend` 只 group by 真实有事件的行，数据稀疏时（比如区间内只有
- * 一天有数据）返回的数组会比区间短很多——直接喂给图表，单个数据点在
- * 等分布局下会占满整个宽度，读不出趋势。见 22 号票。
- *
- * 只处理按天粒度：按小时粒度（'today' 预设）数据量小，且已有 hourlyLeads
- * 覆盖对应视角，本身就是定长 24，不需要这里补。
+ * 一天/一小时有数据）返回的数组会比区间短很多——直接喂给图表，单个数据点在
+ * 等分布局下会占满整个宽度；就算不是单点，折线图也会在缺失的桶之间直接
+ * 插值连线，画出一条实际并不存在的平滑曲线。见 22 号票。按天、按小时两种
+ * 粒度都要补，桶键格式不同（天是 `YYYY-MM-DD`，小时是服务端
+ * `to_char(..., 'HH24:00')` 出来的 `YYYY-MM-DDTHH:00`），分开处理。
  */
-function fillDailyTrend(
+function fillTrend(
   trend: AnalyticsResponse['trend'],
   range: AnalyticsResponse['range'],
 ): AnalyticsResponse['trend'] {
-  if (range.granularity !== 'day') return trend;
-
   const byBucket = new Map(trend.map((point) => [point.bucket, point]));
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: range.timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  const isHour = range.granularity === 'hour';
+  const stepMs = isHour ? 3_600_000 : 86_400_000;
+
+  const bucketKey = (d: Date): string => {
+    if (!isHour) {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: range.timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(d);
+    }
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: range.timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false,
+    }).formatToParts(d);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+    // Intl 在整点时偶尔把小时格式化成 "24" 而不是 "00"，这里对齐服务端的 00-23 记法。
+    const hour = get('hour') === '24' ? '00' : get('hour');
+    return `${get('year')}-${get('month')}-${get('day')}T${hour}:00`;
+  };
 
   const end = new Date(range.to);
   const filled: AnalyticsResponse['trend'] = [];
-  for (let t = new Date(range.from); t < end; t = new Date(t.getTime() + 86_400_000)) {
-    const bucket = fmt.format(t);
+  for (let t = new Date(range.from); t < end; t = new Date(t.getTime() + stepMs)) {
+    const bucket = bucketKey(t);
     filled.push(byBucket.get(bucket) ?? { bucket, pageViews: 0, clicks: 0, leads: 0 });
   }
   return filled;
@@ -160,7 +177,7 @@ function fillDailyTrend(
 
 /** 指标与图表。只有拿到数据才渲染，因此这里的 data 一定非空。 */
 function AnalyticsResults({ data, timeZone }: { data: AnalyticsResponse; timeZone: string }) {
-  const trend = useMemo(() => fillDailyTrend(data.trend, data.range), [data]);
+  const trend = useMemo(() => fillTrend(data.trend, data.range), [data]);
 
   const peakHour = useMemo(() => {
     const max = Math.max(...data.hourlyLeads);
@@ -190,7 +207,11 @@ function AnalyticsResults({ data, timeZone }: { data: AnalyticsResponse; timeZon
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="bucket"
-              tickFormatter={(v: string) => v.slice(5).replace('-', '/')}
+              tickFormatter={(v: string) =>
+                // 按天粒度桶键是 YYYY-MM-DD，按小时粒度是 YYYY-MM-DDTHH:00（服务端 to_char 格式），
+                // 两种格式不能共用一套切法，否则小时粒度会把 "T18:00" 这种原始字符串漏给用户看。
+                data.range.granularity === 'hour' ? v.slice(11) : v.slice(5).replace('-', '/')
+              }
               tick={{ fontSize: 11, fill: 'var(--muted)' }}
               axisLine={{ stroke: 'var(--border)' }}
               tickLine={false}
