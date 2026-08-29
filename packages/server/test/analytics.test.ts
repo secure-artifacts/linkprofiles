@@ -1,4 +1,4 @@
-import { clicks, dailySummaries, pageViews } from '@link-profile/shared/schema';
+import { clicks, dailySummaries, pageViews, profiles } from '@link-profile/shared/schema';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from './helpers/context.js';
 import { createLoginableUser } from './helpers/factories.js';
@@ -131,6 +131,57 @@ test('呈现线索数、点击数、页面浏览数与点击率', async () => {
   });
 });
 
+test('分析层级明确分成账号列表、账号汇总与单个个人页', async () => {
+  const [secondProfile] = await ctx.db
+    .insert(profiles)
+    .values({ userId, shortName: 'mimnz-second', displayName: '第二个页面' })
+    .returning({ id: profiles.id });
+
+  await seedView('2026-08-05T12:00:00Z');
+  await seedClick('2026-08-05T12:10:00Z', true);
+  await seedView('2026-08-05T13:00:00Z', secondProfile!.id);
+  await seedView('2026-08-05T14:00:00Z', secondProfile!.id);
+  await seedClick('2026-08-05T14:10:00Z', false, secondProfile!.id);
+  await seedView('2026-08-05T15:00:00Z', otherProfileId);
+
+  const portfolio = (await analytics(adminToken, `?tz=${NY}${RANGE}`)).json();
+  expect(portfolio.scope).toEqual({ kind: 'portfolio' });
+  expect(portfolio.performance.accounts).toHaveLength(1);
+  expect(portfolio.performance.accounts[0]).toMatchObject({
+    id: userId,
+    profileCount: 2,
+    pageViews: 3,
+    clicks: 2,
+    leads: 1,
+  });
+
+  const account = (await analytics(adminToken, `?userId=${userId}&tz=${NY}${RANGE}`)).json();
+  expect(account.scope).toMatchObject({ kind: 'account', userId, account: 'mimnz' });
+  expect(account.performance.profiles).toHaveLength(2);
+  expect(account.performance.profiles).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: profileId, pageViews: 1, clicks: 1, leads: 1 }),
+      expect.objectContaining({ id: secondProfile!.id, pageViews: 2, clicks: 1, leads: 0 }),
+    ]),
+  );
+
+  const single = (
+    await analytics(adminToken, `?profileId=${secondProfile!.id}&tz=${NY}${RANGE}`)
+  ).json();
+  expect(single.scope).toMatchObject({
+    kind: 'profile',
+    profileId: secondProfile!.id,
+    userId,
+    shortName: 'mimnz-second',
+    displayName: '第二个页面',
+  });
+  expect(single.performance.profiles).toHaveLength(1);
+  expect(single.totals).toMatchObject({ pageViews: 2, clicks: 1, leads: 0 });
+
+  const self = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
+  expect(self.scope).toMatchObject({ kind: 'account', userId });
+});
+
 test('线索是对联系类渠道的点击，由每条的 is_lead 决定', async () => {
   await seedView('2026-08-05T12:00:00Z');
   await seedClick('2026-08-05T12:10:00Z', true);
@@ -166,7 +217,7 @@ test('单按钮点击率也以页面浏览为分母', async () => {
   await seedClick('2026-08-05T12:10:00Z', true, profileId, { targetId: button.id });
   await seedClick('2026-08-05T12:20:00Z', true, profileId, { targetId: button.id });
 
-  const body = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
+  const body = (await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)).json();
 
   expect(body.buttons).toHaveLength(1);
   expect(body.buttons[0]).toMatchObject({ kind: 'link', title: '联系我', clicks: 2 });
@@ -179,7 +230,8 @@ test('维度可拆分：国家与城市、设备类型与操作系统、来源',
   await seedView('2026-08-05T12:00:00Z', profileId, { deviceType: 'desktop', os: 'Windows' });
   await seedView('2026-08-05T12:00:00Z', profileId, { source: 'instagram' });
 
-  const dims = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json().dimensions;
+  const dims = (await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)).json()
+    .dimensions;
 
   expect(dims.countries.map((d: { key: string }) => d.key).sort()).toEqual(['CA', 'US']);
   expect(dims.cities.map((d: { key: string }) => d.key).sort()).toEqual(['Austin', 'Toronto']);
@@ -191,11 +243,96 @@ test('维度可拆分：国家与城市、设备类型与操作系统、来源',
   expect(dims.sources.map((d: { key: string }) => d.key).sort()).toEqual(['instagram', 'tiktok']);
 });
 
+test('交叉分析回答每个来源和国家分别带来多少进入及联系方式点击', async () => {
+  const saved = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/profiles/${profileId}/entries`,
+    ...withSession(userToken),
+    payload: {
+      entries: [
+        {
+          kind: 'social',
+          title: 'WhatsApp',
+          platform: 'whatsapp',
+          value: '+1 555 010 9999',
+          isLead: true,
+        },
+        {
+          kind: 'social',
+          title: 'Messenger',
+          platform: 'messenger',
+          value: 'mimnz',
+          isLead: true,
+        },
+      ],
+    },
+  });
+  expect(saved.statusCode).toBe(200);
+  const entries = saved.json().entries as { id: string; platform: string }[];
+  const whatsapp = entries.find((entry) => entry.platform === 'whatsapp')!;
+  const messenger = entries.find((entry) => entry.platform === 'messenger')!;
+
+  await seedView('2026-08-05T10:00:00Z', profileId, {
+    source: 'tiktok',
+    country: 'US',
+  });
+  await seedView('2026-08-05T11:00:00Z', profileId, {
+    source: 'tiktok',
+    country: 'US',
+  });
+  await seedView('2026-08-05T12:00:00Z', profileId, {
+    source: 'instagram',
+    country: 'NZ',
+  });
+  await seedClick('2026-08-05T10:10:00Z', true, profileId, {
+    source: 'tiktok',
+    country: 'US',
+    targetId: whatsapp.id,
+  });
+  await seedClick('2026-08-05T10:20:00Z', true, profileId, {
+    source: 'tiktok',
+    country: 'US',
+    targetId: messenger.id,
+  });
+  await seedClick('2026-08-05T12:10:00Z', true, profileId, {
+    source: 'instagram',
+    country: 'NZ',
+    targetId: whatsapp.id,
+  });
+
+  const cross = (await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)).json()
+    .crossBreakdowns;
+  const tiktok = cross.sources.find((row: { key: string }) => row.key === 'tiktok');
+  expect(tiktok).toMatchObject({ pageViews: 2, clicks: 2, leads: 2, leadRate: 1 });
+  expect(tiktok.targets).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ platform: 'whatsapp', clicks: 1, leads: 1 }),
+      expect.objectContaining({ platform: 'messenger', clicks: 1, leads: 1 }),
+    ]),
+  );
+
+  const us = cross.countries.find((row: { key: string }) => row.key === 'US');
+  expect(us).toMatchObject({ pageViews: 2, clicks: 2, leads: 2 });
+  expect(us.sources[0]).toMatchObject({ key: 'tiktok', pageViews: 2, leads: 2 });
+
+  const whatsappRow = cross.targets.find(
+    (row: { platform: string }) => row.platform === 'whatsapp',
+  );
+  expect(whatsappRow).toMatchObject({ clicks: 2, leads: 2 });
+  expect(whatsappRow.sources).toEqual(
+    expect.arrayContaining([
+      { key: 'tiktok', clicks: 1, leads: 1 },
+      { key: 'instagram', clicks: 1, leads: 1 },
+    ]),
+  );
+});
+
 test('未知维度归到同一桶，空串表示未知', async () => {
   await seedView('2026-08-05T12:00:00Z', profileId, { country: null, source: null });
   await seedView('2026-08-05T13:00:00Z', profileId, { country: null, source: null });
 
-  const dims = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json().dimensions;
+  const dims = (await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)).json()
+    .dimensions;
 
   const unknown = dims.sources.find((d: { key: string }) => d.key === '');
   expect(unknown?.pageViews).toBe(2);
@@ -240,14 +377,18 @@ test('24 小时分布图把区间内的线索汇总到零至二十三点，按�
   // 非线索的点击不进这张图
   await seedClick('2026-08-05T16:00:00Z', false);
 
-  const hourly = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json().hourlyLeads;
+  const hourly = (
+    await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)
+  ).json().hourlyLeads;
 
   expect(hourly).toHaveLength(24);
   expect(hourly[12]).toBe(2);
   expect(hourly.reduce((a: number, b: number) => a + b, 0)).toBe(2);
 
   // 换成 UTC 看，同样两条落在 16 点
-  const inUtc = (await analytics(userToken, `?tz=UTC${RANGE}`)).json().hourlyLeads;
+  const inUtc = (
+    await analytics(userToken, `?profileId=${profileId}&tz=UTC${RANGE}`)
+  ).json().hourlyLeads;
   expect(inUtc[16]).toBe(2);
 });
 
@@ -289,7 +430,7 @@ test('跨越清理边界的历史不断档：日汇总与明细一起算进总�
     leads: 3,
   });
 
-  const body = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
+  const body = (await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)).json();
 
   expect(body.totals.pageViews).toBe(11);
   expect(body.totals.clicks).toBe(4);
@@ -309,7 +450,7 @@ test('用户只看得到自己的数据', async () => {
   await seedView('2026-08-05T12:00:00Z', otherProfileId);
   await seedView('2026-08-05T13:00:00Z', otherUserId);
 
-  const body = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
+  const body = (await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)).json();
   expect(body.totals.pageViews).toBe(1);
 });
 
@@ -410,7 +551,7 @@ test('社媒条目也有逐条点击明细，历史 social 点击不再被过滤
     targetId: social.id,
   });
 
-  const body = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
+  const body = (await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)).json();
   const row = (body.buttons as { id: string; kind: string; clicks: number }[]).find(
     (b) => b.id === social.id,
   );

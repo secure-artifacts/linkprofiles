@@ -9,7 +9,7 @@
  * 视觉依据 docs/design/public-page.html。设计稿把页面装在手机外壳里，
  * 因此那边的 .pp 是 position:absolute；这里改成占满视口。
  *
- * 五种布局 × 六套主题的结构完全一致，主题只是下面这组变量的取值，
+ * 四种布局 × 多套主题的结构完全一致，主题只是下面这组变量的取值，
  * 圆角 --r 是主题的一部分而非全局常量。
  */
 
@@ -20,6 +20,14 @@
   --font-sys:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', sans-serif;
+}
+
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: url('/_static/fonts/bricolage-grotesque-latin-wght-normal.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
 }
 
 @layer components {
@@ -57,7 +65,7 @@
     z-index: 1;
   }
 
-  /* 视频头像的静音开关。浮在卡片右上角，五种布局位置一致。 */
+  /* 视频头像的静音开关。浮在卡片右上角，四种布局位置一致。 */
   .pp-mute {
     position: absolute;
     top: 12px;
@@ -98,7 +106,8 @@
   }
   .pp-body {
     flex: none;
-    padding: 0 20px 44px;
+    /* 头部信息与第一枚按钮之间留出明确分区，避免简介贴着按钮。 */
+    padding: 28px 20px 44px;
     display: flex;
     flex-direction: column;
     gap: 9px;
@@ -113,8 +122,9 @@
     margin: 0;
   }
   .pp-bio {
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.6;
     color: var(--muted);
     margin: 9px 0 0;
     max-width: 29ch;
@@ -242,6 +252,71 @@
     display: block;
   }
 
+  /*
+   * 液态玻璃：多层高光、内沿折射感与背景模糊共同塑形。
+   * 具体色款由主题令牌决定，行为只认 data-effect，不靠主题 id 猜。
+   */
+  .pp[data-effect='liquid-glass'] .pp-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 14% 24%, rgb(255 255 255 / 0.2) 0 7%, transparent 28%),
+      radial-gradient(circle at 86% 42%, color-mix(in srgb, var(--surface) 78%, #fff) 0 8%, transparent 32%),
+      radial-gradient(circle at 28% 82%, color-mix(in srgb, var(--bgend) 70%, #8fffdc) 0 6%, transparent 30%);
+    filter: blur(14px) saturate(135%);
+    opacity: 0.72;
+  }
+  .pp[data-effect='liquid-glass'] .hd,
+  .pp[data-effect='liquid-glass'] .pp-body {
+    position: relative;
+    z-index: 1;
+  }
+  .pp[data-effect='liquid-glass'] .pp-lead,
+  .pp[data-effect='liquid-glass'] .pp-link {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    color: var(--on-surface);
+    background:
+      linear-gradient(145deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.07) 48%, rgb(255 255 255 / 0.13)),
+      color-mix(in srgb, var(--surface) 24%, transparent);
+    border: 1px solid rgb(255 255 255 / 0.34);
+    box-shadow:
+      inset 1px 1px 0 rgb(255 255 255 / 0.48),
+      inset -1px -1px 0 rgb(255 255 255 / 0.08),
+      inset 0 -12px 26px rgb(255 255 255 / 0.05),
+      0 18px 42px -24px rgb(0 0 0 / 0.82);
+    -webkit-backdrop-filter: blur(24px) saturate(185%) contrast(108%);
+    backdrop-filter: blur(24px) saturate(185%) contrast(108%);
+  }
+  .pp[data-effect='liquid-glass'] .pp-lead::before,
+  .pp[data-effect='liquid-glass'] .pp-link::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(90% 75% at 12% 0%, rgb(255 255 255 / 0.28), transparent 54%),
+      radial-gradient(70% 90% at 100% 100%, color-mix(in srgb, var(--surface) 36%, transparent), transparent 68%);
+  }
+  .pp[data-effect='liquid-glass'] .pp-lead::after,
+  .pp[data-effect='liquid-glass'] .pp-link::after {
+    content: '';
+    position: absolute;
+    left: 9%;
+    right: 22%;
+    top: 1px;
+    height: 1px;
+    z-index: 2;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.78), transparent);
+    filter: blur(0.4px);
+  }
+
   /* ---------- 头部布局。只决定头像与头图区域的形状和占比，不决定配色。 ---------- */
 
   .hd-cls {
@@ -273,14 +348,22 @@
     border-radius: 0;
     width: 100%;
     height: 100%;
-  }
-  .hd-hero .veil {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      to top,
-      var(--bgend) 5%,
-      color-mix(in srgb, var(--bgend), transparent 100%) 64%
+    /* 直接把头图透明度渐隐到页面本身，底部不会再与某个近似色硬接。 */
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 56%,
+      rgb(0 0 0 / 0.92) 66%,
+      rgb(0 0 0 / 0.5) 82%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 56%,
+      rgb(0 0 0 / 0.92) 66%,
+      rgb(0 0 0 / 0.5) 82%,
+      transparent 100%
     );
   }
   .hd-hero .cap {
@@ -288,6 +371,7 @@
     left: 20px;
     right: 20px;
     bottom: 16px;
+    z-index: 1;
   }
 
   .hd-ban {
@@ -303,6 +387,9 @@
     height: 100%;
     display: block;
     object-fit: cover;
+  }
+  .hd-ban .bn-empty {
+    background: var(--bg);
   }
   .hd-ban .row {
     display: flex;
@@ -330,35 +417,6 @@
   }
   .hd-ban .below {
     padding: 0 20px;
-  }
-
-  .hd-cut {
-    padding: 52px 20px 0;
-    position: relative;
-    min-height: 300px;
-  }
-  .hd-cut .av {
-    position: absolute;
-    right: -4px;
-    top: 46px;
-    width: 214px;
-    height: 248px;
-    overflow: visible;
-  }
-  .hd-cut .av img {
-    object-fit: contain;
-    object-position: bottom;
-  }
-  .hd-cut .nm {
-    position: relative;
-    z-index: 2;
-    padding-top: 132px;
-  }
-  .hd-cut .pp-name {
-    font-size: 38px;
-  }
-  .hd-cut .pp-bio {
-    max-width: 20ch;
   }
 
   .hd-shp {
@@ -406,8 +464,8 @@
       0 0 0 3px color-mix(in srgb, var(--text) 22%, transparent);
   }
   /*
-   * 铺满整块区域的那几个空位不描边：Hero 的整屏头图、Banner 的横幅、
-   * Cutout 的人像位，画一圈硬边框只会像个错位的方块。
+   * 铺满整块区域的空位不描边：Hero 的整屏头图、Banner 的横幅，
+   * 画一圈硬边框只会像个错位的方块。
    */
   .av-empty svg {
     width: 44%;
@@ -420,15 +478,6 @@
   .hd-ban .bn.av-empty {
     box-shadow: none;
   }
-  .hd-cut .av-empty {
-    box-shadow: none;
-    /* 顶部收成圆弧，读起来像一个待填的人像轮廓而不是一个方块 */
-    border-radius: 107px 107px 0 0;
-    background:
-      linear-gradient(to top, transparent 0%, color-mix(in srgb, var(--text) 7%, transparent) 100%),
-      var(--bg);
-  }
-
   /*
    * 桌面端：内容收成一张居中的卡片，背景退为它外围的陪衬。
    *

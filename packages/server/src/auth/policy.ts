@@ -14,6 +14,7 @@ export type Capability =
   | 'admin:create'
   | 'admin:delete'
   | 'admin:list'
+  | 'admin:update'
   | 'user:create'
   | 'user:list'
   /** 把用户指派给某个归属管理员，只有超级管理员做得了 */
@@ -26,6 +27,7 @@ const CAPABILITIES: Record<CurrentUser['role'], readonly Capability[]> = {
     'admin:create',
     'admin:delete',
     'admin:list',
+    'admin:update',
     'user:create',
     'user:list',
     'user:assign',

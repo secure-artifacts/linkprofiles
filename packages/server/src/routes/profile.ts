@@ -39,10 +39,11 @@ export async function profileRoutes(app: FastifyInstance) {
         await recordPageView(app, profile.id, req, source);
       }
 
-      // 预览图取头像或头图；缺失时回落到与主题一致的占位图，
+      // 预览图优先取当前布局的大图，再取头像；缺失时回落到主题占位图，
       // 转发出去仍然是一张成型的卡片而不是一行光秃秃的地址。
       const origin = publicOrigin(req);
       const preview =
+        (profile.view.layout === 'banner' ? profile.view.banner?.src : null) ??
         profile.view.video?.poster ??
         profile.view.avatar?.src ??
         `/_static/og/${profile.view.theme}.png`;

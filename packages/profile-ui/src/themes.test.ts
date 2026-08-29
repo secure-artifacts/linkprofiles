@@ -1,27 +1,26 @@
 import { describe, expect, test } from 'vitest';
-import { AA_LARGE, AA_NORMAL, contrastRatio, withOverlay } from './contrast.js';
+import { AA_NORMAL, contrastRatio, withOverlay } from './contrast.js';
 import { DEFAULT_BACKGROUND_OVERLAY, DEFAULT_THEME, THEMES, type ThemeTokens } from './themes.js';
 import type { Layout, Theme } from './types.js';
 
-const LAYOUTS: Layout[] = ['classic', 'hero', 'banner', 'cutout', 'shape'];
+const LAYOUTS: Layout[] = ['classic', 'hero', 'banner', 'shape'];
 const THEME_IDS = Object.keys(THEMES) as Theme[];
 
 /**
  * 每种布局里，正文压在渐变的哪一段上。
  *
  * 布局不决定配色，但决定文字落在渐变的哪一截：Classic / Shape 的名字在顶部，
- * Hero 的名字压在头图底部的渐隐层上（那里是 --bgend），Banner / Cutout 在中段。
+ * Hero 的名字压在头图底部的透明渐隐区（露出 --bgend），Banner 在中段。
  * 逐个组合验证就是要覆盖这个差异。
  */
 const TEXT_BACKDROP: Record<Layout, (t: ThemeTokens) => string[]> = {
   classic: (t) => [t.gradient[0], t.gradient[1]],
   hero: (t) => [t.bgend],
   banner: (t) => [t.gradient[0], t.gradient[1]],
-  cutout: (t) => [t.gradient[0], t.gradient[1]],
   shape: (t) => [t.gradient[0], t.gradient[1]],
 };
 
-describe('三十种布局与主题的组合，文字对比度达到 WCAG AA', () => {
+describe('全部布局与主题组合的文字对比度达到 WCAG AA', () => {
   for (const layout of LAYOUTS) {
     for (const themeId of THEME_IDS) {
       const tokens = THEMES[themeId];
@@ -35,12 +34,12 @@ describe('三十种布局与主题的组合，文字对比度达到 WCAG AA', ()
           ).toBeGreaterThanOrEqual(AA_NORMAL);
         }
 
-        // 简介、副标题这类次要文字用 --muted，字号小，同样按正文标准要求
+        // 简介、副标题是小字号，必须达到正文 4.5:1，不能只按大字的 3:1 放行。
         for (const backdrop of TEXT_BACKDROP[layout](tokens)) {
           expect(
             contrastRatio(tokens.muted, backdrop),
             `次要文字 ${tokens.muted} 压在 ${backdrop} 上`,
-          ).toBeGreaterThanOrEqual(AA_LARGE);
+          ).toBeGreaterThanOrEqual(AA_NORMAL);
         }
 
         // 联系类卡片：卡片上的文字压在卡片底色上
@@ -54,8 +53,30 @@ describe('三十种布局与主题的组合，文字对比度达到 WCAG AA', ()
 });
 
 describe('主题令牌', () => {
-  test('六套主题齐备', () => {
-    expect(THEME_IDS).toEqual(['dawn', 'harbor', 'moss', 'ember', 'slate', 'nocturne']);
+  test('十五套主题齐备，包含常用色与四款液态玻璃色系', () => {
+    expect(THEME_IDS).toEqual([
+      'dawn',
+      'harbor',
+      'moss',
+      'ember',
+      'slate',
+      'nocturne',
+      'ocean',
+      'rose',
+      'lavender',
+      'sunset',
+      'mono',
+      'glass',
+      'glass-ocean',
+      'glass-rose',
+      'glass-aurora',
+    ]);
+  });
+
+  test('玻璃色款共用液态玻璃效果，普通主题保持标准卡片', () => {
+    const glassThemes = THEME_IDS.filter((id) => THEMES[id].effect === 'liquid-glass');
+    expect(glassThemes).toEqual(['glass', 'glass-ocean', 'glass-rose', 'glass-aurora']);
+    expect(THEMES.dawn.effect).toBe('standard');
   });
 
   test('新账号默认 Dawn·晨', () => {
@@ -63,9 +84,9 @@ describe('主题令牌', () => {
     expect(THEMES[DEFAULT_THEME].label).toContain('Dawn');
   });
 
-  test('圆角是主题的一部分而非全局常量：六套各不相同', () => {
+  test('圆角是主题的一部分而非全局常量', () => {
     const radii = THEME_IDS.map((id) => THEMES[id].radius);
-    expect(new Set(radii).size).toBe(radii.length);
+    expect(new Set(radii).size).toBeGreaterThanOrEqual(8);
     expect(radii).toContain('999px');
   });
 

@@ -20,6 +20,7 @@ export function BrandIcon({ platform }: { platform: string }) {
   return (
     <svg
       viewBox={icon.viewBox}
+      style={{ color: icon.hex }}
       aria-hidden="true"
       dangerouslySetInnerHTML={{ __html: icon.body }}
     />

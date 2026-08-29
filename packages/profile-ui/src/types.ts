@@ -69,6 +69,8 @@ export interface ProfileView {
   avatar: MediaSource | null;
   /** 头像位放视频时用它，与 avatar 互斥。 */
   video: VideoSource | null;
+  /** Banner 布局顶部的独立宽幅图。缺失时显示主题填充，不回落到头像。 */
+  banner: MediaSource | null;
   background: BackgroundImage | null;
   buttons: readonly ButtonView[];
 }

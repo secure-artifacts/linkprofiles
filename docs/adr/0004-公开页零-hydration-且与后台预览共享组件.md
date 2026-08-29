@@ -1,6 +1,6 @@
 # 公开页零 hydration 直出，并与后台实时预览共享同一套组件
 
-需求要求用户编辑资料时实时看到移动端效果。若公开页用模板引擎渲染、后台预览另用 React 实现，五种布局 × 六套主题就存在两份实现，必然漂移，预览与真实页面对不上。因此公开页改用 React 组件经 `renderToString` 由 Fastify 直出，后台预览把同一批组件挂进 iframe，用 `postMessage` 灌入未保存的草稿状态。
+需求要求用户编辑资料时实时看到移动端效果。若公开页用模板引擎渲染、后台预览另用 React 实现，多种布局 × 多套主题就存在两份实现，必然漂移，预览与真实页面对不上。因此公开页改用 React 组件经 `renderToString` 由 Fastify 直出，后台预览把同一批组件挂进 iframe，用 `postMessage` 灌入未保存的草稿状态。
 
 ## Considered Options
 

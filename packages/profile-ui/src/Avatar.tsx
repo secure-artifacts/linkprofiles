@@ -10,6 +10,47 @@ interface AvatarProps {
   alt?: string;
 }
 
+interface MediaImageProps {
+  media: MediaSource;
+  priority?: boolean;
+  className: string;
+  alt?: string;
+}
+
+/** 不带头像占位图语义的普通图片槽，供独立 Banner 图复用 picture/source 管线。 */
+export function MediaImage({
+  media,
+  priority = false,
+  className,
+  alt = '',
+}: MediaImageProps) {
+  const img = (
+    <img
+      src={media.src}
+      alt={alt}
+      {...(media.width ? { width: media.width } : {})}
+      {...(media.height ? { height: media.height } : {})}
+      decoding={priority ? 'sync' : 'async'}
+      {...(priority ? { fetchPriority: 'high' as const } : { loading: 'lazy' as const })}
+    />
+  );
+
+  return (
+    <div className={className}>
+      {media.sources?.length ? (
+        <picture>
+          {media.sources.map((source) => (
+            <source key={source.src} srcSet={source.src} type={source.type} />
+          ))}
+          {img}
+        </picture>
+      ) : (
+        img
+      )}
+    </div>
+  );
+}
+
 /**
  * 头像 / 头图。缺少素材时不回落到其他布局，只把该区域交给主题渐变填充，
  * 形状与占比仍由布局决定。
@@ -51,29 +92,5 @@ export function Avatar({
     );
   }
 
-  const img = (
-    <img
-      src={media.src}
-      alt={alt}
-      {...(media.width ? { width: media.width } : {})}
-      {...(media.height ? { height: media.height } : {})}
-      decoding={priority ? 'sync' : 'async'}
-      {...(priority ? { fetchPriority: 'high' as const } : { loading: 'lazy' as const })}
-    />
-  );
-
-  if (!media.sources?.length) {
-    return <div className={className}>{img}</div>;
-  }
-
-  return (
-    <div className={className}>
-      <picture>
-        {media.sources.map((s) => (
-          <source key={s.src} srcSet={s.src} type={s.type} />
-        ))}
-        {img}
-      </picture>
-    </div>
-  );
+  return <MediaImage media={media} priority={priority} className={className} alt={alt} />;
 }

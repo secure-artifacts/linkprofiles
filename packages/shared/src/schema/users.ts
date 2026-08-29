@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   index,
   pgEnum,
@@ -45,7 +45,8 @@ export const users = pgTable(
     updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('users_account_unique').on(t.account),
+    // 登录用户名不区分大小写；历史值不强制改写，新增与改名路径统一存小写。
+    uniqueIndex('users_account_unique').on(sql`lower(${t.account})`),
     index('users_owning_admin_idx').on(t.owningAdminId),
   ],
 );

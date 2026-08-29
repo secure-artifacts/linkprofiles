@@ -1,5 +1,9 @@
 import type { ProfileView } from '@link-profile/profile-ui';
-import { buildSocialUrl, findSocialPlatform, inferPlatformFromUrl } from '@link-profile/shared';
+import {
+  buildSocialTargetUrl,
+  findSocialPlatform,
+  inferPlatformFromUrl,
+} from '@link-profile/shared';
 import type { EditableProfile, EntryDraft, ProfileFields } from '../../api/types.js';
 
 /**
@@ -20,25 +24,34 @@ export interface Draft {
   /** 已保存的素材地址，由服务端给出 */
   savedAvatarUrl: string | null;
   savedAvatarIsVideo: boolean;
+  savedBannerUrl: string | null;
   savedBackgroundUrl: string | null;
   /** 选了但还没上传的素材 */
   pendingAvatar: PendingMedia | null;
   pendingAvatarPoster: PendingMedia | null;
+  pendingBanner: PendingMedia | null;
   pendingBackground: PendingMedia | null;
 }
 
 export function draftFromServer(
   loaded: EditableProfile,
-  urls: { avatar: string | null; background: string | null; avatarIsVideo: boolean },
+  urls: {
+    avatar: string | null;
+    banner: string | null;
+    background: string | null;
+    avatarIsVideo: boolean;
+  },
 ): Draft {
   return {
     fields: loaded.profile,
     entries: loaded.entries.map(stripPosition),
     savedAvatarUrl: urls.avatar,
     savedAvatarIsVideo: urls.avatarIsVideo,
+    savedBannerUrl: urls.banner,
     savedBackgroundUrl: urls.background,
     pendingAvatar: null,
     pendingAvatarPoster: null,
+    pendingBanner: null,
     pendingBackground: null,
   };
 }
@@ -63,6 +76,7 @@ function stripPosition<T extends { position: number }>(row: T): Omit<T, 'positio
  */
 export interface LiveMedia {
   avatar?: string | undefined;
+  banner?: string | undefined;
   background?: string | undefined;
 }
 
@@ -76,6 +90,7 @@ export function draftToProfileView(draft: Draft, live: LiveMedia = {}): ProfileV
       ? draft.pendingAvatar.file.type.startsWith('video/')
       : draft.savedAvatarIsVideo;
   const posterUrl = draft.pendingAvatarPoster?.objectUrl ?? null;
+  const bannerUrl = live.banner ?? draft.pendingBanner?.objectUrl ?? draft.savedBannerUrl;
   const backgroundUrl =
     live.background ?? draft.pendingBackground?.objectUrl ?? draft.savedBackgroundUrl;
 
@@ -89,13 +104,17 @@ export function draftToProfileView(draft: Draft, live: LiveMedia = {}): ProfileV
     iconPlate: draft.fields.iconPlate,
     avatar: !isVideo && avatarUrl ? { src: avatarUrl } : null,
     video: isVideo && avatarUrl ? { src: avatarUrl, poster: posterUrl } : null,
+    banner: bannerUrl ? { src: bannerUrl } : null,
     background: backgroundUrl
       ? { src: backgroundUrl, overlay: Number(draft.fields.backgroundOverlay) }
       : null,
     // 拼不出地址的社媒条目整条不进预览 —— 与公开页同一条规则。
     // 编辑器里那条红边就是把这个静默丢弃显性化的。
     buttons: draft.entries.flatMap((entry) => {
-      const url = entry.kind === 'social' ? buildSocialUrl(entry.platform, entry.value) : entry.url;
+      const url =
+        entry.kind === 'social'
+          ? buildSocialTargetUrl(entry.platform, entry.value, entry.directMessage, entry.message)
+          : entry.url;
       if (entry.kind === 'social' && (!url || !findSocialPlatform(entry.platform))) return [];
 
       return [

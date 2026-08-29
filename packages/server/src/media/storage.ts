@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { IMAGE_MAX_EDGE } from '@link-profile/shared';
 import type { MediaVariant } from '@link-profile/shared/schema';
@@ -32,7 +32,9 @@ export async function storeImage(
   buffer: Buffer,
   opts: { profileId: string; mediaId: string; usage: keyof typeof IMAGE_MAX_EDGE },
 ): Promise<StoredMedia> {
-  const directory = path.join(opts.profileId, opts.mediaId);
+  // 数据库与 URL 里一律存 POSIX 分隔符；Windows 的 path.join 会写进反斜杠，
+  // 浏览器会把它当成 URL 分隔异常。落盘时 path.join 仍能正确解析正斜杠。
+  const directory = path.posix.join(opts.profileId, opts.mediaId);
   const absolute = path.join(uploadsDir(), directory);
   await mkdir(absolute, { recursive: true });
 
@@ -102,7 +104,7 @@ export async function storeVideo(
   buffer: Buffer,
   opts: { profileId: string; mediaId: string; durationMs: number },
 ): Promise<StoredMedia> {
-  const directory = path.join(opts.profileId, opts.mediaId);
+  const directory = path.posix.join(opts.profileId, opts.mediaId);
   const absolute = path.join(uploadsDir(), directory);
   await mkdir(absolute, { recursive: true });
 
@@ -136,5 +138,23 @@ export async function removeMediaDirectory(directory: string): Promise<void> {
 }
 
 export function publicUrl(variantPath: string): string {
-  return `${UPLOADS_URL_PREFIX}/${variantPath}`;
+  // 兼容修复前已经写进数据库的 Windows 路径。
+  return `${UPLOADS_URL_PREFIX}/${variantPath.replaceAll('\\', '/')}`;
+}
+
+/**
+ * 复制页面时给媒体建立一份完全独立的文件副本。
+ * 数据库只存相对目录；源和目标都必须留在 uploads 根目录内。
+ */
+export async function copyMediaDirectory(source: string, destination: string): Promise<void> {
+  const root = uploadsDir();
+  const sourceAbsolute = path.resolve(root, source);
+  const destinationAbsolute = path.resolve(root, destination);
+  const insideRoot = (value: string) => value.startsWith(root + path.sep);
+  if (!insideRoot(sourceAbsolute) || !insideRoot(destinationAbsolute)) {
+    throw new Error('media_directory_outside_uploads');
+  }
+
+  await mkdir(path.dirname(destinationAbsolute), { recursive: true });
+  await cp(sourceAbsolute, destinationAbsolute, { recursive: true, errorOnExist: true });
 }

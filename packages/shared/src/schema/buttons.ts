@@ -54,6 +54,10 @@ export const buttons = pgTable(
     platform: text(),
     /** `social` 用，用户原样填的号码 / 邮箱 / 用户名，不是拼好的 URL。 */
     value: text(),
+    /** Instagram 是否直达私信；关闭时跳个人主页。其他平台固定为 false。 */
+    directMessage: boolean().notNull().default(false),
+    /** WhatsApp / 短信可预填的消息正文；其他平台保持空字符串。 */
+    message: text().notNull().default(''),
 
     /** 排序位。用户拖拽后重排，同一个人页内连续。 */
     position: integer().notNull(),

@@ -1,4 +1,4 @@
-import { users } from '@link-profile/shared/schema';
+import { accountNameChanges, users } from '@link-profile/shared/schema';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { bootstrapSuperadmin } from '../src/auth/bootstrap.js';
@@ -95,6 +95,66 @@ test('账号不存在与密码错误给同一个响应', async () => {
   expect(wrongPassword.res.statusCode).toBe(401);
   expect(noSuchAccount.res.statusCode).toBe(401);
   expect(wrongPassword.res.json()).toEqual(noSuchAccount.res.json());
+});
+
+test('标准登录用户名不区分大小写', async () => {
+  await createLoginableUser(ctx.db, 'case-pass', { account: 'case-user' });
+  expect((await login(ctx, 'CASE-USER', 'case-pass')).res.statusCode).toBe(200);
+});
+
+test('本人修改登录用户名要验密码、写流水并让全部会话失效', async () => {
+  const user = await createLoginableUser(ctx.db, 'rename-pass', { account: 'old-login-name' });
+  const phone = await login(ctx, 'old-login-name', 'rename-pass');
+  const laptop = await login(ctx, 'old-login-name', 'rename-pass');
+
+  const changed = await ctx.app.inject({
+    method: 'PUT',
+    url: '/_api/auth/account',
+    ...withSession(laptop.token),
+    payload: { account: 'New.Login-Name', currentPassword: 'rename-pass' },
+  });
+  expect(changed.statusCode).toBe(200);
+  expect(changed.json()).toEqual({ account: 'new.login-name' });
+
+  for (const token of [phone.token, laptop.token]) {
+    const me = await ctx.app.inject({ method: 'GET', url: '/_api/auth/me', ...withSession(token) });
+    expect(me.statusCode).toBe(401);
+  }
+  expect((await login(ctx, 'old-login-name', 'rename-pass')).res.statusCode).toBe(401);
+  expect((await login(ctx, 'NEW.LOGIN-NAME', 'rename-pass')).res.statusCode).toBe(200);
+
+  const rows = await ctx.db.select().from(accountNameChanges);
+  expect(rows).toContainEqual(
+    expect.objectContaining({
+      userId: user.id,
+      changedBy: user.id,
+      fromAccount: 'old-login-name',
+      toAccount: 'new.login-name',
+    }),
+  );
+});
+
+test('本人改登录用户名时密码错误或名称被占用都不更新', async () => {
+  await createLoginableUser(ctx.db, 'guard-pass', { account: 'rename-guard' });
+  await createLoginableUser(ctx.db, 'taken-pass', { account: 'already-taken' });
+  const { token } = await login(ctx, 'rename-guard', 'guard-pass');
+
+  const wrongPassword = await ctx.app.inject({
+    method: 'PUT',
+    url: '/_api/auth/account',
+    ...withSession(token),
+    payload: { account: 'available-name', currentPassword: 'wrong-pass' },
+  });
+  expect(wrongPassword.statusCode).toBe(401);
+
+  const taken = await ctx.app.inject({
+    method: 'PUT',
+    url: '/_api/auth/account',
+    ...withSession(token),
+    payload: { account: 'ALREADY-TAKEN', currentPassword: 'guard-pass' },
+  });
+  expect(taken.statusCode).toBe(409);
+  expect((await login(ctx, 'rename-guard', 'guard-pass')).res.statusCode).toBe(200);
 });
 
 test('登出后原会话立即不可用', async () => {

@@ -1,3 +1,5 @@
+import { buttons, pageViews, profiles } from '@link-profile/shared/schema';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from './helpers/context.js';
 import { createLoginableUser } from './helpers/factories.js';
@@ -60,6 +62,66 @@ const putEntries = (token: string, entries: unknown[]) =>
   });
 
 const page = () => ctx.app.inject({ method: 'GET', url: '/mimnz' });
+
+test('后台缩略预览复用真实页面渲染但不写访问统计', async () => {
+  const res = await ctx.app.inject({
+    method: 'GET',
+    url: `/_api/profiles/${profileId}/preview`,
+    ...withSession(ownerToken),
+  });
+
+  expect(res.statusCode).toBe(200);
+  expect(res.headers['content-type']).toContain('text/html');
+  expect(res.body).toContain('mimnz');
+  expect(res.body).not.toContain('/_api/track');
+  expect(await ctx.db.select().from(pageViews)).toHaveLength(0);
+});
+
+test('复制页面保留内容与条目，使用新 id 且不复制统计', async () => {
+  await ctx.app.inject({
+    method: 'PATCH',
+    url: `/_api/profiles/${profileId}`,
+    ...withSession(ownerToken),
+    payload: {
+      displayName: '来源页面',
+      bio: '复制这段简介',
+      layout: 'shape',
+      theme: 'glass-ocean',
+      solidBackground: true,
+    },
+  });
+  await putButtons(ownerToken, [
+    { title: '复制的按钮', subtitle: '说明', url: 'https://example.com/copied', isLead: true },
+  ]);
+
+  const res = await ctx.app.inject({
+    method: 'POST',
+    url: `/_api/profiles/${profileId}/duplicate`,
+    ...withSession(ownerToken),
+    payload: { shortName: 'mimnz-copy', displayName: '来源页面 副本' },
+  });
+
+  expect(res.statusCode).toBe(201);
+  const copiedId = res.json().id as string;
+  expect(copiedId).not.toBe(profileId);
+  const [copied] = await ctx.db.select().from(profiles).where(eq(profiles.id, copiedId));
+  expect(copied).toMatchObject({
+    shortName: 'mimnz-copy',
+    displayName: '来源页面 副本',
+    bio: '复制这段简介',
+    layout: 'shape',
+    theme: 'glass-ocean',
+    solidBackground: true,
+  });
+  const sourceEntries = await ctx.db.select().from(buttons).where(eq(buttons.profileId, profileId));
+  const copiedEntries = await ctx.db.select().from(buttons).where(eq(buttons.profileId, copiedId));
+  expect(copiedEntries).toHaveLength(1);
+  expect(copiedEntries[0]).toMatchObject({ title: '复制的按钮', isLead: true });
+  expect(copiedEntries[0]!.id).not.toBe(sourceEntries[0]!.id);
+  expect(
+    await ctx.db.select().from(pageViews).where(eq(pageViews.profileId, copiedId)),
+  ).toHaveLength(0);
+});
 
 test('改显示名与简介，公开页随之变化', async () => {
   const res = await ctx.app.inject({
@@ -207,7 +269,7 @@ test('按钮文字里的尖括号被转义，不会注入标签', async () => {
   expect(html).toContain('&lt;script&gt;');
 });
 
-test('社媒图标只填号码或邮箱，目标 URL 由系统拼装', async () => {
+test('社媒及电话入口只填号码或邮箱，目标 URL 由系统拼装', async () => {
   const res = await ctx.app.inject({
     method: 'PUT',
     url: `/_api/profiles/${profileId}/entries`,
@@ -215,8 +277,16 @@ test('社媒图标只填号码或邮箱，目标 URL 由系统拼装', async () 
     payload: {
       entries: [
         { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '+1 (555) 010-9999' },
+        { kind: 'social', title: '发短信', platform: 'sms', value: '+64 (21) 000 0000' },
+        { kind: 'social', title: '打电话', platform: 'phone', value: '+64 (21) 000 0000' },
         { kind: 'social', title: 'Email', platform: 'email', value: 'hi@example.com' },
-        { kind: 'social', title: 'Instagram', platform: 'instagram', value: '@mimnz' },
+        {
+          kind: 'social',
+          title: 'Instagram',
+          platform: 'instagram',
+          value: '@mimnz',
+          directMessage: true,
+        },
       ],
     },
   });
@@ -224,8 +294,28 @@ test('社媒图标只填号码或邮箱，目标 URL 由系统拼装', async () 
 
   const html = (await page()).body;
   expect(html).toContain('href="https://wa.me/15550109999"');
+  expect(html).toContain('href="sms:+64210000000"');
+  expect(html).toContain('href="tel:+64210000000"');
   expect(html).toContain('href="mailto:hi@example.com"');
-  expect(html).toContain('href="https://instagram.com/mimnz"');
+  expect(html).toContain('href="https://ig.me/m/mimnz"');
+});
+
+test('联系渠道拒绝明显错误的号码与用户名', async () => {
+  for (const entry of [
+    { platform: 'whatsapp', value: '123' },
+    { platform: 'phone', value: 'not-a-phone' },
+    { platform: 'instagram', value: 'bad..name' },
+    { platform: 'messenger', value: 'a!' },
+  ]) {
+    const res = await ctx.app.inject({
+      method: 'PUT',
+      url: `/_api/profiles/${profileId}/entries`,
+      ...withSession(ownerToken),
+      payload: { entries: [{ kind: 'social', title: '测试', ...entry }] },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe('invalid_social_value');
+  }
 });
 
 test('社媒图标的默认 is_lead 按平台给出，且可覆盖', async () => {
@@ -274,8 +364,8 @@ test('同一个平台不能启用两次', async () => {
     ...withSession(ownerToken),
     payload: {
       entries: [
-        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '1' },
-        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '2' },
+        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '+15550101001' },
+        { kind: 'social', title: 'WhatsApp', platform: 'whatsapp', value: '+15550101002' },
       ],
     },
   });
@@ -290,6 +380,8 @@ test('内置平台清单只含海外平台', async () => {
   const ids = res.json().platforms.map((p: { id: string }) => p.id);
   expect(ids).toContain('whatsapp');
   expect(ids).toContain('messenger');
+  expect(ids).toContain('sms');
+  expect(ids).toContain('phone');
   for (const banned of ['weixin', 'wechat', 'qq', 'weibo', 'douyin', 'xiaohongshu']) {
     expect(ids).not.toContain(banned);
   }

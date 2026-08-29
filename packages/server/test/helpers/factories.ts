@@ -49,6 +49,7 @@ const PROFILE_KEYS = new Set([
   'theme',
   'avatarMediaId',
   'avatarPosterId',
+  'bannerMediaId',
   'backgroundMediaId',
   'backgroundOverlay',
 ]);

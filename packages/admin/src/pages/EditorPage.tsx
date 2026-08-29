@@ -29,7 +29,6 @@ const LAYOUT_LABELS: Record<string, string> = {
   classic: 'Classic',
   hero: 'Hero',
   banner: 'Banner',
-  cutout: 'Cutout',
   shape: 'Shape',
 };
 
@@ -63,6 +62,7 @@ export function EditorPage() {
     setDraft(
       draftFromServer(loaded, {
         avatar: loaded.profile.avatarUrl,
+        banner: loaded.profile.bannerUrl,
         background: loaded.profile.backgroundUrl,
         avatarIsVideo: loaded.profile.avatarIsVideo,
       }),
@@ -204,7 +204,7 @@ export function EditorPage() {
           title="布局"
           hint="布局只决定头像与头图区域的形状和占比，不决定配色。没传头图时该区域用主题渐变填充。"
         >
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {layoutEnum.enumValues.map((value) => {
               const active = draft.fields.layout === value;
               return (
@@ -217,8 +217,8 @@ export function EditorPage() {
                     ${active ? 'border-accent ring-1 ring-accent' : 'border-border hover:bg-surface-hover'}`}
                 >
                   {active ? (
-                    // z-10 不能省：cutout 的示意图色块用的是同一组坐标、hero 的盖住整条顶边，
-                    // 两者都排在这个对号之后，同层叠上下文里后来的绝对定位元素会压住它。
+                    // z-10 不能省：hero 的示意图色块盖住整条顶边，排在对号之后，
+                    // 同层叠上下文里后来的绝对定位元素会压住它。
                     <span className="absolute right-1.5 top-1.5 z-10 flex size-4 items-center justify-center rounded-full bg-accent text-accent-fg">
                       <Check className="size-2.5" strokeWidth={3} />
                     </span>
@@ -301,7 +301,7 @@ function Panel({ title, hint, children }: { title: string; hint?: string; childr
   );
 }
 
-/** 五种布局的形状意向图：不追求像素级还原，只求一眼看出五者不同。 */
+/** 四种布局的形状意向图：不追求像素级还原，只求一眼看出四者不同。 */
 function LayoutGlyph({ layout }: { layout: string }) {
   const base = 'flex h-14 w-full flex-col items-center justify-center gap-1 rounded-[4px] bg-bg';
   switch (layout) {
@@ -317,13 +317,6 @@ function LayoutGlyph({ layout }: { layout: string }) {
         <div className={`${base} !justify-start gap-1 pt-1.5`}>
           <span className="h-4 w-[85%] rounded-[2px] bg-accent-soft" />
           <Bars />
-        </div>
-      );
-    case 'cutout':
-      return (
-        <div className={`${base} relative items-start !justify-start px-1.5 pt-1.5`}>
-          <span className="absolute right-1.5 top-1.5 h-8 w-6 rounded-t-full bg-accent-soft" />
-          <Bars align="left" />
         </div>
       );
     case 'shape':
@@ -380,7 +373,13 @@ function toPayload(entry: EntryDraft): Record<string, unknown> {
   };
 
   return entry.kind === 'social'
-    ? { ...common, platform: entry.platform, value: entry.value }
+    ? {
+        ...common,
+        platform: entry.platform,
+        value: entry.value,
+        directMessage: entry.directMessage,
+        message: entry.message,
+      }
     : { ...common, url: entry.url };
 }
 
@@ -407,6 +406,17 @@ async function uploadPendingMedia(profileId: string, draft: Draft): Promise<void
     await request(`/profiles/${profileId}/media`, { method: 'POST', formData: form });
   } else if (draft.savedBackgroundUrl === null) {
     await request(`/profiles/${profileId}/media/background`, { method: 'DELETE' }).catch(
+      () => undefined,
+    );
+  }
+
+  if (draft.pendingBanner) {
+    const form = new FormData();
+    form.append('slot', 'banner');
+    form.append('file', draft.pendingBanner.file);
+    await request(`/profiles/${profileId}/media`, { method: 'POST', formData: form });
+  } else if (draft.savedBannerUrl === null) {
+    await request(`/profiles/${profileId}/media/banner`, { method: 'DELETE' }).catch(
       () => undefined,
     );
   }

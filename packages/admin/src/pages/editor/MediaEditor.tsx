@@ -44,6 +44,12 @@ const BACKGROUND_SPECS = [
   '只收图片，不能放视频',
 ];
 
+const BANNER_SPECS = [
+  `JPG / PNG / WebP / AVIF，不超过 ${mb(IMAGE_MAX_BYTES)}`,
+  `裁切成 3:1，最终按长边 ${IMAGE_MAX_EDGE.banner}px 输出`,
+  '只用于 Banner 布局，与头像位、背景图互不替换',
+];
+
 /** 待裁切的图片。裁完才进 pending，取消则整个丢弃。 */
 interface CropTask {
   file: File;
@@ -149,6 +155,17 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
     setCropping({ file, slot: 'background' });
   };
 
+  const pickBanner = (file: File) => {
+    clearSlot('banner');
+    const problem = rejectImage({ mimeType: file.type, bytes: file.size });
+    if (problem) {
+      failSlot('banner', problem);
+      return;
+    }
+    setSources((prev) => ({ ...prev, banner: file }));
+    setCropping({ file, slot: 'banner' });
+  };
+
   const pickPoster = (file: File) => {
     const problem = rejectImage({ mimeType: file.type, bytes: file.size });
     if (problem) {
@@ -163,6 +180,8 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
     if (!cropping) return;
     if (cropping.slot === 'avatar') {
       onChange({ pendingAvatar: asPending(cropped), pendingAvatarPoster: null });
+    } else if (cropping.slot === 'banner') {
+      onChange({ pendingBanner: asPending(cropped) });
     } else {
       onChange({ pendingBackground: asPending(cropped) });
     }
@@ -187,11 +206,15 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
     (cropping?.slot === 'background' ? livePreview : null) ??
     draft.pendingBackground?.objectUrl ??
     draft.savedBackgroundUrl;
+  const bannerPreview =
+    (cropping?.slot === 'banner' ? livePreview : null) ??
+    draft.pendingBanner?.objectUrl ??
+    draft.savedBannerUrl;
   const hasBackground = Boolean(backgroundPreview);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MediaSlot
           label="头像位"
           hint="拖进来或点选。图片会先进裁切编辑器；也可以放一段带声音的短视频。"
@@ -214,6 +237,29 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
             clearSlot('avatar');
             setSilentVideo(false);
             onChange({ pendingAvatar: null, pendingAvatarPoster: null, savedAvatarUrl: null });
+          }}
+        />
+        <MediaSlot
+          label="Banner 图"
+          hint="Banner 布局顶部的独立横幅。不会再自动使用头像，可单独更换。"
+          specs={BANNER_SPECS}
+          accept="image/*"
+          previewUrl={bannerPreview}
+          previewIsVideo={false}
+          shape="banner"
+          fileName={
+            cropping?.slot === 'banner'
+              ? '正在调整构图…'
+              : (draft.pendingBanner?.file.name ?? null)
+          }
+          error={slotErrors.banner ?? null}
+          onPick={pickBanner}
+          {...(sources.banner && draft.pendingBanner
+            ? { onRecrop: () => recrop('banner') }
+            : {})}
+          onClear={() => {
+            clearSlot('banner');
+            onChange({ pendingBanner: null, savedBannerUrl: null });
           }}
         />
         <MediaSlot
@@ -325,7 +371,7 @@ function MediaSlot({
   accept: string;
   previewUrl: string | null;
   previewIsVideo: boolean;
-  shape: 'circle' | 'portrait';
+  shape: 'circle' | 'banner' | 'portrait';
   /** 这一格下面那行字：文件名、「正在调整构图…」，或服务端已有图时的兜底 */
   fileName: string | null;
   /** 这一格上次校验失败的原因。有值时整格加红边并把原因摆出来。 */
@@ -397,7 +443,13 @@ function MediaSlot({
         <div className="flex items-center gap-3">
           <div
             className={`shrink-0 overflow-hidden border border-border bg-bg
-              ${shape === 'circle' ? 'size-14 rounded-full' : 'h-20 w-[38px] rounded-[4px]'}`}
+              ${
+                shape === 'circle'
+                  ? 'size-14 rounded-full'
+                  : shape === 'banner'
+                    ? 'h-12 w-24 rounded-[4px]'
+                    : 'h-20 w-[38px] rounded-[4px]'
+              }`}
           >
             {previewIsVideo ? (
               <video src={previewUrl} muted className="size-full object-cover" />

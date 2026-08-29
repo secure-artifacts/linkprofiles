@@ -1,6 +1,7 @@
-import { Avatar } from './Avatar.js';
+import { Avatar, MediaImage } from './Avatar.js';
 import { ButtonList } from './Buttons.js';
 import { MutedIcon, SoundIcon } from './Icon.js';
+import { THEMES } from './themes.js';
 import type { ProfileView } from './types.js';
 
 interface HeaderProps {
@@ -39,7 +40,7 @@ function Header({ profile, priority }: HeaderProps) {
     <Avatar
       media={profile.avatar}
       video={profile.video}
-      priority={priority}
+      priority={priority && profile.layout !== 'banner'}
       alt={profile.displayName}
     />
   );
@@ -49,7 +50,6 @@ function Header({ profile, priority }: HeaderProps) {
       return (
         <div className="hd hd-hero">
           {avatar}
-          <div className="veil" />
           <div className="cap">
             <Name profile={profile} />
           </div>
@@ -59,7 +59,16 @@ function Header({ profile, priority }: HeaderProps) {
     case 'banner':
       return (
         <div className="hd hd-ban">
-          <Avatar media={profile.avatar} video={profile.video} priority={priority} className="bn" />
+          {profile.banner ? (
+            <MediaImage
+              media={profile.banner}
+              priority={priority}
+              className="bn"
+              alt={`${profile.displayName} 的 Banner 图`}
+            />
+          ) : (
+            <div className="bn bn-empty" aria-hidden="true" />
+          )}
           <div className="row">
             {avatar}
             <div className="nm">
@@ -68,16 +77,6 @@ function Header({ profile, priority }: HeaderProps) {
           </div>
           <div className="below">
             <Bio profile={profile} />
-          </div>
-        </div>
-      );
-
-    case 'cutout':
-      return (
-        <div className="hd hd-cut">
-          {avatar}
-          <div className="nm">
-            <Name profile={profile} />
           </div>
         </div>
       );
@@ -130,6 +129,7 @@ export function ProfilePage({ profile, priority = false }: ProfilePageProps) {
       className="pp"
       data-t={profile.theme}
       data-l={profile.layout}
+      data-effect={THEMES[profile.theme].effect}
       {...(profile.iconPlate ? { 'data-icon-plate': '' } : {})}
       {...backgroundProps}
     >

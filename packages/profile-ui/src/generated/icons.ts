@@ -79,6 +79,16 @@ export const BRAND_ICONS: Record<string, BrandIcon> = {
     "hex": "#4A5058",
     "viewBox": "0 0 24 24",
     "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linejoin=\"round\" d=\"M3 6.5h18v11H3zM3 7l9 6 9-6\"/>"
+  },
+  "sms": {
+    "hex": "#34C759",
+    "viewBox": "0 0 24 24",
+    "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M4 5.5h16v11H9l-5 3v-14zM8 10h8M8 13h5\"/>"
+  },
+  "phone": {
+    "hex": "#0A84FF",
+    "viewBox": "0 0 24 24",
+    "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M7.2 3.5 4.7 5.2c-.8.6-.9 1.7-.5 2.8 2 5.2 5.6 8.8 10.8 10.8 1.1.4 2.2.3 2.8-.5l1.7-2.5-4.5-2.2-1.4 1.7c-2.2-1-3.9-2.7-4.9-4.9L10.4 9 7.2 3.5z\"/>"
   }
 };
 

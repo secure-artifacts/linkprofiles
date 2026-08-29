@@ -13,10 +13,10 @@ export const VIDEO_MIME_TYPES = ['video/mp4'] as const;
  * 放在 shared 而不是 server：服务端拿它压图，后台拿它在上传前如实告知用户
  * 「最终会被压到多大」—— 同一个数字，两边不该各写一份。
  */
-export const IMAGE_MAX_EDGE = { avatar: 640, background: 1440 } as const;
+export const IMAGE_MAX_EDGE = { avatar: 640, banner: 1440, background: 1440 } as const;
 
-/** 裁切框的宽高比，按用途给。背景图按最窄的手机竖屏取。 */
-export const CROP_ASPECT = { avatar: 1, background: 375 / 812 } as const;
+/** 裁切框的宽高比，按用途给。Banner 取公开页横幅比例，背景图按最窄手机竖屏取。 */
+export const CROP_ASPECT = { avatar: 1, banner: 3, background: 375 / 812 } as const;
 
 export type VideoRejection =
   | { reason: 'format'; message: string }

@@ -103,6 +103,8 @@ export function ContentEditor({
       url: '',
       platform: platform.id,
       value: '',
+      directMessage: platform.id === 'instagram',
+      message: '',
       isLead: platform.defaultIsLead,
       passSource: false,
     };
@@ -120,6 +122,8 @@ export function ContentEditor({
       url: '',
       platform: '',
       value: '',
+      directMessage: false,
+      message: '',
       isLead: false,
       passSource: false,
     };
@@ -573,11 +577,31 @@ function EntryFields({
       />
 
       {entry.kind === 'social' ? (
-        <Input
-          value={entry.value}
-          onChange={(e) => onChange({ value: e.target.value })}
-          placeholder={platform?.inputHint ?? '号码 / 邮箱 / 用户名'}
-        />
+        <>
+          <Input
+            value={entry.value}
+            onChange={(e) => onChange({ value: e.target.value })}
+            placeholder={platform?.inputHint ?? '号码 / 邮箱 / 用户名'}
+          />
+          {entry.platform === 'instagram' ? (
+            <HelpToggle
+              checked={entry.directMessage}
+              onChange={(checked) => onChange({ directMessage: checked })}
+              label="点击后直接发 Instagram 消息"
+              help="默认开启，生成 ig.me/m/用户名；关闭后跳转到 Instagram 个人主页。"
+            />
+          ) : null}
+          {entry.platform === 'sms' || entry.platform === 'whatsapp' ? (
+            <Input
+              value={entry.message}
+              onChange={(e) => onChange({ message: e.target.value })}
+              placeholder={
+                entry.platform === 'sms' ? '短信预设内容（选填）' : 'WhatsApp 预设消息（选填）'
+              }
+              maxLength={500}
+            />
+          ) : null}
+        </>
       ) : (
         <Input
           value={entry.url}

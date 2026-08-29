@@ -81,7 +81,7 @@ test('新账号默认使用 Dawn·晨', async () => {
   expect((await page()).body).toContain('data-t="dawn"');
 });
 
-test('六套主题全部可用，切换后持久化并反映在公开页上', async () => {
+test('全部主题均可切换、持久化并反映在公开页上', async () => {
   for (const theme of themeEnum.enumValues) {
     const saved = await patch({ theme });
     expect(saved.statusCode, theme).toBe(200);
@@ -98,10 +98,26 @@ test('主题只是一组 CSS 变量的取值，结构不变', async () => {
     if (theme === 'dawn') continue; // Dawn 的取值落在 .pp 上当默认
     expect(head, theme).toContain(`.pp[data-t=${theme}]`);
   }
-  // 六套共用同一批变量名
+  // 全部主题共用同一批变量名
   for (const token of ['--bg:', '--surface:', '--on-surface:', '--text:', '--muted:', '--r:']) {
     expect(head, token).toContain(token);
   }
+});
+
+test('公开页只引用自托管 WOFF2 字体，不再请求 Google Fonts', async () => {
+  const html = (await page()).body;
+  expect(html).toContain('/_static/fonts/bricolage-grotesque-latin-wght-normal.woff2');
+  expect(html).not.toContain('fonts.googleapis.com');
+  expect(html).not.toContain('fonts.gstatic.com');
+
+  const font = await ctx.app.inject({
+    method: 'GET',
+    url: '/_static/fonts/bricolage-grotesque-latin-wght-normal.woff2',
+  });
+  expect(font.statusCode).toBe(200);
+  expect(font.headers['content-type']).toContain('font/woff2');
+  expect(font.headers['cache-control']).toContain('immutable');
+  expect(font.rawPayload.byteLength).toBeGreaterThan(40_000);
 });
 
 test('圆角是主题的一部分而非全局常量', async () => {
@@ -171,7 +187,7 @@ test('清空背景图后回到主题渐变', async () => {
 test('背景图与布局互不干涉：任一布局上都能铺背景', async () => {
   await uploadBackground();
 
-  for (const layout of ['classic', 'hero', 'banner', 'cutout', 'shape']) {
+  for (const layout of ['classic', 'hero', 'banner', 'shape']) {
     await patch({ layout });
     const root = await rootTag();
     expect(root, layout).toContain('data-bg-image');

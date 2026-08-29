@@ -257,6 +257,32 @@ test('公开页带上埋点用的标记，供那一小段客户端脚本读取',
   expect(html).toContain("navigator.sendBeacon('/_api/track/click'");
 });
 
+test('Messenger 按钮带智能唤起标记，并为三类设备保留各自目标', async () => {
+  await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/profiles/${profileId}/entries`,
+    ...withSession(token),
+    payload: {
+      entries: [
+        {
+          kind: 'social',
+          title: 'Messenger',
+          platform: 'messenger',
+          value: '61557076853972',
+        },
+      ],
+    },
+  });
+
+  const html = (await visit()).body;
+  expect(html).toContain('href="https://m.me/61557076853972"');
+  expect(html).toContain('data-smart-open="messenger"');
+  expect(html).toContain('fb-messenger-public://user-thread/');
+  expect(html).toContain('intent://user/');
+  expect(html).toContain('package=com.facebook.orca');
+  expect(html).toContain('S.browser_fallback_url=');
+});
+
 test('没有 GeoLite2 库时地域为空，其余埋点照常写入', async () => {
   const noGeoCtx = await createTestContext();
   try {

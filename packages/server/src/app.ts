@@ -13,6 +13,7 @@ import { analyticsRoutes } from './routes/analytics.js';
 import { authRoutes } from './routes/auth.js';
 import { bulkUserRoutes } from './routes/bulk-users.js';
 import { healthRoutes } from './routes/health.js';
+import { fontRoutes } from './routes/fonts.js';
 import { mediaRoutes } from './routes/media.js';
 import { ogImageRoutes } from './routes/og-image.js';
 import { profileContentRoutes } from './routes/profile-content.js';
@@ -20,6 +21,8 @@ import { profileRoutes } from './routes/profile.js';
 import { settingsRoutes } from './routes/settings.js';
 import { trackRoutes } from './routes/track.js';
 import { userRoutes } from './routes/users.js';
+import { apiKeyRoutes } from './routes/api-keys.js';
+import { externalApiRoutes } from './routes/external-api.js';
 
 export interface AppDeps {
   db: Db;
@@ -82,10 +85,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(bulkUserRoutes, { prefix: '/_api' });
   await app.register(userRoutes, { prefix: '/_api' });
   await app.register(profileContentRoutes, { prefix: '/_api' });
+  await app.register(apiKeyRoutes, { prefix: '/_api' });
+  await app.register(externalApiRoutes, { prefix: '/_api/v1' });
   await app.register(mediaRoutes, { prefix: '/_api' });
   await app.register(trackRoutes, { prefix: '/_api' });
   await app.register(settingsRoutes, { prefix: '/_api' });
   await app.register(analyticsRoutes, { prefix: '/_api' });
+  await app.register(fontRoutes, { prefix: '/_static' });
   await app.register(ogImageRoutes, { prefix: '/_static' });
   await app.register(adminAppRoutes);
 

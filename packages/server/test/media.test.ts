@@ -239,6 +239,80 @@ test('背景图只收图片，不收视频', async () => {
   expect(res.json().error).toBe('video_not_allowed');
 });
 
+test('复制页面会复制一份独立媒体目录', async () => {
+  const uploaded = await upload(token, { slot: 'avatar' }, { file: await imageFile() });
+  expect(uploaded.statusCode).toBe(201);
+  const [source] = await ctx.db.select().from(media).where(eq(media.id, uploaded.json().mediaId));
+
+  const copied = await ctx.app.inject({
+    method: 'POST',
+    url: `/_api/profiles/${profileId}/duplicate`,
+    ...withSession(token),
+    payload: { shortName: 'mimnz-copy', displayName: 'mimnz 副本' },
+  });
+  expect(copied.statusCode).toBe(201);
+
+  const [target] = await ctx.db
+    .select()
+    .from(media)
+    .where(eq(media.profileId, copied.json().id as string));
+  expect(target).toBeDefined();
+  expect(target!.id).not.toBe(source!.id);
+  expect(target!.directory).not.toBe(source!.directory);
+  expect(await readdir(path.join(uploads, target!.directory))).toEqual(
+    expect.arrayContaining(['image.avif', 'image.webp', 'thumb.webp']),
+  );
+  expect(
+    target!.variants.every((variant) => variant.path.startsWith(`${target!.directory}/`)),
+  ).toBe(true);
+});
+
+test('Banner 图与头像位独立上传、更换和清空', async () => {
+  const firstAvatar = await upload(token, { slot: 'avatar' }, { file: await imageFile('a.png') });
+  const banner = await upload(token, { slot: 'banner' }, { file: await imageFile('banner.png') });
+  expect(banner.statusCode).toBe(201);
+  expect(banner.json().mediaId).not.toBe(firstAvatar.json().mediaId);
+
+  await ctx.app.inject({
+    method: 'PATCH',
+    url: `/_api/profiles/${profileId}`,
+    ...withSession(token),
+    payload: { layout: 'banner' },
+  });
+
+  let html = (await page()).body;
+  expect(html).toContain(`/${banner.json().mediaId}/image.webp`);
+  expect(html).toContain(`/${firstAvatar.json().mediaId}/image.webp`);
+
+  const nextAvatar = await upload(token, { slot: 'avatar' }, { file: await imageFile('b.png') });
+  html = (await page()).body;
+  expect(html).toContain(`/${banner.json().mediaId}/image.webp`);
+  expect(html).toContain(`/${nextAvatar.json().mediaId}/image.webp`);
+
+  const cleared = await ctx.app.inject({
+    method: 'DELETE',
+    url: `/_api/profiles/${profileId}/media/banner`,
+    ...withSession(token),
+  });
+  expect(cleared.statusCode).toBe(204);
+
+  html = (await page()).body;
+  expect(html).not.toContain(`/${banner.json().mediaId}/image.webp`);
+  expect(html).toContain(`/${nextAvatar.json().mediaId}/image.webp`);
+  expect(html).toContain('bn bn-empty');
+});
+
+test('Banner 图只收图片，不收视频', async () => {
+  const res = await upload(
+    token,
+    { slot: 'banner' },
+    { file: { filename: 'clip.mp4', contentType: 'video/mp4', data: makeMp4(5000) } },
+  );
+
+  expect(res.statusCode).toBe(400);
+  expect(res.json().error).toBe('video_not_allowed');
+});
+
 test('非图片格式被拒，错误里说明支持哪些', async () => {
   const res = await upload(
     token,

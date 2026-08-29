@@ -14,6 +14,8 @@ export type SocialPlatformId =
   | 'messenger'
   | 'telegram'
   | 'signal'
+  | 'sms'
+  | 'phone'
   | 'email'
   | 'instagram'
   | 'facebook'
@@ -36,12 +38,51 @@ export interface SocialPlatform {
   /** 联系类渠道默认计入线索，内容类默认不计。用户可在后台逐条修改。 */
   defaultIsLead: boolean;
   inputHint: string;
-  buildUrl: (value: string) => string;
+  buildUrl: (value: string) => string | null;
+}
+
+export interface SocialValueValidation {
+  ok: boolean;
+  error?: string;
 }
 
 /** 号码只留数字：用户可能填 `+1 (555) 010-9999`，wa.me 只认数字。 */
 function digitsOnly(value: string): string {
   return value.replace(/\D/g, '');
+}
+
+/** 短信与拨号保留国际号码开头的 +，其余格式字符全部去掉。 */
+function dialablePhone(value: string): string | null {
+  const trimmed = value.trim();
+  const digits = digitsOnly(trimmed);
+  if (!digits) return null;
+  return trimmed.startsWith('+') ? `+${digits}` : digits;
+}
+
+function validInternationalPhone(value: string): boolean {
+  const trimmed = value.trim();
+  const digits = digitsOnly(trimmed);
+  return /^\+?[\d\s().-]+$/.test(trimmed) && digits.length >= 7 && digits.length <= 15;
+}
+
+function validInstagramUsername(value: string): boolean {
+  const username = bareUsername(value);
+  return (
+    username.length >= 1 &&
+    username.length <= 30 &&
+    /^[A-Za-z0-9_](?:[A-Za-z0-9._]*[A-Za-z0-9_])?$/.test(username) &&
+    !username.includes('..')
+  );
+}
+
+function validMessengerUsername(value: string): boolean {
+  const username = bareUsername(value);
+  return (
+    username.length >= 5 &&
+    username.length <= 50 &&
+    /^[A-Za-z0-9](?:[A-Za-z0-9.]*[A-Za-z0-9])$/.test(username) &&
+    !username.includes('..')
+  );
 }
 
 /**
@@ -69,7 +110,7 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
     inputKind: 'phone',
     defaultIsLead: true,
     inputHint: '带国际区号的号码，如 +1 555 010 9999',
-    buildUrl: (v) => `https://wa.me/${digitsOnly(v)}`,
+    buildUrl: (v) => (validInternationalPhone(v) ? `https://wa.me/${digitsOnly(v)}` : null),
   },
   {
     id: 'messenger',
@@ -78,7 +119,7 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
     inputKind: 'username',
     defaultIsLead: true,
     inputHint: 'Messenger 用户名，直接开对话而不是跳主页',
-    buildUrl: (v) => `https://m.me/${bareUsername(v)}`,
+    buildUrl: (v) => (validMessengerUsername(v) ? `https://m.me/${bareUsername(v)}` : null),
   },
   {
     id: 'telegram',
@@ -99,6 +140,32 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
     buildUrl: (v) => `https://signal.me/#p/+${digitsOnly(v)}`,
   },
   {
+    id: 'sms',
+    label: '短信',
+    brandHex: '#34C759',
+    inputKind: 'phone',
+    defaultIsLead: true,
+    inputHint: '带国际区号的手机号；只打开短信应用，不预填内容',
+    buildUrl: (v) => {
+      if (!validInternationalPhone(v)) return null;
+      const number = dialablePhone(v);
+      return number ? `sms:${number}` : null;
+    },
+  },
+  {
+    id: 'phone',
+    label: '拨打电话',
+    brandHex: '#0A84FF',
+    inputKind: 'phone',
+    defaultIsLead: true,
+    inputHint: '带国际区号的手机号，点击直接打开拨号界面',
+    buildUrl: (v) => {
+      if (!validInternationalPhone(v)) return null;
+      const number = dialablePhone(v);
+      return number ? `tel:${number}` : null;
+    },
+  },
+  {
     id: 'email',
     label: 'Email',
     brandHex: '#4A5058',
@@ -114,7 +181,8 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
     inputKind: 'username',
     defaultIsLead: false,
     inputHint: 'Instagram 用户名，不含 @',
-    buildUrl: (v) => `https://instagram.com/${bareUsername(v)}`,
+    buildUrl: (v) =>
+      validInstagramUsername(v) ? `https://instagram.com/${bareUsername(v)}` : null,
   },
   {
     id: 'facebook',
@@ -207,4 +275,36 @@ export function buildSocialUrl(platformId: string, value: string): string | null
   const trimmed = value.trim();
   if (trimmed === '') return null;
   return platform.buildUrl(trimmed);
+}
+
+export function buildSocialTargetUrl(
+  platformId: string,
+  value: string,
+  directMessage = false,
+  message = '',
+): string | null {
+  const url = buildSocialUrl(platformId, value);
+  if (!url) return null;
+  if (platformId === 'instagram' && directMessage) {
+    return `https://ig.me/m/${bareUsername(value)}`;
+  }
+  const body = message.trim();
+  if (body && platformId === 'whatsapp') return `${url}?text=${encodeURIComponent(body)}`;
+  if (body && platformId === 'sms') return `${url}?body=${encodeURIComponent(body)}`;
+  return url;
+}
+
+export function validateSocialValue(platformId: string, value: string): SocialValueValidation {
+  if (value.trim() === '') return { ok: false, error: '内容不能为空' };
+  if (buildSocialUrl(platformId, value)) return { ok: true };
+  if (['whatsapp', 'sms', 'phone', 'signal'].includes(platformId)) {
+    return { ok: false, error: '请输入 7–15 位有效手机号，可带 + 国际区号' };
+  }
+  if (platformId === 'instagram') {
+    return { ok: false, error: 'Instagram 用户名格式不正确（1–30 位字母、数字、点或下划线）' };
+  }
+  if (platformId === 'messenger') {
+    return { ok: false, error: 'Messenger 用户名格式不正确（5–50 位字母、数字或点）' };
+  }
+  return { ok: false, error: '这个格式拼不出可用的链接' };
 }

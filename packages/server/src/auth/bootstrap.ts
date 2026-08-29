@@ -2,6 +2,7 @@ import { users } from '@link-profile/shared/schema';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { hashPassword } from './passwords.js';
+import { accountNameSchema } from '@link-profile/shared';
 
 export interface BootstrapOptions {
   account: string | undefined;
@@ -30,9 +31,11 @@ export async function bootstrapSuperadmin(
   if (existing) return 'already-exists';
   if (!account || !password) return 'skipped';
 
+  const normalizedAccount = accountNameSchema.parse(account);
+
   await db.insert(users).values({
     role: 'superadmin',
-    account,
+    account: normalizedAccount,
     passwordHash: await hashPassword(password),
     label: '超级管理员',
   });

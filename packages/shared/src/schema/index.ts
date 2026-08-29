@@ -8,3 +8,5 @@ export * from './settings.js';
 export * from './tombstones.js';
 export * from './short-name-changes.js';
 export * from './summaries.js';
+export * from './api-keys.js';
+export * from './account-name-changes.js';

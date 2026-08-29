@@ -17,7 +17,7 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (session: Session) => vo
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const nextErrors: typeof errors = {};
-    if (!account) nextErrors.account = '请输入账号';
+    if (!account) nextErrors.account = '请输入登录用户名';
     if (!password) nextErrors.password = '请输入密码';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -71,10 +71,10 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (session: Session) => vo
       <div className="flex flex-1 items-center justify-center bg-bg p-6">
         <form onSubmit={(e) => void submit(e)} className="w-full max-w-[380px]">
           <h2 className="font-display text-xl font-semibold text-fg">Link Profile 后台</h2>
-          <p className="mt-1 text-[13px] text-muted">使用管理员账号登录工作台</p>
+          <p className="mt-1 text-[13px] text-muted">使用登录用户名进入工作台</p>
 
           <div className="mt-6 flex flex-col gap-1.5">
-            <label className="text-[13px] font-medium text-fg">账号</label>
+            <label className="text-[13px] font-medium text-fg">登录用户名</label>
             <Input
               autoComplete="username"
               autoFocus

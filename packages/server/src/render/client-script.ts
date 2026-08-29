@@ -44,6 +44,51 @@ document.addEventListener('click',function(e){
   }else{
     fetch('/_api/track/click',{method:'POST',headers:{'content-type':'application/json'},body:body,keepalive:true}).catch(function(){});
   }
+
+  /*
+   * Messenger 智能唤起。
+   *
+   * - iOS: Messenger 注册的 public scheme，系统会显示「在 Messenger 中打开」；
+   * - Android: 指定官方包名的 intent，未安装或 WebView 不接管时回退到 m.me；
+   * - 桌面、异常环境、禁用 JS: 保留原 href，直接使用 Messenger 网页版。
+   *
+   * 只在真实用户点击里执行，避免浏览器把 App 唤起判定为无手势弹窗。
+   */
+  if(a.getAttribute('data-smart-open')==='messenger'){
+    try{
+      var web=new URL(a.href,location.href);
+      if(web.hostname!=='m.me')return;
+      var recipient=decodeURIComponent(web.pathname.replace(/^\\/+|\\/+$/g,''));
+      if(!recipient)return;
+
+      var ua=navigator.userAgent||'';
+      var ios=/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/i.test(ua)&&navigator.maxTouchPoints>1);
+      var android=/Android/i.test(ua);
+
+      if(android){
+        e.preventDefault();
+        var target=encodeURIComponent(recipient);
+        var fallback=encodeURIComponent(web.href);
+        location.href='intent://user/'+target+'#Intent;scheme=fb-messenger;package=com.facebook.orca;S.browser_fallback_url='+fallback+';end';
+        return;
+      }
+
+      if(ios){
+        e.preventDefault();
+        var timer;
+        var stop=function(){if(timer){clearTimeout(timer);timer=0;}};
+        var onVisibility=function(){if(document.hidden)stop();};
+        document.addEventListener('visibilitychange',onVisibility,{once:true});
+        addEventListener('pagehide',stop,{once:true});
+        location.href='fb-messenger-public://user-thread/'+encodeURIComponent(recipient);
+        // 用户取消系统提示、Scheme 不可用或内置浏览器拦截时，继续走可用的网页链接。
+        timer=setTimeout(function(){
+          document.removeEventListener('visibilitychange',onVisibility);
+          if(!document.hidden)location.href=web.href;
+        },1800);
+      }
+    }catch(err){}
+  }
 },true);
 
 /*

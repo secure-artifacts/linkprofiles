@@ -1,5 +1,5 @@
 import { AvatarPlaceholder } from '@link-profile/profile-ui';
-import { ArrowRight, ExternalLink, Plus } from 'lucide-react';
+import { ArrowRight, Copy, ExternalLink, KeyRound, Plus, Share2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { request } from '../api/client.js';
@@ -18,7 +18,6 @@ const LAYOUT_LABELS: Record<string, string> = {
   classic: '经典',
   hero: '大图',
   banner: '横幅',
-  cutout: '抠像',
   shape: '异形',
 };
 
@@ -40,7 +39,10 @@ export function ProfilesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [duplicating, setDuplicating] = useState<ProfileSummary | null>(null);
   const [renaming, setRenaming] = useState<ProfileSummary | null>(null);
+  const [sharing, setSharing] = useState<ProfileSummary | null>(null);
+  const [managingApi, setManagingApi] = useState<ProfileSummary | null>(null);
 
   const isSelf = userId === session.id;
   // 建页面与改地址不用判断：进得来这个列表的人（本人，或他的管理员）本来就有
@@ -134,57 +136,86 @@ export function ProfilesPage() {
           还没有任何页面。
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {profiles.map((profile) => (
-            <div
+            <article
               key={profile.id}
-              className="flex flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-surface p-4"
+              className="flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-panel)] border border-border bg-surface"
             >
-              <div className="flex items-center gap-3">
-                <div className="size-11 shrink-0 overflow-hidden rounded-full border border-border bg-bg">
-                  {profile.avatarUrl ? (
-                    <img src={profile.avatarUrl} alt="" className="size-full object-cover" />
-                  ) : (
-                    <AvatarPlaceholder />
-                  )}
-                </div>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="truncate font-display text-[15px] font-semibold text-fg">
-                    {profile.displayName || profile.shortName}
+              <div className="flex items-center gap-3 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/profiles/${profile.id}`)}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <span className="size-10 shrink-0 overflow-hidden rounded-full border border-border bg-bg">
+                    {profile.avatarUrl ? (
+                      <img src={profile.avatarUrl} alt="" className="size-full object-cover" />
+                    ) : (
+                      <AvatarPlaceholder />
+                    )}
+                  </span>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate font-display text-[15px] font-semibold text-fg">
+                      {profile.displayName || profile.shortName}
+                    </span>
+                    <span className="text-[11px] text-muted">点击预览进入编辑</span>
+                  </span>
+                </button>
+                <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted">
+                  <span className="rounded-full border border-border px-2 py-0.5">
+                    {LAYOUT_LABELS[profile.layout] ?? profile.layout}
                   </span>
                   <a
                     href={`/${profile.shortName}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex w-fit items-center gap-1 font-mono text-[13px] text-accent hover:underline"
+                    aria-label={`在新窗口打开 /${profile.shortName}`}
+                    className="rounded p-1 text-accent hover:bg-bg"
                   >
-                    /{profile.shortName}
-                    <ExternalLink className="size-3" />
+                    <ExternalLink className="size-3.5" />
                   </a>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-[12px] text-muted">
-                <span className="rounded-full border border-border px-2 py-0.5">
-                  {LAYOUT_LABELS[profile.layout] ?? profile.layout}
-                </span>
-                <span>{new Date(profile.createdAt).toLocaleDateString('zh-CN')} 创建</span>
+              <div className="relative h-56 overflow-hidden border-y border-border bg-bg/60">
+                <iframe
+                  src={`/_api/profiles/${profile.id}/preview`}
+                  title={`${profile.displayName || profile.shortName} 的页面预览`}
+                  sandbox="allow-same-origin"
+                  tabIndex={-1}
+                  className="pointer-events-none absolute left-1/2 top-0 h-[820px] w-[390px] origin-top -translate-x-1/2 scale-[0.68] border-0"
+                />
+                <button
+                  type="button"
+                  aria-label={`编辑 ${profile.displayName || profile.shortName}`}
+                  onClick={() => navigate(`/profiles/${profile.id}`)}
+                  className="absolute inset-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                />
               </div>
 
-              <div className="flex flex-wrap items-center gap-1">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => navigate(`/profiles/${profile.id}`)}
-                >
-                  编辑
-                </Button>
+              <div className="flex min-w-0 items-center gap-1 px-3 py-2.5">
+                <span className="mr-auto min-w-0 truncate font-mono text-[12px] text-accent">
+                  /{profile.shortName}
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate(`/analytics?profileId=${profile.id}`)}
                 >
                   数据
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSharing(profile)}>
+                  <Share2 className="size-3.5" />
+                  推广
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setDuplicating(profile)}>
+                  <Copy className="size-3.5" />
+                  复制
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setManagingApi(profile)}>
+                  <KeyRound className="size-3.5" />
+                  API
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setRenaming(profile)}>
                   改地址
@@ -195,7 +226,7 @@ export function ProfilesPage() {
                   </Button>
                 ) : null}
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
@@ -206,9 +237,374 @@ export function ProfilesPage() {
         onClose={() => setCreating(false)}
         onDone={load}
       />
+      <DuplicateProfileModal profile={duplicating} onClose={() => setDuplicating(null)} />
       <RenameProfileModal profile={renaming} onClose={() => setRenaming(null)} onDone={load} />
+      <ShareLinksModal profile={sharing} onClose={() => setSharing(null)} />
+      <ApiKeysModal profile={managingApi} onClose={() => setManagingApi(null)} />
       {confirmDialog}
     </div>
+  );
+}
+
+interface ApiKeySummary {
+  id: string;
+  label: string;
+  tokenPrefix: string;
+  scopes: string[];
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+function ApiKeysModal({
+  profile,
+  onClose,
+}: {
+  profile: ProfileSummary | null;
+  onClose: () => void;
+}) {
+  const toast = useToast();
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const [keys, setKeys] = useState<ApiKeySummary[]>([]);
+  const [label, setLabel] = useState('自动化接口');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const profileId = profile?.id;
+  const loadKeys = useCallback(async () => {
+    if (!profileId) return;
+    setLoading(true);
+    try {
+      const result = await request<{ keys: ApiKeySummary[] }>(`/profiles/${profileId}/api-keys`);
+      setKeys(result.keys);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [profileId]);
+
+  useEffect(() => {
+    if (!profileId) return;
+    setCreatedToken(null);
+    setLabel('自动化接口');
+    setExpiresAt('');
+    void loadKeys();
+  }, [profileId, loadKeys]);
+
+  if (!profile) return null;
+
+  const create = async () => {
+    if (!label.trim()) {
+      setError('密钥名称不能为空');
+      return;
+    }
+    setCreating(true);
+    try {
+      const result = await request<ApiKeySummary & { token: string }>(
+        `/profiles/${profile.id}/api-keys`,
+        {
+          method: 'POST',
+          body: {
+            label: label.trim(),
+            scopes: ['contacts:read', 'contacts:write'],
+            expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59Z`).toISOString() : null,
+          },
+        },
+      );
+      setCreatedToken(result.token);
+      toast.success('API Key 已创建');
+      await loadKeys();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const revoke = async (key: ApiKeySummary) => {
+    const ok = await confirm({
+      title: `停用密钥“${key.label}”？`,
+      description: '使用这个密钥的外部程序会立即无法继续调用，操作不可恢复。',
+      confirmText: '停用',
+      danger: true,
+    });
+    if (!ok) return;
+    await request(`/profiles/${profile.id}/api-keys/${key.id}`, { method: 'DELETE' });
+    toast.success('密钥已停用');
+    await loadKeys();
+  };
+
+  const endpoint = `${window.location.origin}/_api/v1/profiles/${profile.id}/contacts`;
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={`API 管理 · /${profile.shortName}`}
+      width={720}
+    >
+      <div className="flex flex-col gap-4">
+        {error ? <Alert tone="danger" message={error} /> : null}
+        <Alert
+          tone="info"
+          message="用于 CRM、自动化脚本或其他系统更新联系方式"
+          description="密钥只对当前页面有效；接口只修改提交的平台，不会覆盖样式、排序或统计数据。"
+        />
+
+        {createdToken ? (
+          <div className="flex flex-col gap-2 rounded-[var(--radius-control)] border border-warning bg-warning-soft p-3">
+            <span className="text-[13px] font-semibold text-fg">请立即复制，关闭后不再显示</span>
+            <div className="flex gap-2">
+              <Input value={createdToken} readOnly />
+              <Button
+                variant="primary"
+                onClick={() => {
+                  void navigator.clipboard.writeText(createdToken);
+                  toast.success('密钥已复制');
+                }}
+              >
+                <Copy className="size-4" />
+                复制
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid gap-3 rounded-[var(--radius-control)] border border-border bg-bg p-3 sm:grid-cols-[1fr_180px_auto]">
+          <Input
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            placeholder="密钥名称"
+          />
+          <Input
+            type="date"
+            value={expiresAt}
+            onChange={(event) => setExpiresAt(event.target.value)}
+            aria-label="有效期，留空表示长期有效"
+          />
+          <Button variant="primary" loading={creating} onClick={() => void create()}>
+            <KeyRound className="size-4" />
+            创建密钥
+          </Button>
+          <span className="text-[11px] text-muted sm:col-span-3">有效期留空表示长期有效。</span>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-fg">调用地址</span>
+          <code className="overflow-x-auto rounded-[var(--radius-control)] border border-border bg-bg px-3 py-2 text-[12px] text-muted">
+            PATCH {endpoint}
+          </code>
+        </div>
+
+        <div className="flex flex-col overflow-hidden rounded-[var(--radius-control)] border border-border">
+          {loading ? (
+            <div className="py-8">
+              <Spinner />
+            </div>
+          ) : keys.length === 0 ? (
+            <div className="px-3 py-8 text-center text-[12px] text-muted">还没有 API Key</div>
+          ) : (
+            keys.map((key) => (
+              <div
+                key={key.id}
+                className="flex items-center gap-3 border-b border-border px-3 py-2.5 last:border-0"
+              >
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="truncate text-[13px] font-medium text-fg">{key.label}</span>
+                  <span className="font-mono text-[11px] text-muted">
+                    {key.tokenPrefix}••••••••
+                  </span>
+                </div>
+                <span className="hidden text-[11px] text-muted sm:block">
+                  {key.lastUsedAt
+                    ? `最近使用 ${new Date(key.lastUsedAt).toLocaleDateString('zh-CN')}`
+                    : '尚未使用'}
+                </span>
+                <span className="hidden text-[11px] text-muted md:block">
+                  {key.expiresAt
+                    ? `${new Date(key.expiresAt).toLocaleDateString('zh-CN')} 到期`
+                    : '长期有效'}
+                </span>
+                <Button variant="danger-ghost" size="sm" onClick={() => void revoke(key)}>
+                  停用
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+      {confirmDialog}
+    </Dialog>
+  );
+}
+
+const SOURCE_PRESETS = [
+  { id: 'tiktok', label: 'TikTok' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'youtube', label: 'YouTube' },
+  { id: 'facebook', label: 'Facebook' },
+  { id: 'whatsapp', label: 'WhatsApp' },
+] as const;
+
+function ShareLinksModal({
+  profile,
+  onClose,
+}: {
+  profile: ProfileSummary | null;
+  onClose: () => void;
+}) {
+  const [customSource, setCustomSource] = useState('');
+  const toast = useToast();
+  if (!profile) return null;
+
+  const base = `${window.location.origin}/${profile.shortName}`;
+  const validCustom = /^[a-z0-9_-]{1,32}$/.test(customSource.trim().toLowerCase());
+  const copy = async (source: string) => {
+    const url = `${base}?src=${encodeURIComponent(source)}`;
+    await navigator.clipboard.writeText(url);
+    toast.success(`已复制 ${source} 推广链接`);
+  };
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={`推广链接 · /${profile.shortName}`}
+      width={600}
+    >
+      <div className="flex flex-col gap-4">
+        <Alert
+          tone="info"
+          message="不同平台必须使用各自的推广链接"
+          description="这样数据分析才能准确区分访客是从 TikTok、Instagram 还是 YouTube 进入。"
+        />
+        <div className="flex flex-col overflow-hidden rounded-[var(--radius-control)] border border-border">
+          {SOURCE_PRESETS.map((source) => (
+            <div
+              key={source.id}
+              className="flex items-center gap-3 border-b border-border px-3 py-2.5 last:border-0"
+            >
+              <span className="w-24 shrink-0 text-[13px] font-medium text-fg">{source.label}</span>
+              <code className="min-w-0 flex-1 truncate text-[12px] text-muted">
+                {base}?src={source.id}
+              </code>
+              <Button size="sm" variant="default" onClick={() => void copy(source.id)}>
+                <Copy className="size-3.5" />
+                复制
+              </Button>
+            </div>
+          ))}
+        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-fg">自定义来源</span>
+          <div className="flex gap-2">
+            <Input
+              value={customSource}
+              onChange={(event) => setCustomSource(event.target.value)}
+              placeholder="如 newsletter，只能用小写字母、数字、_ 或 -"
+            />
+            <Button
+              variant="default"
+              disabled={!validCustom}
+              onClick={() => void copy(customSource.trim().toLowerCase())}
+            >
+              <Copy className="size-4" />
+              复制
+            </Button>
+          </div>
+        </label>
+      </div>
+    </Dialog>
+  );
+}
+
+function DuplicateProfileModal({
+  profile,
+  onClose,
+}: {
+  profile: ProfileSummary | null;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [shortName, setShortName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    const suffix = '-copy';
+    setShortName(`${profile.shortName.slice(0, 30 - suffix.length)}${suffix}`);
+    setDisplayName(`${profile.displayName || profile.shortName} 副本`.slice(0, 60));
+    setError(null);
+  }, [profile]);
+
+  if (!profile) return null;
+
+  const submit = async () => {
+    if (!shortName.trim() || !displayName.trim()) {
+      setError('页面地址和显示名都必填');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const created = await request<{ id: string }>(`/profiles/${profile.id}/duplicate`, {
+        method: 'POST',
+        body: { shortName: shortName.trim(), displayName: displayName.trim() },
+      });
+      toast.success('页面已复制，统计数据从零开始');
+      onClose();
+      navigate(`/profiles/${created.id}`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={`复制页面 · /${profile.shortName}`}
+      footer={
+        <>
+          <Button variant="default" onClick={onClose}>
+            取消
+          </Button>
+          <Button variant="primary" loading={submitting} onClick={() => void submit()}>
+            复制并编辑
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {error ? <Alert tone="danger" message={error} /> : null}
+        <Alert
+          tone="info"
+          message="将生成一个可独立编辑的新页面"
+          description="布局、主题、简介、联系按钮、图片和视频都会复制；访问量与点击量不会复制。"
+        />
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-fg">新页面地址</span>
+          <Input
+            addonBefore="/"
+            value={shortName}
+            onChange={(event) => setShortName(event.target.value)}
+            placeholder="小写字母、数字与连字符，3–30 位"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-fg">新显示名</span>
+          <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+        </label>
+      </div>
+    </Dialog>
   );
 }
 

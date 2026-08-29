@@ -70,7 +70,7 @@ function describe(status: number, payload: unknown): string {
     case 'forbidden':
       return '没有权限执行这个操作';
     case 'account_taken':
-      return '这个账号已经被占用了';
+      return '这个登录用户名已经被占用了';
     case 'short_name_taken':
       return '这个 short_name 已经被占用了';
     case 'short_name_retired':

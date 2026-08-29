@@ -37,6 +37,8 @@ export function inferPlatformFromUrl(url: string): SocialPlatformId | null {
   }
 
   if (parsed.protocol === 'mailto:') return 'email';
+  if (parsed.protocol === 'sms:') return 'sms';
+  if (parsed.protocol === 'tel:') return 'phone';
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
 
   const host = parsed.hostname.toLowerCase().replace(/^www\./, '');

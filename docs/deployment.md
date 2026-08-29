@@ -1,6 +1,6 @@
 # 部署手册
 
-从 GitLab 拉代码到服务器，`docker compose up -d --build` 起服务。编译在 Docker 多阶段构建里完成，
+从 GitHub 拉代码到服务器，`docker compose up -d --build` 起服务。编译在 Docker 多阶段构建里完成，
 **服务器不装 Node、pnpm，不手工编译，不手工跑数据库迁移**。
 
 日常运行、监控与故障处理见 [operations.md](./operations.md)。
@@ -46,7 +46,7 @@
 
 | 谁 | 做什么 |
 | --- | --- |
-| 开发 | 推代码到 GitLab；**每个待部署版本打 tag** |
+| 开发 | 推代码到 GitHub；**每个待部署版本打 tag** |
 | 运维 | 服务器与网络（第 2 节）· 部署与升级（4、6）· 反代与 TLS（5）· 监控（operations.md） |
 | 没人需要做 | 装 Node / pnpm、手工编译、手工跑迁移、装 ffmpeg |
 
@@ -72,7 +72,7 @@ nginx -v
 
 | 目标 | 用途 | 必需 |
 | --- | --- | --- |
-| GitLab（`gitlab.195322.xyz`，SSH 22） | 拉源码 | 是 |
+| GitHub（`github.com`，HTTPS 443 或 SSH 22） | 拉源码 | 是 |
 | Docker Hub（`registry-1.docker.io`、`auth.docker.io`、`production.cloudflare.docker.com`） | 拉 `node:22-bookworm-slim`、`postgres:18-alpine` | 是 |
 | npm registry（`registry.npmjs.org`） | 装依赖 | 是 |
 | MaxMind（`download.maxmind.com`） | GeoIP 库更新 | 否 |
@@ -92,28 +92,14 @@ compose 固定使用 `172.28.0.0/24`，网关 `172.28.0.1`。与宿主机现有�
 ip route | grep -E '172\.28\.'      # 有输出说明冲突，得换个网段
 ```
 
-### GitLab 访问
+### GitHub 访问
 
-仓库 remote 是 SSH：`git@gitlab.195322.xyz:chromeextentions/others/link-profile.git`
+公开仓库可以直接通过 HTTPS 只读拉取；自动部署也可以配置只读 Deploy Key。
 
 用只读 **Deploy Key**，不要把 token 写进 URL——那会进 shell history，并被 git 明文写进 `.git/config`。
 
 ```bash
-install -d -m 700 ~/.ssh                       # 新机器上 ~/.ssh 可能还不存在
-ssh-keygen -t ed25519 -C "link-profile deploy" -f ~/.ssh/link_profile_deploy -N ''
-cat ~/.ssh/link_profile_deploy.pub
-# 贴到 GitLab → 项目 → Settings → Repository → Deploy keys（不要勾写权限）
-
-cat >> ~/.ssh/config <<'EOF'
-Host gitlab-link-profile
-  HostName gitlab.195322.xyz
-  User git
-  IdentityFile ~/.ssh/link_profile_deploy
-  IdentitiesOnly yes
-EOF
-chmod 600 ~/.ssh/config
-
-ssh -T gitlab-link-profile                     # 验证
+git ls-remote https://github.com/secure-artifacts/linkprofiles.git HEAD
 ```
 
 ---
@@ -136,7 +122,7 @@ ssh -T gitlab-link-profile                     # 验证
 ```bash
 # 1. 拉代码，切到要部署的 tag
 sudo install -d -o "$USER" -g "$(id -gn)" /srv/link-profile
-git clone gitlab-link-profile:chromeextentions/others/link-profile.git /srv/link-profile
+git clone https://github.com/secure-artifacts/linkprofiles.git /srv/link-profile
 cd /srv/link-profile
 git fetch --tags
 git tag -l | tail -5                          # 挑要部署的版本

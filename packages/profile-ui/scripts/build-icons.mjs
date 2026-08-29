@@ -41,13 +41,25 @@ const FROM_ANT_DESIGN = {
   linkedin: { module: '@ant-design/icons-svg/lib/asn/LinkedinFilled.js', hex: '0A66C2' },
 };
 
-// email 不是品牌，simple-icons 里没有；用设计稿里那枚描边信封。
+// 邮箱、短信与电话不是品牌图形，使用轻量的自备线性图标。
 const HAND_DRAWN = {
   email: {
     hex: '4A5058',
     body:
       '<path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" ' +
       'd="M3 6.5h18v11H3zM3 7l9 6 9-6"/>',
+  },
+  sms: {
+    hex: '34C759',
+    body:
+      '<path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" ' +
+      'stroke-linejoin="round" d="M4 5.5h16v11H9l-5 3v-14zM8 10h8M8 13h5"/>',
+  },
+  phone: {
+    hex: '0A84FF',
+    body:
+      '<path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" ' +
+      'stroke-linejoin="round" d="M7.2 3.5 4.7 5.2c-.8.6-.9 1.7-.5 2.8 2 5.2 5.6 8.8 10.8 10.8 1.1.4 2.2.3 2.8-.5l1.7-2.5-4.5-2.2-1.4 1.7c-2.2-1-3.9-2.7-4.9-4.9L10.4 9 7.2 3.5z"/>',
   },
 };
 
@@ -94,7 +106,7 @@ const CHEVRON =
   'stroke-linejoin="round" d="m9 5 7 7-7 7"/>';
 
 // 没传头像时的占位剪影。不是品牌图形，与手绘的 email 图标一样属于自备素材。
-// 颜色写死成中性灰而不是 currentColor：它要在六个主题、五种布局的底色上
+// 颜色写死成中性灰而不是 currentColor：它要在多种主题、布局的底色上
 // 都读得出来，跟着文字色走反而会在深色主题里糊成一片。
 const AVATAR_PLACEHOLDER =
   '<circle cx="48" cy="48" r="48" fill="#C9CDD4"/>' +

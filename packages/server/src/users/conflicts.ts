@@ -1,5 +1,5 @@
 import { profiles, users } from '@link-profile/shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { isRetired } from '../profiles/deletion.js';
 
@@ -35,7 +35,7 @@ export async function findUserConflict(
     const [row] = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.account, account))
+      .where(sql`lower(${users.account}) = lower(${account})`)
       .limit(1);
     if (row && row.id !== excludeUserId) return 'account_taken';
   }

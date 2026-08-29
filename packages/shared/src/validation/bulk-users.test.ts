@@ -53,7 +53,7 @@ describe('parseBulkUserRows', () => {
     );
 
     expect(parsed).toEqual([
-      { line: 1, ok: false, error: '账号为空' },
+      { line: 1, ok: false, error: '登录用户名为空' },
       { line: 2, ok: false, error: '密码为空' },
     ]);
   });
@@ -94,12 +94,15 @@ describe('parseBulkUserRows', () => {
     expect(parseBulkUserRows('\n\n  \n')).toEqual([]);
   });
 
-  test('制表符只用来切列，值里的空格保留', () => {
-    const parsed = parseBulkUserRows(row('张 三', 'zhang san', 'zhangsan', 'pa ss word'));
+  test('后台备注与密码里的空格保留，登录用户名遵守统一格式', () => {
+    const parsed = parseBulkUserRows(row('张 三', 'zhang-san', 'zhangsan', 'pa ss word'));
 
     expect(parsed[0]).toMatchObject({
       ok: true,
-      value: { label: '张 三', account: 'zhang san', password: 'pa ss word' },
+      value: { label: '张 三', account: 'zhang-san', password: 'pa ss word' },
+    });
+    expect(parseBulkUserRows(row('张三', 'zhang san', 'zhangsan', 'pass-1234'))[0]).toMatchObject({
+      ok: false,
     });
   });
 });

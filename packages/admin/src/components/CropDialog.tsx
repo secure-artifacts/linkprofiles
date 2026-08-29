@@ -198,7 +198,7 @@ export function CropDialog({ file, slot, onCancel, onDone, onPreview }: CropDial
     <Dialog
       open={file !== null}
       onOpenChange={(open) => !open && onCancel()}
-      title={slot === 'avatar' ? '裁切头像' : '裁切背景图'}
+      title={slot === 'avatar' ? '裁切头像' : slot === 'banner' ? '裁切 Banner 图' : '裁切背景图'}
       width={560}
       footer={
         <>

@@ -43,8 +43,8 @@ services:
       - '127.0.0.1:${APP_PORT:-3000}:3000'
     volumes:
       - uploads:/app/uploads
-      # 需要地域维度时取消下一行注释，并在 .env 里设好两个 GEOLITE2_ 变量
-      # - ${GEOLITE2_HOST_DIR}:/app/geoip:ro
+      # MMDB 地域库由宿主机只读挂载，库缺失时服务仍可启动但国家/城市为空。
+      - ${GEOLITE2_HOST_DIR:-./geoip}:/app/geoip:ro
     # 只提供状态可见性与 depends_on 判据。unhealthy 不会触发 restart policy，
     # 自动拉起要靠外部监控，见 docs/operations.md
     healthcheck:

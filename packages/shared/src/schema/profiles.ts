@@ -12,9 +12,25 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from './users.js';
 
-export const layoutEnum = pgEnum('layout', ['classic', 'hero', 'banner', 'cutout', 'shape']);
+export const layoutEnum = pgEnum('layout', ['classic', 'hero', 'banner', 'shape']);
 
-export const themeEnum = pgEnum('theme', ['dawn', 'harbor', 'moss', 'ember', 'slate', 'nocturne']);
+export const themeEnum = pgEnum('theme', [
+  'dawn',
+  'harbor',
+  'moss',
+  'ember',
+  'slate',
+  'nocturne',
+  'ocean',
+  'rose',
+  'lavender',
+  'sunset',
+  'mono',
+  'glass',
+  'glass-ocean',
+  'glass-rose',
+  'glass-aurora',
+]);
 
 /**
  * 个人页。一个账号（`role='user'`）可以拥有任意多个，不设上限。
@@ -51,6 +67,8 @@ export const profiles = pgTable(
     /** 头像位：图片或短视频。视频时 `avatarPosterId` 是它的首帧封面。 */
     avatarMediaId: uuid(),
     avatarPosterId: uuid(),
+    /** Banner 布局顶部的独立宽幅图，不与头像位共用。 */
+    bannerMediaId: uuid(),
     /** 背景图。上传后覆盖主题的背景渐变，按钮色与文字色仍生效。 */
     backgroundMediaId: uuid(),
     /** 背景图上那层遮罩的暗度，0–1，默认四成，保证文字对比度。 */

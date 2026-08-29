@@ -30,6 +30,7 @@ WORKDIR /app
 COPY --from=build /deploy/node_modules ./node_modules
 COPY --from=build /deploy/package.json ./package.json
 COPY --from=build /app/packages/server/dist ./dist
+COPY --from=build /app/packages/server/assets/fonts ./fonts
 COPY --from=build /app/packages/admin/dist ./public/_admin
 COPY --from=build /app/drizzle ./drizzle
 
@@ -37,6 +38,7 @@ COPY --from=build /app/drizzle ./drizzle
 ENV MIGRATIONS_DIR=/app/drizzle
 ENV ADMIN_DIST=/app/public/_admin
 ENV UPLOADS_DIR=/app/uploads
+ENV FONT_DIR=/app/fonts
 
 # 空卷首次挂载会继承镜像里该路径的属主，不预先 chown 则 node 用户写不进去
 RUN mkdir -p /app/uploads && chown -R node:node /app/uploads

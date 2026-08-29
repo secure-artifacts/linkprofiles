@@ -3,6 +3,7 @@ import {
   MAX_BUTTONS_PER_PROFILE,
   shortNameSchema,
   SOCIAL_PLATFORMS,
+  validateSocialValue,
   validateTargetUrl,
 } from '@link-profile/shared';
 import {
@@ -19,6 +20,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { FORBIDDEN, loadTargetUser, UNAUTHORIZED } from '../auth/guards.js';
 import { deleteProfile } from '../profiles/deletion.js';
+import { duplicateProfile } from '../profiles/duplicate.js';
 import {
   loadMediaByIds,
   toMediaSource,
@@ -27,6 +29,9 @@ import {
 } from '../profiles/media-view.js';
 import { findUserConflict } from '../users/conflicts.js';
 import { resolveProfileAccess } from '../profiles/access.js';
+import { findProfileById } from '../profiles/repository.js';
+import { renderProfileDocument } from '../render/document.js';
+import { publicOrigin } from '../render/origin.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -37,6 +42,11 @@ const createProfileBody = z.object({
   shortName: shortNameSchema,
   /** 显示名：个人页上给访客看的名字，可重复。留空时先跟 short_name 一致 */
   displayName: z.string().trim().max(60).optional(),
+});
+
+const duplicateProfileBody = z.object({
+  shortName: shortNameSchema,
+  displayName: z.string().trim().min(1, '显示名不能为空').max(60),
 });
 
 const profileBody = z.object({
@@ -81,6 +91,8 @@ const entryInput = z.discriminatedUnion('kind', [
     platform: z.string(),
     /** 用户填的号码 / 邮箱 / 用户名，不是拼好的 URL */
     value: z.string().trim().min(1, '内容不能为空'),
+    directMessage: z.boolean().default(false),
+    message: z.string().trim().max(500).default(''),
     isLead: z.boolean().optional(),
     passSource: z.boolean().default(false),
   }),
@@ -200,6 +212,65 @@ export async function profileContentRoutes(app: FastifyInstance) {
     if (!target) return reply.code(403).send(FORBIDDEN);
 
     return loadEditableProfile(app, target);
+  });
+
+  /**
+   * 后台卡片使用的静态缩略预览。它与公开页共用渲染组件，但不执行跳转/埋点脚本，
+   * 也不会调用 recordPageView，因此打开页面列表不会污染访问数据。
+   */
+  app.get<{ Params: { id: string } }>('/profiles/:id/preview', async (req, reply) => {
+    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'read');
+    if (!target) return reply.code(403).send(FORBIDDEN);
+
+    const profile = await findProfileById(app.db, target);
+    if (!profile) return reply.code(404).send({ error: 'profile_not_found' });
+    const origin = publicOrigin(req);
+    const previewImage =
+      (profile.view.layout === 'banner' ? profile.view.banner?.src : null) ??
+      profile.view.video?.poster ??
+      profile.view.avatar?.src ??
+      `/_static/og/${profile.view.theme}.png`;
+    // 列表可能同时出现很多页面：缩略图只画视频封面，不自动播放多段视频；
+    // 打字动画也改成静态全文，避免每次滚动卡片时重新闪动。
+    const previewView = {
+      ...profile.view,
+      bioTypewriter: false,
+      avatar: profile.view.video?.poster ? { src: profile.view.video.poster } : profile.view.avatar,
+      video: null,
+    };
+
+    return reply
+      .type('text/html; charset=utf-8')
+      .header('cache-control', 'private, no-store')
+      .send(
+        renderProfileDocument({
+          profile: previewView,
+          canonicalUrl: `${origin}/${profile.shortName}`,
+          previewImageUrl: previewImage.startsWith('http')
+            ? previewImage
+            : `${origin}${previewImage}`,
+          interactive: false,
+        }),
+      );
+  });
+
+  /** 复制内容、样式、按钮与媒体；访问和点击数据按新页面从零开始。 */
+  app.post<{ Params: { id: string } }>('/profiles/:id/duplicate', async (req, reply) => {
+    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    const parsed = duplicateProfileBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+    }
+
+    const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
+    if (!target) return reply.code(403).send(FORBIDDEN);
+    const conflict = await findUserConflict(app.db, { shortName: parsed.data.shortName });
+    if (conflict) return reply.code(409).send({ error: conflict });
+
+    const created = await duplicateProfile(app.db, target, parsed.data);
+    if (!created) return reply.code(404).send({ error: 'profile_not_found' });
+    return reply.code(201).send(created);
   });
 
   /**
@@ -403,6 +474,15 @@ export async function profileContentRoutes(app: FastifyInstance) {
       }
       seenPlatforms.add(input.platform);
 
+      const socialValue = validateSocialValue(input.platform, input.value);
+      if (!socialValue.ok) {
+        return reply.code(400).send({
+          error: 'invalid_social_value',
+          index,
+          message: socialValue.error,
+        });
+      }
+
       const platform = SOCIAL_PLATFORMS.find((p) => p.id === input.platform)!;
       const isLead = input.isLead ?? platform.defaultIsLead;
       rows.push({
@@ -411,6 +491,8 @@ export async function profileContentRoutes(app: FastifyInstance) {
         url: null,
         platform: input.platform,
         value: input.value,
+        directMessage: input.platform === 'instagram' ? input.directMessage : false,
+        message: ['whatsapp', 'sms'].includes(input.platform) ? input.message : '',
         isLead,
       });
     }
@@ -460,6 +542,7 @@ async function loadEditableProfile(app: FastifyInstance, profileId: string) {
       iconPlate: profiles.iconPlate,
       backgroundOverlay: profiles.backgroundOverlay,
       avatarMediaId: profiles.avatarMediaId,
+      bannerMediaId: profiles.bannerMediaId,
       backgroundMediaId: profiles.backgroundMediaId,
     })
     .from(profiles)
@@ -474,6 +557,8 @@ async function loadEditableProfile(app: FastifyInstance, profileId: string) {
       url: buttons.url,
       platform: buttons.platform,
       value: buttons.value,
+      directMessage: buttons.directMessage,
+      message: buttons.message,
       isLead: buttons.isLead,
       passSource: buttons.passSource,
       position: buttons.position,
@@ -484,9 +569,11 @@ async function loadEditableProfile(app: FastifyInstance, profileId: string) {
 
   const mediaById = await loadMediaByIds(app.db, [
     profile?.avatarMediaId ?? null,
+    profile?.bannerMediaId ?? null,
     profile?.backgroundMediaId ?? null,
   ]);
   const avatarRow = profile?.avatarMediaId ? mediaById.get(profile.avatarMediaId) : undefined;
+  const bannerRow = profile?.bannerMediaId ? mediaById.get(profile.bannerMediaId) : undefined;
   const backgroundRow = profile?.backgroundMediaId
     ? mediaById.get(profile.backgroundMediaId)
     : undefined;
@@ -499,6 +586,7 @@ async function loadEditableProfile(app: FastifyInstance, profileId: string) {
           // 编辑器要的是可直接放进 <img> 的地址，不是 mediaId
           avatarUrl: video?.src ?? toMediaSource(avatarRow)?.src ?? null,
           avatarIsVideo: video !== null,
+          bannerUrl: toMediaSource(bannerRow)?.src ?? null,
           backgroundUrl: toMediaSource(backgroundRow)?.src ?? null,
         }
       : profile,

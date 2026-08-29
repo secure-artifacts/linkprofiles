@@ -131,11 +131,16 @@ test('四个标识字段各就各位：账号唯一、short_name 唯一、用户
     method: 'POST',
     url: '/_api/users',
     ...withSession(superToken),
-    payload: newUser({ account: 'a1', shortName: 'a-one', label: '同名备注', displayName: '小王' }),
+    payload: newUser({
+      account: 'account-one',
+      shortName: 'a-one',
+      label: '同名备注',
+      displayName: '小王',
+    }),
   });
   expect(first.statusCode).toBe(201);
   expect(first.json()).toMatchObject({
-    account: 'a1',
+    account: 'account-one',
     label: '同名备注',
     firstProfile: { shortName: 'a-one', displayName: '小王' },
   });
@@ -145,7 +150,12 @@ test('四个标识字段各就各位：账号唯一、short_name 唯一、用户
     method: 'POST',
     url: '/_api/users',
     ...withSession(superToken),
-    payload: newUser({ account: 'a2', shortName: 'a-two', label: '同名备注', displayName: '小王' }),
+    payload: newUser({
+      account: 'account-two',
+      shortName: 'a-two',
+      label: '同名备注',
+      displayName: '小王',
+    }),
   });
   expect(second.statusCode).toBe(201);
 
@@ -154,7 +164,7 @@ test('四个标识字段各就各位：账号唯一、short_name 唯一、用户
     method: 'POST',
     url: '/_api/users',
     ...withSession(superToken),
-    payload: newUser({ account: 'a1', shortName: 'a-three' }),
+    payload: newUser({ account: 'ACCOUNT-ONE', shortName: 'a-three' }),
   });
   expect(dupAccount.statusCode).toBe(409);
   expect(dupAccount.json()).toEqual({ error: 'account_taken' });
@@ -164,7 +174,7 @@ test('四个标识字段各就各位：账号唯一、short_name 唯一、用户
     method: 'POST',
     url: '/_api/users',
     ...withSession(superToken),
-    payload: newUser({ account: 'a4', shortName: 'A-ONE' }),
+    payload: newUser({ account: 'account-four', shortName: 'A-ONE' }),
   });
   expect(dupShortName.statusCode).toBe(409);
   expect(dupShortName.json()).toEqual({ error: 'short_name_taken' });
@@ -243,6 +253,48 @@ test('管理员可以修改用户的 short_name', async () => {
 
   expect(res.statusCode).toBe(200);
   expect(res.json().profile.shortName).toBe('renamed-by-admin');
+});
+
+test('管理员能修改名下用户的登录用户名，用户不能绕过密码调用管理接口', async () => {
+  const renamed = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/account`,
+    ...withSession(adminToken),
+    payload: { account: 'renamed.user' },
+  });
+  expect(renamed.statusCode).toBe(200);
+  expect(renamed.json()).toEqual({ account: 'renamed.user' });
+  expect((await login(ctx, 'user', 'user-pass')).res.statusCode).toBe(401);
+  expect((await login(ctx, 'renamed.user', 'user-pass')).res.statusCode).toBe(200);
+
+  const bypass = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/users/${userId}/account`,
+    ...withSession((await login(ctx, 'renamed.user', 'user-pass')).token),
+    payload: { account: 'no-password-needed' },
+  });
+  expect(bypass.statusCode).toBe(403);
+});
+
+test('超级管理员能修改管理员登录用户名，普通管理员不能', async () => {
+  const denied = await ctx.app.inject({
+    method: 'PATCH',
+    url: `/_api/admins/${adminId}`,
+    ...withSession(adminToken),
+    payload: { account: 'not-allowed' },
+  });
+  expect(denied.statusCode).toBe(403);
+
+  const changed = await ctx.app.inject({
+    method: 'PATCH',
+    url: `/_api/admins/${adminId}`,
+    ...withSession(superToken),
+    payload: { account: 'operations.admin', label: '运营组' },
+  });
+  expect(changed.statusCode).toBe(200);
+  expect(changed.json()).toMatchObject({ account: 'operations.admin', label: '运营组' });
+  expect((await login(ctx, 'admin', 'admin-pass')).res.statusCode).toBe(401);
+  expect((await login(ctx, 'operations.admin', 'admin-pass')).res.statusCode).toBe(200);
 });
 
 test('用户删不了任何人，包括自己', async () => {

@@ -30,11 +30,14 @@ export function ButtonList({
  * `data-track` 一律是 `button`：只剩一张表，服务端拿 id 就能查出它到底是
  * 链接还是社媒，不需要客户端告诉它（也不该信）。
  */
-function trackingAttrs(id: string, isLead: boolean) {
+function trackingAttrs(id: string, isLead: boolean, platform?: string | null) {
   return {
     'data-track': 'button',
     'data-track-id': id,
     'data-lead': isLead ? '1' : '0',
+    // Messenger 需要按运行环境选择 App Scheme / Android Intent / 网页回退。
+    // href 仍保留 m.me：禁用 JS、桌面端和解析失败时都能正常使用。
+    ...(platform === 'messenger' ? { 'data-smart-open': 'messenger' } : {}),
   };
 }
 
@@ -61,7 +64,11 @@ function CardBody({ button }: { button: ButtonView }) {
 
 function SolidCard({ button }: { button: ButtonView }) {
   return (
-    <a className="pp-lead" href={button.url} {...trackingAttrs(button.id, button.isLead)}>
+    <a
+      className="pp-lead"
+      href={button.url}
+      {...trackingAttrs(button.id, button.isLead, button.platform)}
+    >
       <CardBody button={button} />
     </a>
   );
@@ -69,7 +76,11 @@ function SolidCard({ button }: { button: ButtonView }) {
 
 function OutlineRow({ button }: { button: ButtonView }) {
   return (
-    <a className="pp-link" href={button.url} {...trackingAttrs(button.id, button.isLead)}>
+    <a
+      className="pp-link"
+      href={button.url}
+      {...trackingAttrs(button.id, button.isLead, button.platform)}
+    >
       <CardBody button={button} />
     </a>
   );

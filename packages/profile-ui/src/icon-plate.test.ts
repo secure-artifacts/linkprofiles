@@ -73,10 +73,10 @@ test('关掉白底后，哪些主题会让纯黑图形看不清（现状记录�
     }
   }
 
-  // 六套主题里五套中招，只有 dawn 两种形态都安全 —— 不是边缘案例
+  // 除 Dawn 外的主题至少有一种形态会中招，因此后台仍要保留白底提示。
   const themesHit = new Set(failing.map((f) => f.split('/')[0]));
   expect(themesHit.has('dawn')).toBe(false);
-  expect(themesHit.size).toBe(5);
+  expect(themesHit.size).toBe(Object.keys(THEMES).length - 1);
   expect(failing).toContain('slate/实心/x');
   expect(failing).toContain('nocturne/描边/x');
 });

@@ -2,13 +2,6 @@ import { ProfilePage, profileCss, type ProfileView } from '@link-profile/profile
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CLIENT_SCRIPT } from './client-script.js';
 
-/**
- * 设计稿的展示字型。异步加载并带 swap，字体没到之前先用系统字体渲染，
- * 不阻塞首屏。
- */
-const FONT_HREF =
-  'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap';
-
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -23,6 +16,8 @@ export interface RenderProfileOptions {
   canonicalUrl: string;
   /** 分享卡片预览图的绝对地址 */
   previewImageUrl: string;
+  /** 后台静态缩略图不需要跳转和埋点脚本。 */
+  interactive?: boolean;
 }
 
 /**
@@ -64,11 +59,15 @@ export function renderProfileDocument({
   profile,
   canonicalUrl,
   previewImageUrl,
+  interactive = true,
 }: RenderProfileOptions): string {
   const body = renderToStaticMarkup(<ProfilePage profile={profile} priority />);
 
-  // LCP 元素是头像位那张图：放视频时就是它的封面图，不是视频本身。
-  const lcpImage = profile.video?.poster ?? profile.avatar?.src ?? null;
+  // Banner 的横幅占比最大；其他布局的 LCP 是头像位图片（视频时为首帧封面）。
+  const lcpImage =
+    profile.layout === 'banner'
+      ? (profile.banner?.src ?? profile.video?.poster ?? profile.avatar?.src ?? null)
+      : (profile.video?.poster ?? profile.avatar?.src ?? null);
   const preloads = [
     lcpImage
       ? `<link rel="preload" as="image" href="${escapeHtml(lcpImage)}" fetchpriority="high">`
@@ -90,15 +89,11 @@ export function renderProfileDocument({
     // 关键 CSS 内联进文档头，其余异步加载。
     `<style>${profileCss}</style>`,
     preloads,
-    '<link rel="preconnect" href="https://fonts.googleapis.com">',
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
-    `<link rel="stylesheet" href="${FONT_HREF}" media="print" onload="this.media='all'">`,
-    `<noscript><link rel="stylesheet" href="${FONT_HREF}"></noscript>`,
     '</head>',
     '<body>',
     body,
     // 唯一的客户端脚本：内联、几百字节，不是 React runtime。
-    `<script>${CLIENT_SCRIPT}</script>`,
+    interactive ? `<script>${CLIENT_SCRIPT}</script>` : '',
     '</body>',
     '</html>',
   ]

@@ -2,7 +2,7 @@ import type { ButtonView, ProfileView } from '@link-profile/profile-ui';
 import { loadMediaByIds, toMediaSource, toVideoSource } from './media-view.js';
 import {
   appendSource,
-  buildSocialUrl,
+  buildSocialTargetUrl,
   findSocialPlatform,
   inferPlatformFromUrl,
 } from '@link-profile/shared';
@@ -61,6 +61,7 @@ export async function findProfileByShortName(
       iconPlate: profiles.iconPlate,
       avatarMediaId: profiles.avatarMediaId,
       avatarPosterId: profiles.avatarPosterId,
+      bannerMediaId: profiles.bannerMediaId,
       backgroundMediaId: profiles.backgroundMediaId,
       backgroundOverlay: profiles.backgroundOverlay,
     })
@@ -73,10 +74,12 @@ export async function findProfileByShortName(
   const mediaById = await loadMediaByIds(db, [
     row.avatarMediaId,
     row.avatarPosterId,
+    row.bannerMediaId,
     row.backgroundMediaId,
   ]);
   const avatarRow = row.avatarMediaId ? mediaById.get(row.avatarMediaId) : undefined;
   const posterRow = row.avatarPosterId ? mediaById.get(row.avatarPosterId) : undefined;
+  const bannerRow = row.bannerMediaId ? mediaById.get(row.bannerMediaId) : undefined;
   const backgroundRow = row.backgroundMediaId ? mediaById.get(row.backgroundMediaId) : undefined;
   const background = toMediaSource(backgroundRow);
 
@@ -94,12 +97,27 @@ export async function findProfileByShortName(
       // 头像位放的是图还是视频，二者互斥
       avatar: toMediaSource(avatarRow),
       video: toVideoSource(avatarRow, posterRow),
+      banner: toMediaSource(bannerRow),
       background: background
         ? { src: background.src, overlay: Number(row.backgroundOverlay) }
         : null,
       buttons: await loadEntries(db, row.id, context),
     },
   };
+}
+
+/** 后台缩略预览按页面 id 读取，与公开页同一套渲染数据。 */
+export async function findProfileById(
+  db: Db,
+  profileId: string,
+  context: RenderContext = NO_SOURCE,
+): Promise<ProfileRecord | null> {
+  const [name] = await db
+    .select({ shortName: profiles.shortName })
+    .from(profiles)
+    .where(eq(profiles.id, profileId))
+    .limit(1);
+  return name ? findProfileByShortName(db, name.shortName, context) : null;
 }
 
 /**
@@ -123,6 +141,8 @@ export async function loadEntries(
       url: buttons.url,
       platform: buttons.platform,
       value: buttons.value,
+      directMessage: buttons.directMessage,
+      message: buttons.message,
       isLead: buttons.isLead,
       passSource: buttons.passSource,
     })
@@ -157,11 +177,13 @@ function resolveUrl(row: {
   url: string | null;
   platform: string | null;
   value: string | null;
+  directMessage: boolean;
+  message: string;
 }): string | null {
   if (row.kind === 'link') return row.url;
   if (!row.platform || !row.value) return null;
   if (!findSocialPlatform(row.platform)) return null;
-  return buildSocialUrl(row.platform, row.value);
+  return buildSocialTargetUrl(row.platform, row.value, row.directMessage, row.message);
 }
 
 /** 逐条的开关优先；关着的时候由超级管理员的全局默认兜底。 */

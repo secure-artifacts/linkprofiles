@@ -1,4 +1,4 @@
-import { buildSocialUrl, validateTargetUrl } from '@link-profile/shared';
+import { validateSocialValue, validateTargetUrl } from '@link-profile/shared';
 import type { EntryDraft } from '../../api/types.js';
 
 /**
@@ -12,8 +12,8 @@ export function entryProblem(entry: EntryDraft): string | null {
   if (entry.title.trim() === '') return '标题不能为空';
 
   if (entry.kind === 'social') {
-    if (entry.value.trim() === '') return '内容不能为空';
-    return buildSocialUrl(entry.platform, entry.value) ? null : '这个格式拼不出可用的链接';
+    const result = validateSocialValue(entry.platform, entry.value);
+    return result.ok ? null : (result.error ?? '格式不正确');
   }
 
   const url = validateTargetUrl(entry.url);

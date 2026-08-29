@@ -1,9 +1,10 @@
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { validateAccountName } from '@link-profile/shared';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { request } from '../api/client.js';
-import type { AdminSummary, UserSummary } from '../api/types.js';
+import type { AdminSummary, ProfileSummary, UserSummary } from '../api/types.js';
 import { useBreadcrumb } from '../nav/breadcrumb.js';
 import { useSession } from '../session.js';
 import { Alert } from '../ui/Alert.js';
@@ -117,8 +118,8 @@ export function UsersPage() {
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-bg text-left text-[12px] font-medium text-muted">
-              <th className="px-4 py-2.5">用户名称</th>
-              <th className="px-4 py-2.5">账号</th>
+              <th className="px-4 py-2.5">后台备注</th>
+              <th className="px-4 py-2.5">登录用户名</th>
               <th className="px-4 py-2.5">页面</th>
               {isSuperadmin ? <th className="px-4 py-2.5">归属管理员</th> : null}
               <th className="px-4 py-2.5">操作</th>
@@ -248,7 +249,7 @@ export function UsersPage() {
 }
 
 /**
- * 账号设置：改备注、重置密码。
+ * 账号设置：改登录用户名、个人页显示名、备注与密码。
  *
  * 页面地址不在这里改 —— 一个账号可以有多个个人页，地址属于页面而不属于账号，
  * 改名在个人页列表那一侧做。
@@ -263,13 +264,46 @@ function AccountSettingsModal({
   onDone: () => Promise<void> | void;
 }) {
   const [label, setLabel] = useState('');
+  const [account, setAccount] = useState('');
+  const [profileOptions, setProfileOptions] = useState<ProfileSummary[]>([]);
+  const [profileId, setProfileId] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
     setLabel(user?.label ?? '');
+    setAccount(user?.account ?? '');
+    setProfileOptions([]);
+    setProfileId('');
+    setDisplayName('');
     setNewPassword('');
+
+    if (!user) return;
+    let active = true;
+    setLoadingProfiles(true);
+    void request<{ profiles: ProfileSummary[] }>(`/users/${user.id}/profiles`)
+      .then(({ profiles }) => {
+        if (!active) return;
+        const first = profiles[0];
+        setProfileOptions(profiles);
+        setProfileId(first?.id ?? '');
+        setDisplayName(first?.displayName ?? '');
+      })
+      .catch((err) => {
+        if (active) toast.error((err as Error).message);
+      })
+      .finally(() => {
+        if (active) setLoadingProfiles(false);
+      });
+
+    return () => {
+      active = false;
+    };
+    // toast is stable for the lifetime of the provider.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   if (!user) return null;
@@ -277,8 +311,28 @@ function AccountSettingsModal({
   const save = async () => {
     setSaving(true);
     try {
+      const parsedAccount = validateAccountName(account);
+      if (!parsedAccount.ok) throw new Error(parsedAccount.error);
+      const nextAccount = parsedAccount.value;
+      if (nextAccount !== user.account) {
+        await request(`/users/${user.id}/account`, {
+          method: 'PUT',
+          body: { account: nextAccount },
+        });
+      }
       if (label !== user.label) {
         await request(`/users/${user.id}`, { method: 'PATCH', body: { label } });
+      }
+      const selectedProfile = profileOptions.find((profile) => profile.id === profileId);
+      const nextDisplayName = displayName.trim();
+      if (selectedProfile && !nextDisplayName) throw new Error('显示名字不能为空');
+      if (selectedProfile && nextDisplayName.length > 60)
+        throw new Error('显示名字不能超过 60 个字符');
+      if (selectedProfile && nextDisplayName !== selectedProfile.displayName) {
+        await request(`/profiles/${selectedProfile.id}`, {
+          method: 'PATCH',
+          body: { displayName: nextDisplayName },
+        });
       }
       if (newPassword) {
         await request(`/users/${user.id}/password`, { method: 'PUT', body: { newPassword } });
@@ -303,7 +357,12 @@ function AccountSettingsModal({
           <Button variant="default" onClick={onClose}>
             取消
           </Button>
-          <Button variant="primary" loading={saving} onClick={() => void save()}>
+          <Button
+            variant="primary"
+            loading={saving}
+            disabled={loadingProfiles}
+            onClick={() => void save()}
+          >
             保存
           </Button>
         </>
@@ -311,11 +370,58 @@ function AccountSettingsModal({
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">用户名称</span>
+          <span className="text-[13px] font-medium text-fg">登录用户名</span>
+          <Input
+            value={account}
+            onChange={(e) => setAccount(e.target.value.toLowerCase())}
+            placeholder="例如 lisa.usa"
+            autoComplete="off"
+          />
+          <span className="text-[12px] text-muted">
+            修改后旧用户名不能登录，该用户所有设备会退出；个人页地址不会改变。
+          </span>
+        </div>
+
+        {profileOptions.length > 1 ? (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-fg">选择个人页</span>
+            <Select
+              value={profileId}
+              options={profileOptions.map((profile) => ({
+                value: profile.id,
+                label: `/${profile.shortName}`,
+              }))}
+              onChange={(value) => {
+                const profile = profileOptions.find((item) => item.id === value);
+                setProfileId(value);
+                setDisplayName(profile?.displayName ?? '');
+              }}
+            />
+          </div>
+        ) : null}
+
+        {profileId ? (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-fg">显示名字</span>
+            <Input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="显示在个人页上的名字"
+              maxLength={60}
+            />
+            <span className="text-[12px] text-muted">
+              显示在 /{profileOptions.find((profile) => profile.id === profileId)?.shortName}{' '}
+              个人页上。
+            </span>
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-fg">后台备注</span>
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="后台备注，用来认人，不出现在页面上"
+            placeholder="用来辨认账号，不出现在个人页上"
           />
         </div>
 
@@ -364,16 +470,21 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
   const valid = account.trim().length > 0 && shortName.trim().length > 0 && password.length >= 8;
 
   const submit = async () => {
+    const parsedAccount = validateAccountName(account);
     if (!valid) {
       setError(
-        !account.trim() ? '账号必填' : !shortName.trim() ? 'short_name 必填' : '密码至少 8 位',
+        !account.trim() ? '登录用户名必填' : !shortName.trim() ? '页面地址必填' : '密码至少 8 位',
       );
       return;
     }
+    if (!parsedAccount.ok) return setError(parsedAccount.error);
     setError(null);
     setSubmitting(true);
     try {
-      await request('/users', { method: 'POST', body: { label, account, shortName, password } });
+      await request('/users', {
+        method: 'POST',
+        body: { label, account: parsedAccount.value, shortName, password },
+      });
       toast.success('已创建');
       onClose();
       await onDone();
@@ -403,14 +514,14 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
       <div className="flex flex-col gap-4">
         {error ? <Alert tone="danger" message={error} /> : null}
 
-        <Field label="用户名称" hint="后台备注，用来认人，不出现在页面上">
+        <Field label="后台备注" hint="用来辨认账号，不出现在个人页上">
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="如：华东组 · 小王"
           />
         </Field>
-        <Field label="账号">
+        <Field label="登录用户名" hint="3–32 位小写字母、数字、点、下划线或横线">
           <Input
             value={account}
             onChange={(e) => setAccount(e.target.value)}
@@ -418,7 +529,7 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
             autoComplete="off"
           />
         </Field>
-        <Field label="short_name" hint="第一个个人页的地址。一经发布即为对外资产，删除后永不再分配">
+        <Field label="页面地址" hint="第一个个人页的网址。一经发布即为对外资产，删除后永不再分配">
           <Input
             addonBefore="/"
             value={shortName}
@@ -548,7 +659,7 @@ function BulkCreateModal({ open, onClose, onDone }: ModalProps) {
             从表格里直接复制粘贴，每行四列、制表符分隔：
             <br />
             <code className="rounded bg-bg px-1.5 py-0.5 font-mono text-[12px]">
-              用户名称 ⇥ 账号 ⇥ short_name ⇥ 密码
+              后台备注 ⇥ 登录用户名 ⇥ 页面地址 ⇥ 密码
             </code>
             <br />
             能建的会先建好，失败的行会单独列出来，不必整批重来。

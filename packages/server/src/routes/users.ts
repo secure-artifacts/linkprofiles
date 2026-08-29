@@ -1,5 +1,5 @@
 import { profiles, users } from '@link-profile/shared/schema';
-import { shortNameSchema } from '@link-profile/shared';
+import { accountNameSchema, shortNameSchema } from '@link-profile/shared';
 import { and, count, eq, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
@@ -10,11 +10,12 @@ import { deleteSessionsForUser } from '../auth/sessions.js';
 import { deleteUserAccount } from '../profiles/deletion.js';
 import { findUserConflict } from '../users/conflicts.js';
 import { visibleUsersFilter } from '../auth/policy.js';
+import { renameAccount } from '../users/rename-account.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const createUserBody = z.object({
-  account: z.string().trim().min(1, '账号不能为空'),
+  account: accountNameSchema,
   password: z.string().min(8, '密码至少 8 位'),
   /** 用户名称：后台中文备注，可重复，不做唯一约束 */
   label: z.string().trim().default(''),
@@ -35,6 +36,8 @@ const assignOwnerBody = z.object({
 const updateUserBody = z.object({
   label: z.string().trim().optional(),
 });
+
+const updateAccountBody = z.object({ account: accountNameSchema });
 
 /**
  * 账号字段。**不再拍平个人页字段**：一个账号可以有多个个人页，
@@ -168,6 +171,31 @@ export async function userRoutes(app: FastifyInstance) {
       .returning(publicColumns);
 
     return row;
+  });
+
+  /** 管理员修改名下用户的登录用户名；本人自助走 /auth/account 并验证密码。 */
+  app.put<{ Params: { id: string } }>('/users/:id/account', async (req, reply) => {
+    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
+    if (req.currentUser.role === 'user') return reply.code(403).send(FORBIDDEN);
+
+    const parsed = updateAccountBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+    }
+    const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'update');
+    if (!target || target.role !== 'user') return reply.code(403).send(FORBIDDEN);
+
+    const renamed = await renameAccount(app.db, {
+      userId: target.id,
+      changedBy: req.currentUser.id,
+      account: parsed.data.account,
+    });
+    if (renamed.status === 'account_taken') {
+      return reply.code(409).send({ error: 'account_taken' });
+    }
+    if (renamed.status === 'changed') await deleteSessionsForUser(app.db, target.id);
+    return { account: renamed.status === 'not_found' ? parsed.data.account : renamed.account };
   });
 
   /**

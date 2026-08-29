@@ -16,10 +16,15 @@ import {
   queryButtons,
   queryDimension,
   queryHourlyLeads,
-  queryTotals,
   queryTrend,
   type QueryScope,
 } from '../analytics/queries.js';
+import { queryCrossBreakdowns } from '../analytics/cross-breakdowns.js';
+import {
+  queryScopePerformance,
+  type VisibleAccount,
+  type VisibleProfile,
+} from '../analytics/scope-performance.js';
 
 const querySchema = z
   .object({
@@ -60,32 +65,97 @@ export async function analyticsRoutes(app: FastifyInstance) {
     const range = resolveRange(parsed.data, timeZone);
     if ('error' in range) return reply.code(400).send(range);
 
-    const profileIds = await resolveVisibleProfileIds(app, req.currentUser, {
+    const filter = {
       ...(parsed.data.userId ? { userId: parsed.data.userId } : {}),
       ...(parsed.data.profileId ? { profileId: parsed.data.profileId } : {}),
-    });
+    };
+    const [visibleProfiles, visibleAccounts] = await Promise.all([
+      resolveVisibleProfiles(app, req.currentUser, filter),
+      resolveVisibleAccounts(app, req.currentUser, filter),
+    ]);
     // 指名道姓要看一个自己看不见的对象，与「它不存在」同一个响应
-    if ((parsed.data.userId || parsed.data.profileId) && profileIds.length === 0) {
+    if (
+      (parsed.data.profileId && visibleProfiles.length === 0) ||
+      (parsed.data.userId && visibleAccounts.length === 0)
+    ) {
       return reply.code(403).send({ error: 'forbidden' });
     }
 
-    const scope: QueryScope = { profileIds, from: range.from, to: range.to, timeZone };
+    const scope: QueryScope = {
+      profileIds: visibleProfiles.map((profile) => profile.id),
+      from: range.from,
+      to: range.to,
+      timeZone,
+    };
     const granularity = granularityFor(range.from, range.to);
 
-    const totals = await queryTotals(app.sql, scope);
-    const [trend, hourlyLeads, buttons, countries, cities, devices, operatingSystems, sources] =
-      await Promise.all([
-        queryTrend(app.sql, scope, granularity),
-        queryHourlyLeads(app.sql, scope),
-        queryButtons(app.sql, scope, totals.pageViews),
-        queryDimension(app.sql, scope, 'country'),
-        queryDimension(app.sql, scope, 'city'),
-        queryDimension(app.sql, scope, 'device_type'),
-        queryDimension(app.sql, scope, 'os'),
-        queryDimension(app.sql, scope, 'source'),
-      ]);
+    const selectedProfile = parsed.data.profileId ? visibleProfiles[0] : undefined;
+    const selectedAccount =
+      parsed.data.userId || req.currentUser.role === 'user' ? visibleAccounts[0] : undefined;
+    const scopeKind = selectedProfile ? 'profile' : selectedAccount ? 'account' : 'portfolio';
+    const performance = await queryScopePerformance(
+      app.sql,
+      scope,
+      visibleProfiles,
+      visibleAccounts,
+    );
+    const totals = totalsFromAccounts(performance.accounts);
+
+    // 账号列表只算账号行；账号汇总再加趋势；最重的多维细分只在单个个人页里查。
+    // 这既让界面层级明确，也避免为了没有渲染的图表反复扫描埋点表。
+    const trend = scopeKind === 'portfolio' ? [] : await queryTrend(app.sql, scope, granularity);
+    const [
+      hourlyLeads,
+      buttons,
+      countries,
+      cities,
+      devices,
+      operatingSystems,
+      sources,
+      crossBreakdowns,
+    ] =
+      scopeKind === 'profile'
+        ? await Promise.all([
+            queryHourlyLeads(app.sql, scope),
+            queryButtons(app.sql, scope, totals.pageViews),
+            queryDimension(app.sql, scope, 'country'),
+            queryDimension(app.sql, scope, 'city'),
+            queryDimension(app.sql, scope, 'device_type'),
+            queryDimension(app.sql, scope, 'os'),
+            queryDimension(app.sql, scope, 'source'),
+            queryCrossBreakdowns(app.sql, scope),
+          ])
+        : [
+            Array.from({ length: 24 }, () => 0),
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            { sources: [], countries: [], targets: [] },
+          ];
 
     return {
+      scope:
+        scopeKind === 'profile'
+          ? {
+              kind: 'profile',
+              profileId: selectedProfile!.id,
+              userId: selectedProfile!.userId,
+              shortName: selectedProfile!.shortName,
+              displayName: selectedProfile!.displayName,
+              account: selectedProfile!.account,
+              label: selectedProfile!.userLabel,
+            }
+          : scopeKind === 'account'
+            ? {
+                kind: 'account',
+                userId: selectedAccount!.id,
+                account: selectedAccount!.account,
+                label: selectedAccount!.label,
+              }
+            : { kind: 'portfolio' },
       range: {
         from: range.from.toISOString(),
         to: range.to.toISOString(),
@@ -97,8 +167,25 @@ export async function analyticsRoutes(app: FastifyInstance) {
       hourlyLeads,
       buttons,
       dimensions: { countries, cities, devices, operatingSystems, sources },
+      crossBreakdowns,
+      performance,
     };
   });
+}
+
+function totalsFromAccounts(accounts: { pageViews: number; clicks: number; leads: number }[]) {
+  const totals = accounts.reduce(
+    (sum, row) => ({
+      pageViews: sum.pageViews + row.pageViews,
+      clicks: sum.clicks + row.clicks,
+      leads: sum.leads + row.leads,
+    }),
+    { pageViews: 0, clicks: 0, leads: 0 },
+  );
+  return {
+    ...totals,
+    ctr: totals.pageViews === 0 ? 0 : totals.clicks / totals.pageViews,
+  };
 }
 
 type ResolvedRange = { from: Date; to: Date } | { error: string };
@@ -132,11 +219,11 @@ function resolveRange(
  *
  * 管理员名下没人时得到空数组，查询直接给零值。
  */
-async function resolveVisibleProfileIds(
+async function resolveVisibleProfiles(
   app: FastifyInstance,
   actor: CurrentUser,
   filter: { userId?: string; profileId?: string },
-): Promise<string[]> {
+): Promise<VisibleProfile[]> {
   const scope = visibleUsersFilter(actor);
   const conditions = [eq(users.role, 'user' as const)];
   if (scope) conditions.push(scope);
@@ -144,10 +231,43 @@ async function resolveVisibleProfileIds(
   if (filter.profileId) conditions.push(eq(profiles.id, filter.profileId));
 
   const rows = await app.db
-    .select({ id: profiles.id })
+    .select({
+      id: profiles.id,
+      userId: profiles.userId,
+      shortName: profiles.shortName,
+      displayName: profiles.displayName,
+      account: users.account,
+      userLabel: users.label,
+    })
     .from(profiles)
     .innerJoin(users, eq(users.id, profiles.userId))
     .where(and(...conditions));
 
-  return rows.map((r) => r.id);
+  return rows;
+}
+
+async function resolveVisibleAccounts(
+  app: FastifyInstance,
+  actor: CurrentUser,
+  filter: { userId?: string; profileId?: string },
+): Promise<VisibleAccount[]> {
+  const scope = visibleUsersFilter(actor);
+  const conditions = [eq(users.role, 'user' as const)];
+  if (scope) conditions.push(scope);
+  if (filter.userId) conditions.push(eq(users.id, filter.userId));
+  if (filter.profileId) conditions.push(eq(profiles.id, filter.profileId));
+
+  const selection = { id: users.id, account: users.account, label: users.label };
+  if (filter.profileId) {
+    return app.db
+      .selectDistinct(selection)
+      .from(users)
+      .innerJoin(profiles, eq(profiles.userId, users.id))
+      .where(and(...conditions));
+  }
+
+  return app.db
+    .select(selection)
+    .from(users)
+    .where(and(...conditions));
 }

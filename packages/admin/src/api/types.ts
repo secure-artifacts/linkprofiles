@@ -65,6 +65,8 @@ export interface EntryDraft {
   /** kind='social' 用 */
   platform: string;
   value: string;
+  directMessage: boolean;
+  message: string;
   isLead: boolean;
   passSource: boolean;
 }
@@ -85,10 +87,12 @@ export interface ProfileFields {
   iconPlate: boolean;
   backgroundOverlay: string;
   avatarMediaId: string | null;
+  bannerMediaId: string | null;
   backgroundMediaId: string | null;
   /** 服务端解析好的可直接使用的地址，编辑器不必自己拼 variant 路径 */
   avatarUrl: string | null;
   avatarIsVideo: boolean;
+  bannerUrl: string | null;
   backgroundUrl: string | null;
 }
 
@@ -107,6 +111,18 @@ export interface SocialPlatformInfo {
 }
 
 export interface AnalyticsResponse {
+  scope:
+    | { kind: 'portfolio' }
+    | { kind: 'account'; userId: string; account: string; label: string }
+    | {
+        kind: 'profile';
+        profileId: string;
+        userId: string;
+        shortName: string;
+        displayName: string;
+        account: string;
+        label: string;
+      };
   range: { from: string; to: string; timeZone: string; granularity: 'hour' | 'day' };
   totals: { pageViews: number; clicks: number; leads: number; ctr: number };
   trend: { bucket: string; pageViews: number; clicks: number; leads: number }[];
@@ -126,6 +142,70 @@ export interface AnalyticsResponse {
     operatingSystems: DimensionRow[];
     sources: DimensionRow[];
   };
+  crossBreakdowns: {
+    sources: SourceBreakdown[];
+    countries: CountryBreakdown[];
+    targets: TargetBreakdown[];
+  };
+  performance: {
+    accounts: AccountPerformance[];
+    profiles: ProfilePerformance[];
+  };
+}
+
+export interface PerformanceTotals {
+  pageViews: number;
+  clicks: number;
+  leads: number;
+  ctr: number;
+  leadRate: number;
+}
+
+export interface AccountPerformance extends PerformanceTotals {
+  id: string;
+  account: string;
+  label: string;
+  profileCount: number;
+}
+
+export interface ProfilePerformance extends PerformanceTotals {
+  id: string;
+  userId: string;
+  shortName: string;
+  displayName: string;
+}
+
+export interface CrossMetrics {
+  pageViews: number;
+  clicks: number;
+  leads: number;
+  clickRate: number;
+  leadRate: number;
+}
+
+export interface ContactTarget {
+  id: string;
+  title: string;
+  platform: string;
+  isLead: boolean;
+  clicks: number;
+  leads: number;
+}
+
+export interface SourceBreakdown extends CrossMetrics {
+  key: string;
+  targets: ContactTarget[];
+}
+
+export interface CountrySourceBreakdown extends SourceBreakdown {}
+
+export interface CountryBreakdown extends CrossMetrics {
+  key: string;
+  sources: CountrySourceBreakdown[];
+}
+
+export interface TargetBreakdown extends ContactTarget {
+  sources: { key: string; clicks: number; leads: number }[];
 }
 
 export interface DimensionRow {

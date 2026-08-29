@@ -46,7 +46,6 @@ const HEADER_CLASS: Record<string, string> = {
   classic: 'hd hd-cls',
   hero: 'hd hd-hero',
   banner: 'hd hd-ban',
-  cutout: 'hd hd-cut',
   shape: 'hd hd-shp',
 };
 
@@ -57,7 +56,7 @@ test('新账号默认使用 Classic', async () => {
   expect(html).toContain(HEADER_CLASS['classic']);
 });
 
-test('五种布局全部可用，切换后持久化并反映在公开页上', async () => {
+test('四种布局全部可用，切换后持久化并反映在公开页上', async () => {
   for (const layout of layoutEnum.enumValues) {
     const saved = await setLayout(layout);
     expect(saved.statusCode, layout).toBe(200);
@@ -80,8 +79,8 @@ test('布局不决定配色：换布局不动主题', async () => {
 });
 
 test('缺少头图素材时该区域以主题渐变填充，不回落到其他布局', async () => {
-  // Hero、Banner、Cutout 依赖头图，用户没传时最容易出问题
-  for (const layout of ['hero', 'banner', 'cutout'] as const) {
+  // Hero 与 Banner 依赖大图，用户没传时最容易出问题
+  for (const layout of ['hero', 'banner'] as const) {
     await setLayout(layout);
     const html = (await page()).body;
 
@@ -103,9 +102,14 @@ test('不认识的布局值被拒', async () => {
 test('布局组件来自 profile-ui，直出与预览读的是同一份样式', async () => {
   const html = (await page()).body;
 
-  // 五种布局的规则都在同一份内联样式里，预览侧 import 的也是它
+  // 四种布局的规则都在同一份内联样式里，预览侧 import 的也是它
   const head = html.slice(0, html.indexOf('</head>'));
-  for (const selector of ['.hd-cls', '.hd-hero', '.hd-ban', '.hd-cut', '.hd-shp']) {
+  for (const selector of ['.hd-cls', '.hd-hero', '.hd-ban', '.hd-shp']) {
     expect(head, selector).toContain(selector);
   }
+});
+
+test('已下线的 Cutout 布局被拒绝', async () => {
+  const res = await setLayout('cutout');
+  expect(res.statusCode).toBe(400);
 });

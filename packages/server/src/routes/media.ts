@@ -16,8 +16,8 @@ import { resolveProfileAccess } from '../profiles/access.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** 头像位可以放图或视频；背景图只收图。 */
-const SLOTS = ['avatar', 'background', 'poster'] as const;
+/** 头像位可以放图或视频；Banner 图与背景图只收图片。 */
+const SLOTS = ['avatar', 'banner', 'background', 'poster'] as const;
 type Slot = (typeof SLOTS)[number];
 
 /**
@@ -121,7 +121,7 @@ export async function mediaRoutes(app: FastifyInstance) {
     const stored = await storeImage(Buffer.from(main.data), {
       profileId: target,
       mediaId,
-      usage: slot === 'background' ? 'background' : 'avatar',
+      usage: slot === 'avatar' ? 'avatar' : slot === 'banner' ? 'banner' : 'background',
     });
     await app.db.insert(media).values({ id: mediaId, profileId: target, kind: 'image', ...stored });
 
@@ -130,8 +130,10 @@ export async function mediaRoutes(app: FastifyInstance) {
       .set({
         ...(slot === 'background'
           ? { backgroundMediaId: mediaId }
-          : // 头像位换成图片，就把原来的视频封面一起清掉
-            { avatarMediaId: mediaId, avatarPosterId: null }),
+          : slot === 'banner'
+            ? { bannerMediaId: mediaId }
+            : // 头像位换成图片，就把原来的视频封面一起清掉
+              { avatarMediaId: mediaId, avatarPosterId: null }),
         updatedAt: new Date(),
       })
       .where(eq(profiles.id, target));
@@ -153,6 +155,11 @@ export async function mediaRoutes(app: FastifyInstance) {
         await app.db
           .update(profiles)
           .set({ backgroundMediaId: null, updatedAt: new Date() })
+          .where(eq(profiles.id, target));
+      } else if (req.params.slot === 'banner') {
+        await app.db
+          .update(profiles)
+          .set({ bannerMediaId: null, updatedAt: new Date() })
           .where(eq(profiles.id, target));
       } else if (req.params.slot === 'avatar') {
         await app.db

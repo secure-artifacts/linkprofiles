@@ -1,4 +1,4 @@
-export { Avatar } from './Avatar.js';
+export { Avatar, MediaImage } from './Avatar.js';
 export { ButtonList } from './Buttons.js';
 export { AvatarPlaceholder, BrandIcon, ChevronIcon, hasBrandIcon } from './Icon.js';
 export { ProfilePage, type ProfilePageProps } from './ProfilePage.js';

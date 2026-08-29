@@ -1,4 +1,5 @@
 import { validateShortName } from './short-name.js';
+import { validateAccountName } from './account-name.js';
 
 /**
  * 批量创建用户的行解析。
@@ -53,11 +54,17 @@ export function parseBulkUserRows(raw: string): BulkParsedRow[] {
     const [label = '', account = '', shortNameRaw = '', password = ''] = columns;
 
     if (account === '') {
-      rows.push({ line: lineNumber, ok: false, error: '账号为空' });
+      rows.push({ line: lineNumber, ok: false, error: '登录用户名为空' });
       return;
     }
     if (password === '') {
       rows.push({ line: lineNumber, ok: false, error: '密码为空' });
+      return;
+    }
+
+    const accountName = validateAccountName(account);
+    if (!accountName.ok) {
+      rows.push({ line: lineNumber, ok: false, error: accountName.error });
       return;
     }
 
@@ -70,7 +77,7 @@ export function parseBulkUserRows(raw: string): BulkParsedRow[] {
     rows.push({
       line: lineNumber,
       ok: true,
-      value: { label, account, shortName: shortName.value, password },
+      value: { label, account: accountName.value, shortName: shortName.value, password },
     });
   });
 

@@ -1,6 +1,6 @@
 # 公开页破例使用 tailwind，后台仍严格用 Ant Design
 
-全局约定是「前端 UI 默认 Ant Design，禁止自造 CSS / tailwind」。但公开页是面向社媒流量的 C 端落地页，需要渐变背景、自定义按钮形状与描边、五种布局 × 六套主题的自由排版，而 Ant Design 是后台组件库，做不出这类视觉。因此**仅公开页渲染层**破例使用 tailwind，后台管理界面继续严格使用 Ant Design。
+全局约定是「前端 UI 默认 Ant Design，禁止自造 CSS / tailwind」。但公开页是面向社媒流量的 C 端落地页，需要渐变背景、自定义按钮形状与描边、多种布局与主题的自由排版，而 Ant Design 是后台组件库，做不出这类视觉。因此**仅公开页渲染层**破例使用 tailwind，后台管理界面继续严格使用 Ant Design。
 
 ## Consequences
 

@@ -11,9 +11,12 @@
 //   pnpm --filter @link-profile/profile-ui build:css
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { THEMES } from '../src/themes.ts';
+
+const require = createRequire(import.meta.url);
 
 const pkgDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const input = path.join(pkgDir, 'src/styles.css');
@@ -51,7 +54,12 @@ const css = [
 ].join('\n');
 writeFileSync(themesCss, css);
 
-execFileSync('pnpm', ['exec', 'tailwindcss', '-i', input, '-o', tmp, '--minify'], {
+// 直接用当前 Node 执行 CLI 入口，避开 Windows 无法从 execFileSync 运行 .cmd 的问题。
+const tailwindCli = path.join(
+  path.dirname(require.resolve('@tailwindcss/cli/package.json')),
+  'dist/index.mjs',
+);
+execFileSync(process.execPath, [tailwindCli, '-i', input, '-o', tmp, '--minify'], {
   cwd: pkgDir,
   stdio: 'inherit',
 });
