@@ -31,13 +31,18 @@ export function ButtonList({
  * 链接还是社媒，不需要客户端告诉它（也不该信）。
  */
 function trackingAttrs(id: string, isLead: boolean, platform?: string | null) {
+  const smartOpen =
+    platform === 'messenger' || platform === 'instagram' || platform === 'whatsapp'
+      ? platform
+      : null;
+
   return {
     'data-track': 'button',
     'data-track-id': id,
     'data-lead': isLead ? '1' : '0',
-    // Messenger 需要按运行环境选择 App Scheme / Android Intent / 网页回退。
-    // href 仍保留 m.me：禁用 JS、桌面端和解析失败时都能正常使用。
-    ...(platform === 'messenger' ? { 'data-smart-open': 'messenger' } : {}),
+    // 这些联系入口需要按运行环境选择 App Scheme / Android Intent / 网页回退。
+    // href 始终保留官方 HTTPS 地址：禁用 JS、桌面端和解析失败时仍可使用。
+    ...(smartOpen ? { 'data-smart-open': smartOpen } : {}),
   };
 }
 

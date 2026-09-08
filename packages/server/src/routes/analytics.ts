@@ -20,6 +20,8 @@ import {
   type QueryScope,
 } from '../analytics/queries.js';
 import { queryCrossBreakdowns } from '../analytics/cross-breakdowns.js';
+import { queryCountryDaily } from '../analytics/country-daily.js';
+import { queryActivityHeatmap, queryProfileHighlights } from '../analytics/overview.js';
 import {
   queryScopePerformance,
   type VisibleAccount,
@@ -93,48 +95,58 @@ export async function analyticsRoutes(app: FastifyInstance) {
     const selectedAccount =
       parsed.data.userId || req.currentUser.role === 'user' ? visibleAccounts[0] : undefined;
     const scopeKind = selectedProfile ? 'profile' : selectedAccount ? 'account' : 'portfolio';
-    const performance = await queryScopePerformance(
-      app.sql,
-      scope,
-      visibleProfiles,
-      visibleAccounts,
-    );
+    const duration = range.to.getTime() - range.from.getTime();
+    const previousScope: QueryScope = {
+      ...scope,
+      from: new Date(range.from.getTime() - duration),
+      to: range.from,
+    };
+    const [performance, previousPerformance] = await Promise.all([
+      queryScopePerformance(app.sql, scope, visibleProfiles, visibleAccounts),
+      queryScopePerformance(app.sql, previousScope, visibleProfiles, visibleAccounts),
+    ]);
     const totals = totalsFromAccounts(performance.accounts);
+    const previousTotals = totalsFromAccounts(previousPerformance.accounts);
 
-    // 账号列表只算账号行；账号汇总再加趋势；最重的多维细分只在单个个人页里查。
-    // 这既让界面层级明确，也避免为了没有渲染的图表反复扫描埋点表。
-    const trend = scopeKind === 'portfolio' ? [] : await queryTrend(app.sql, scope, granularity);
+    // 所有层级都提供同口径的总指标与趋势。最重的多维细分仍只在单个个人页里查，
+    // 因而总览能直接回答整体表现，也不会为了未渲染的细分反复扫描埋点表。
     const [
+      trend,
       hourlyLeads,
       buttons,
-      countries,
       cities,
       devices,
       operatingSystems,
-      sources,
       crossBreakdowns,
-    ] =
+      countryDaily,
+      activityHeatmap,
+      profileHighlights,
+    ] = await Promise.all([
+      queryTrend(app.sql, scope, granularity),
+      queryHourlyLeads(app.sql, scope),
       scopeKind === 'profile'
-        ? await Promise.all([
-            queryHourlyLeads(app.sql, scope),
-            queryButtons(app.sql, scope, totals.pageViews),
-            queryDimension(app.sql, scope, 'country'),
-            queryDimension(app.sql, scope, 'city'),
-            queryDimension(app.sql, scope, 'device_type'),
-            queryDimension(app.sql, scope, 'os'),
-            queryDimension(app.sql, scope, 'source'),
-            queryCrossBreakdowns(app.sql, scope),
-          ])
-        : [
-            Array.from({ length: 24 }, () => 0),
-            [],
-            [],
-            [],
-            [],
-            [],
-            [],
-            { sources: [], countries: [], targets: [] },
-          ];
+        ? queryButtons(app.sql, scope, totals.pageViews)
+        : Promise.resolve([]),
+      scopeKind === 'profile' ? queryDimension(app.sql, scope, 'city') : Promise.resolve([]),
+      queryDimension(app.sql, scope, 'device_type'),
+      queryDimension(app.sql, scope, 'os'),
+      queryCrossBreakdowns(app.sql, scope),
+      queryCountryDaily(app.sql, scope),
+      queryActivityHeatmap(app.sql, scope),
+      queryProfileHighlights(app.sql, scope),
+    ]);
+    const countries = crossBreakdowns.countries.map(({ key, pageViews, clicks, leads }) => ({
+      key,
+      pageViews,
+      clicks,
+      leads,
+    }));
+    const sources = crossBreakdowns.sources.map(({ key, pageViews, clicks, leads }) => ({
+      key,
+      pageViews,
+      clicks,
+      leads,
+    }));
 
     return {
       scope:
@@ -162,12 +174,23 @@ export async function analyticsRoutes(app: FastifyInstance) {
         timeZone,
         granularity,
       },
+      comparison: {
+        range: {
+          from: previousScope.from.toISOString(),
+          to: previousScope.to.toISOString(),
+        },
+        totals: previousTotals,
+        profiles: previousPerformance.profiles,
+      },
       totals,
       trend,
       hourlyLeads,
       buttons,
       dimensions: { countries, cities, devices, operatingSystems, sources },
       crossBreakdowns,
+      countryDaily,
+      activityHeatmap,
+      profileHighlights,
       performance,
     };
   });

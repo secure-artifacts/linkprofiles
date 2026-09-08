@@ -41,16 +41,12 @@ const data = {
 } satisfies AnalyticsResponse['crossBreakdowns'];
 
 describe('AnalyticsVisualOverview', () => {
-  it('renders source, country map and contact summaries from the same breakdown', () => {
+  it('renders source and contact summaries from the same breakdown', () => {
     const html = renderToStaticMarkup(createElement(AnalyticsVisualOverview, { data }));
 
     expect(html).toContain('来源转化');
-    expect(html).toContain('国家分布');
     expect(html).toContain('联系方式排行');
     expect(html).toContain('TikTok');
     expect(html).toContain('WhatsApp');
-    expect(html).toContain('美国');
-    expect(html).toContain('按进入页面次数着色的世界地图');
-    expect(html).toContain('<path');
   });
 });

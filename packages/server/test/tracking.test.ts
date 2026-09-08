@@ -283,6 +283,42 @@ test('Messenger 按钮带智能唤起标记，并为三类设备保留各自目�
   expect(html).toContain('S.browser_fallback_url=');
 });
 
+test('Instagram 与 WhatsApp 按钮带智能唤起标记，并保留网页回退', async () => {
+  await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/profiles/${profileId}/entries`,
+    ...withSession(token),
+    payload: {
+      entries: [
+        {
+          kind: 'social',
+          title: 'Instagram',
+          platform: 'instagram',
+          value: 'clarepolly20',
+          directMessage: true,
+        },
+        {
+          kind: 'social',
+          title: 'WhatsApp',
+          platform: 'whatsapp',
+          value: '+64 21 123 4567',
+          message: '你好 world',
+        },
+      ],
+    },
+  });
+
+  const html = (await visit()).body;
+  expect(html).toContain('href="https://ig.me/m/clarepolly20"');
+  expect(html).toContain('data-smart-open="instagram"');
+  expect(html).toContain('package=com.instagram.android');
+  expect(html).toContain('instagram://');
+  expect(html).toContain('href="https://wa.me/64211234567?text=%E4%BD%A0%E5%A5%BD%20world"');
+  expect(html).toContain('data-smart-open="whatsapp"');
+  expect(html).toContain('package=com.whatsapp');
+  expect(html).toContain('S.browser_fallback_url=');
+});
+
 test('没有 GeoLite2 库时地域为空，其余埋点照常写入', async () => {
   const noGeoCtx = await createTestContext();
   try {

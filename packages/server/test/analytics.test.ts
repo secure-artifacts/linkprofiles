@@ -131,7 +131,7 @@ test('呈现线索数、点击数、页面浏览数与点击率', async () => {
   });
 });
 
-test('分析层级明确分成账号列表、账号汇总与单个个人页', async () => {
+test('分析首页汇总全部可见个人页并提供跨账号个人页排行', async () => {
   const [secondProfile] = await ctx.db
     .insert(profiles)
     .values({ userId, shortName: 'mimnz-second', displayName: '第二个页面' })
@@ -154,6 +154,61 @@ test('分析层级明确分成账号列表、账号汇总与单个个人页', as
     clicks: 2,
     leads: 1,
   });
+  expect(portfolio.totals).toMatchObject({ pageViews: 3, clicks: 2, leads: 1 });
+  expect(portfolio.trend).not.toHaveLength(0);
+  expect(portfolio.comparison).toMatchObject({
+    totals: { pageViews: 0, clicks: 0, leads: 0 },
+  });
+  expect(portfolio.crossBreakdowns.sources).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ key: 'tiktok', pageViews: 3, clicks: 2, leads: 1 }),
+    ]),
+  );
+  expect(portfolio.dimensions.devices).toEqual(
+    expect.arrayContaining([expect.objectContaining({ key: 'mobile', pageViews: 3 })]),
+  );
+  expect(portfolio.activityHeatmap).toEqual(
+    expect.arrayContaining([expect.objectContaining({ day: 3, hour: 8, pageViews: 1, leads: 1 })]),
+  );
+  expect(portfolio.performance.profiles).toHaveLength(2);
+  expect(portfolio.performance.profiles).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: profileId,
+        account: 'mimnz',
+        pageViews: 1,
+        clicks: 1,
+        leads: 1,
+      }),
+      expect.objectContaining({
+        id: secondProfile!.id,
+        account: 'mimnz',
+        pageViews: 2,
+        clicks: 1,
+        leads: 0,
+      }),
+    ]),
+  );
+  expect(portfolio.profileHighlights).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        profileId,
+        topSource: expect.objectContaining({ key: 'tiktok' }),
+        topCountry: expect.objectContaining({ key: 'US' }),
+        topTarget: expect.objectContaining({ leads: 1 }),
+      }),
+    ]),
+  );
+
+  const allAccounts = (await analytics(superToken, `?tz=${NY}${RANGE}`)).json();
+  expect(allAccounts.performance.profiles).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: profileId, account: 'mimnz' }),
+      expect.objectContaining({ id: secondProfile!.id, account: 'mimnz' }),
+      expect.objectContaining({ id: otherProfileId, account: 'other' }),
+    ]),
+  );
+  expect(allAccounts.totals).toMatchObject({ pageViews: 4, clicks: 2, leads: 1 });
 
   const account = (await analytics(adminToken, `?userId=${userId}&tz=${NY}${RANGE}`)).json();
   expect(account.scope).toMatchObject({ kind: 'account', userId, account: 'mimnz' });
@@ -180,6 +235,26 @@ test('分析层级明确分成账号列表、账号汇总与单个个人页', as
 
   const self = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
   expect(self.scope).toMatchObject({ kind: 'account', userId });
+});
+
+test('汇总指标提供长度相同的上一周期对比', async () => {
+  await seedView('2026-07-30T12:00:00Z');
+  await seedClick('2026-07-30T12:10:00Z', true);
+  await seedView('2026-08-05T12:00:00Z');
+  await seedView('2026-08-05T13:00:00Z');
+  await seedClick('2026-08-05T13:10:00Z', true);
+  await seedClick('2026-08-05T13:20:00Z', true);
+
+  const body = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
+
+  expect(body.totals).toMatchObject({ pageViews: 2, clicks: 2, leads: 2 });
+  expect(body.comparison.totals).toMatchObject({ pageViews: 1, clicks: 1, leads: 1 });
+  expect(new Date(body.comparison.range.to).getTime()).toBe(new Date(body.range.from).getTime());
+  expect(body.comparison.profiles).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: profileId, pageViews: 1, clicks: 1, leads: 1 }),
+    ]),
+  );
 });
 
 test('线索是对联系类渠道的点击，由每条的 is_lead 决定', async () => {
@@ -327,6 +402,76 @@ test('交叉分析回答每个来源和国家分别带来多少进入及联系�
   );
 });
 
+test('全球国家日报按国家、日期和联系方式平台汇总', async () => {
+  const saved = await ctx.app.inject({
+    method: 'PUT',
+    url: `/_api/profiles/${profileId}/entries`,
+    ...withSession(userToken),
+    payload: {
+      entries: [
+        {
+          kind: 'social',
+          title: 'WhatsApp',
+          platform: 'whatsapp',
+          value: '+1 555 010 9999',
+          isLead: true,
+        },
+        {
+          kind: 'social',
+          title: 'Messenger',
+          platform: 'messenger',
+          value: 'mimnz',
+          isLead: true,
+        },
+      ],
+    },
+  });
+  const entries = saved.json().entries as { id: string; platform: string }[];
+  const whatsapp = entries.find((entry) => entry.platform === 'whatsapp')!;
+  const messenger = entries.find((entry) => entry.platform === 'messenger')!;
+
+  await seedView('2026-08-05T12:00:00Z', profileId, { country: 'US' });
+  await seedView('2026-08-05T13:00:00Z', profileId, { country: 'US' });
+  await seedView('2026-08-06T12:00:00Z', profileId, { country: 'NZ' });
+  await seedClick('2026-08-05T12:10:00Z', true, profileId, {
+    country: 'US',
+    targetId: whatsapp.id,
+  });
+  await seedClick('2026-08-05T12:20:00Z', true, profileId, {
+    country: 'US',
+    targetId: messenger.id,
+  });
+  await seedClick('2026-08-06T12:10:00Z', true, profileId, {
+    country: 'NZ',
+    targetId: whatsapp.id,
+  });
+
+  const body = (await analytics(userToken, `?tz=${NY}${RANGE}`)).json();
+  expect(body.countryDaily).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        day: '2026-08-05',
+        country: 'US',
+        pageViews: 2,
+        clicks: 2,
+        leads: 2,
+        platforms: expect.arrayContaining([
+          { key: 'whatsapp', clicks: 1, leads: 1 },
+          { key: 'messenger', clicks: 1, leads: 1 },
+        ]),
+      }),
+      expect.objectContaining({
+        day: '2026-08-06',
+        country: 'NZ',
+        pageViews: 1,
+        clicks: 1,
+        leads: 1,
+        platforms: [{ key: 'whatsapp', clicks: 1, leads: 1 }],
+      }),
+    ]),
+  );
+});
+
 test('未知维度归到同一桶，空串表示未知', async () => {
   await seedView('2026-08-05T12:00:00Z', profileId, { country: null, source: null });
   await seedView('2026-08-05T13:00:00Z', profileId, { country: null, source: null });
@@ -377,18 +522,16 @@ test('24 小时分布图把区间内的线索汇总到零至二十三点，按�
   // 非线索的点击不进这张图
   await seedClick('2026-08-05T16:00:00Z', false);
 
-  const hourly = (
-    await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)
-  ).json().hourlyLeads;
+  const hourly = (await analytics(userToken, `?profileId=${profileId}&tz=${NY}${RANGE}`)).json()
+    .hourlyLeads;
 
   expect(hourly).toHaveLength(24);
   expect(hourly[12]).toBe(2);
   expect(hourly.reduce((a: number, b: number) => a + b, 0)).toBe(2);
 
   // 换成 UTC 看，同样两条落在 16 点
-  const inUtc = (
-    await analytics(userToken, `?profileId=${profileId}&tz=UTC${RANGE}`)
-  ).json().hourlyLeads;
+  const inUtc = (await analytics(userToken, `?profileId=${profileId}&tz=UTC${RANGE}`)).json()
+    .hourlyLeads;
   expect(inUtc[16]).toBe(2);
 });
 

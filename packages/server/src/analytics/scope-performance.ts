@@ -29,6 +29,8 @@ export interface ProfilePerformance extends PerformanceTotals {
   userId: string;
   shortName: string;
   displayName: string;
+  account: string;
+  accountLabel: string;
 }
 
 export interface AccountPerformance extends PerformanceTotals {
@@ -99,6 +101,8 @@ export async function queryScopePerformance(
       userId: profile.userId,
       shortName: profile.shortName,
       displayName: profile.displayName,
+      account: profile.account,
+      accountLabel: profile.userLabel,
       pageViews,
       clicks,
       leads,

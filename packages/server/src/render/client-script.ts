@@ -46,49 +46,116 @@ document.addEventListener('click',function(e){
   }
 
   /*
-   * Messenger 智能唤起。
+   * 联系入口智能唤起。
    *
-   * - iOS: Messenger 注册的 public scheme，系统会显示「在 Messenger 中打开」；
-   * - Android: 指定官方包名的 intent，未安装或 WebView 不接管时回退到 m.me；
-   * - 桌面、异常环境、禁用 JS: 保留原 href，直接使用 Messenger 网页版。
+   * - Android 用指定官方包名的 intent，并把原始 HTTPS 地址作为浏览器回退；
+   * - iOS 的 Instagram / Messenger 在真实点击内尝试 App Scheme，失败回网页；
+   * - iOS WhatsApp 保留官方 wa.me，让 Universal Link 与系统确认接管；
+   * - 桌面、异常环境、禁用 JS 都沿用 href，不自动把访客送进应用商店。
    *
-   * 只在真实用户点击里执行，避免浏览器把 App 唤起判定为无手势弹窗。
+   * 埋点已经在上方无等待发出，因此这里仍处于原始用户点击手势内。
    */
-  if(a.getAttribute('data-smart-open')==='messenger'){
-    try{
-      var web=new URL(a.href,location.href);
-      if(web.hostname!=='m.me')return;
+  var smart=a.getAttribute('data-smart-open');
+  if(!smart)return;
+
+  try{
+    var web=new URL(a.href,location.href);
+    var host=web.hostname.toLowerCase().replace(/^www\\./,'');
+    var ua=navigator.userAgent||'';
+    var ios=/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/i.test(ua)&&navigator.maxTouchPoints>1);
+    var android=/Android/i.test(ua);
+
+    // iOS 没有可靠的「是否已安装」网页 API。尝试 Scheme 后，只能用页面是否
+    // 进入后台来推测成功；App 切走时立即取消网页回退，避免计时器抢跑。
+    var openIos=function(appUrl,fallbackUrl){
+      e.preventDefault();
+      var timer=0;
+      var done=false;
+      var cleanup=function(){
+        if(done)return;
+        done=true;
+        if(timer)clearTimeout(timer);
+        document.removeEventListener('visibilitychange',onVisibility);
+        removeEventListener('pagehide',onPageHide);
+      };
+      var onVisibility=function(){if(document.hidden)cleanup();};
+      var onPageHide=function(){cleanup();};
+      document.addEventListener('visibilitychange',onVisibility);
+      addEventListener('pagehide',onPageHide);
+      location.href=appUrl;
+      timer=setTimeout(function(){
+        if(done||document.hidden)return;
+        cleanup();
+        location.href=fallbackUrl;
+      },1800);
+    };
+
+    if(smart==='messenger'){
+      if(host!=='m.me')return;
       var recipient=decodeURIComponent(web.pathname.replace(/^\\/+|\\/+$/g,''));
       if(!recipient)return;
 
-      var ua=navigator.userAgent||'';
-      var ios=/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/i.test(ua)&&navigator.maxTouchPoints>1);
-      var android=/Android/i.test(ua);
-
       if(android){
         e.preventDefault();
-        var target=encodeURIComponent(recipient);
-        var fallback=encodeURIComponent(web.href);
-        location.href='intent://user/'+target+'#Intent;scheme=fb-messenger;package=com.facebook.orca;S.browser_fallback_url='+fallback+';end';
+        location.href='intent://user/'+encodeURIComponent(recipient)+'#Intent;scheme=fb-messenger;package=com.facebook.orca;S.browser_fallback_url='+encodeURIComponent(web.href)+';end';
+      }else if(ios){
+        openIos('fb-messenger-public://user-thread/'+encodeURIComponent(recipient),web.href);
+      }
+      return;
+    }
+
+    if(smart==='instagram'){
+      if(host!=='ig.me'&&host!=='instagram.com')return;
+      var path=web.pathname.split('/').filter(function(part){return part;});
+      var direct=host==='ig.me'&&path[0]==='m';
+      var username=decodeURIComponent(direct?path[1]||'':path[0]||'');
+      if(!/^[A-Za-z0-9._]{1,30}$/.test(username))return;
+
+      // ig.me/m/{username} 才保存了「给这个账号发消息」的完整语义。
+      // Instagram 没有公开一个能按用户名稳定进入对话窗口的 App Scheme；
+      // 将它改写成 instagram://direct?... 只会打开 App，目标会话会丢失。
+      if(direct){
+        if(android){
+          // Android 的普通 HTTPS 链接会让用户在浏览器与 Instagram 之间选择。
+          // 这里仍把完整 ig.me 地址交给 Instagram，只用 package 消除选择框；
+          // App 未安装或不接管时回到同一个网页地址，不去应用商店。
+          e.preventDefault();
+          location.href='intent://ig.me/m/'+encodeURIComponent(username)+'#Intent;scheme=https;package=com.instagram.android;S.browser_fallback_url='+encodeURIComponent(web.href)+';end';
+        }
+        // iOS 继续使用原始 Universal Link，由系统与 Instagram 共同处理。
         return;
       }
 
-      if(ios){
+      var encodedUser=encodeURIComponent(username);
+      // 主页入口可以安全地只表达「打开这个账号」，才使用 App Scheme 增强。
+      // 失败目标固定为网页主页，而不是应用商店。
+      var instagramAction='user?username='+encodedUser;
+      var instagramWeb='https://instagram.com/'+encodedUser;
+      if(android){
         e.preventDefault();
-        var timer;
-        var stop=function(){if(timer){clearTimeout(timer);timer=0;}};
-        var onVisibility=function(){if(document.hidden)stop();};
-        document.addEventListener('visibilitychange',onVisibility,{once:true});
-        addEventListener('pagehide',stop,{once:true});
-        location.href='fb-messenger-public://user-thread/'+encodeURIComponent(recipient);
-        // 用户取消系统提示、Scheme 不可用或内置浏览器拦截时，继续走可用的网页链接。
-        timer=setTimeout(function(){
-          document.removeEventListener('visibilitychange',onVisibility);
-          if(!document.hidden)location.href=web.href;
-        },1800);
+        location.href='intent://'+instagramAction+'#Intent;scheme=instagram;package=com.instagram.android;S.browser_fallback_url='+encodeURIComponent(instagramWeb)+';end';
+      }else if(ios){
+        openIos('instagram://'+instagramAction,instagramWeb);
       }
-    }catch(err){}
-  }
+      return;
+    }
+
+    if(smart==='whatsapp'){
+      if(host!=='wa.me')return;
+      var phone=web.pathname.replace(/\\D/g,'');
+      if(!/^\\d{7,15}$/.test(phone))return;
+
+      if(android){
+        e.preventDefault();
+        var whatsappQuery='phone='+encodeURIComponent(phone);
+        var message=web.searchParams.get('text');
+        if(message)whatsappQuery+='&text='+encodeURIComponent(message);
+        location.href='intent://send?'+whatsappQuery+'#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url='+encodeURIComponent(web.href)+';end';
+      }
+      // iOS 不阻止默认点击：wa.me 是 WhatsApp 官方首选 Universal Link。
+      // 「在 WhatsApp 中打开」由系统控制，网页不能也不应替用户确认。
+    }
+  }catch(err){}
 },true);
 
 /*

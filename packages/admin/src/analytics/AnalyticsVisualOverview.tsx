@@ -1,6 +1,5 @@
 import type { AnalyticsResponse } from '../api/types.js';
-import worldMap from '../assets/world-map.json';
-import { countryLabel, percent, sourceLabel } from './labels.js';
+import { percent, sourceLabel } from './labels.js';
 
 type CrossBreakdowns = AnalyticsResponse['crossBreakdowns'];
 
@@ -20,11 +19,6 @@ export function AnalyticsVisualOverview({ data }: { data: CrossBreakdowns }) {
         <VisualCard title="联系方式排行" description="联系按钮点击量及主要来源">
           <ContactRanking rows={data.targets} />
         </VisualCard>
-        <div className="xl:col-span-2">
-          <VisualCard title="国家分布" description="颜色越深，进入页面次数越多">
-            <CountryDistribution rows={data.countries} />
-          </VisualCard>
-        </div>
       </div>
     </section>
   );
@@ -107,61 +101,6 @@ function ContactRanking({ rows }: { rows: CrossBreakdowns['targets'] }) {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function CountryDistribution({ rows }: { rows: CrossBreakdowns['countries'] }) {
-  const values = new Map(rows.map((row) => [row.key.toLowerCase(), row.pageViews]));
-  const maxViews = Math.max(1, ...rows.map((row) => row.pageViews));
-  const topCountries = rows.slice(0, 6);
-  if (!rows.length) return <EmptyVisual />;
-
-  return (
-    <div className="grid items-center gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(240px,0.7fr)]">
-      <div className="overflow-hidden rounded-[var(--radius-control)] bg-bg p-2">
-        <svg
-          viewBox={worldMap.viewBox}
-          role="img"
-          aria-label="按进入页面次数着色的世界地图"
-          className="h-auto w-full"
-        >
-          {worldMap.layers.map((country) => {
-            const value = values.get(country.id) ?? 0;
-            const intensity = value ? 0.22 + Math.sqrt(value / maxViews) * 0.78 : 0;
-            return (
-              <path
-                key={country.id}
-                d={country.d}
-                fill={value ? 'var(--accent)' : 'var(--surface-hover)'}
-                fillOpacity={value ? intensity : 1}
-                stroke="var(--surface)"
-                strokeWidth="0.8"
-              >
-                <title>{`${countryLabel(country.id)}：${value} 次进入`}</title>
-              </path>
-            );
-          })}
-        </svg>
-      </div>
-      <div className="flex flex-col gap-2">
-        {topCountries.map((row, index) => (
-          <div
-            key={row.key || 'unknown'}
-            className="grid grid-cols-[22px_minmax(0,1fr)_auto] items-center gap-2 border-b border-border py-2 last:border-0"
-          >
-            <span className="font-mono text-[11px] text-muted">{index + 1}</span>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-medium text-fg">{countryLabel(row.key)}</p>
-              <p className="text-[11px] text-muted">联系 / 进入 {percent(row.leadRate)}</p>
-            </div>
-            <div className="text-right font-mono text-[12px]">
-              <p className="text-fg">{row.pageViews} 进入</p>
-              <p className="text-accent">{row.leads} 联系</p>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

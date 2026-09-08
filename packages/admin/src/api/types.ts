@@ -124,6 +124,11 @@ export interface AnalyticsResponse {
         label: string;
       };
   range: { from: string; to: string; timeZone: string; granularity: 'hour' | 'day' };
+  comparison: {
+    range: { from: string; to: string };
+    totals: { pageViews: number; clicks: number; leads: number; ctr: number };
+    profiles: ProfilePerformance[];
+  };
   totals: { pageViews: number; clicks: number; leads: number; ctr: number };
   trend: { bucket: string; pageViews: number; clicks: number; leads: number }[];
   hourlyLeads: number[];
@@ -147,10 +152,40 @@ export interface AnalyticsResponse {
     countries: CountryBreakdown[];
     targets: TargetBreakdown[];
   };
+  countryDaily: CountryDailyBreakdown[];
+  activityHeatmap: {
+    day: number;
+    hour: number;
+    pageViews: number;
+    leads: number;
+  }[];
+  profileHighlights: ProfileHighlight[];
   performance: {
     accounts: AccountPerformance[];
     profiles: ProfilePerformance[];
   };
+}
+
+export interface CountryDailyBreakdown {
+  day: string;
+  country: string;
+  pageViews: number;
+  clicks: number;
+  leads: number;
+  platforms: { key: string; clicks: number; leads: number }[];
+}
+
+export interface ProfileHighlightMetric {
+  key: string;
+  pageViews: number;
+  leads: number;
+}
+
+export interface ProfileHighlight {
+  profileId: string;
+  topSource: ProfileHighlightMetric | null;
+  topCountry: ProfileHighlightMetric | null;
+  topTarget: { id: string; title: string; platform: string; leads: number } | null;
 }
 
 export interface PerformanceTotals {
@@ -173,6 +208,8 @@ export interface ProfilePerformance extends PerformanceTotals {
   userId: string;
   shortName: string;
   displayName: string;
+  account: string;
+  accountLabel: string;
 }
 
 export interface CrossMetrics {
