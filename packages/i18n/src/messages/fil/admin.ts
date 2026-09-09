@@ -673,4 +673,6 @@ export const adminFil: AdminMessages = {
   'settings.recaptcha.configured': 'Nakaayos na',
   'settings.recaptcha.missing': 'Hindi pa nakaayos',
   'settings.recaptcha.keepSecret': 'Iwang blangko para panatilihin ang kasalukuyang secret key',
+  'settings.recaptcha.testKey':
+    'Ito ang pampublikong test keys ng Google. Pinapayagan nila ang lahat ng token, kaya walang proteksyon ang pag-sign up. Palitan ng sarili mo bago mag-live.',
 };

@@ -1,3 +1,8 @@
+import {
+  GOOGLE_TEST_SECRET_KEY,
+  GOOGLE_TEST_SITE_KEY,
+  isGoogleTestKey,
+} from '@link-profile/shared';
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { createTestContext, VALID_RECAPTCHA_TOKEN, type TestContext } from './helpers/context.js';
 import { createLoginableUser } from './helpers/factories.js';
@@ -168,6 +173,13 @@ test('校验器抛异常时不会把注册接口带成 500', async () => {
   } finally {
     await boom.close();
   }
+});
+
+test('认得出 Google 的公开测试密钥——那对密钥对任何令牌都放行', () => {
+  expect(isGoogleTestKey(GOOGLE_TEST_SITE_KEY)).toBe(true);
+  expect(isGoogleTestKey(GOOGLE_TEST_SECRET_KEY)).toBe(true);
+  expect(isGoogleTestKey('the-secret-key')).toBe(false);
+  expect(isGoogleTestKey('')).toBe(false);
 });
 
 test('只有超级管理员改得了人机验证的密钥', async () => {

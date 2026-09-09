@@ -652,4 +652,6 @@ export const adminEs: AdminMessages = {
   'settings.recaptcha.configured': 'Configurado',
   'settings.recaptcha.missing': 'Sin configurar',
   'settings.recaptcha.keepSecret': 'Déjalo vacío para conservar la clave secreta actual',
+  'settings.recaptcha.testKey':
+    'Estas son las claves públicas de prueba de Google. Dejan pasar cualquier token, así que el registro está desprotegido. Cámbialas por las tuyas antes de publicar.',
 };

@@ -662,4 +662,6 @@ export const adminEn = {
   'settings.recaptcha.configured': 'Configured',
   'settings.recaptcha.missing': 'Not configured',
   'settings.recaptcha.keepSecret': 'Leave empty to keep the current secret key',
+  'settings.recaptcha.testKey':
+    "These are Google's public test keys. They let every token through, so sign-up is effectively unprotected. Replace them with your own before going live.",
 } as const;

@@ -2,6 +2,7 @@ import { DEFAULT_LOCALE } from '@link-profile/i18n';
 import {
   accountNameSchema,
   inviteCodeSchema,
+  isGoogleTestKey,
   passwordSchema,
   shortNameSchema,
 } from '@link-profile/shared';
@@ -102,6 +103,11 @@ export async function registerRoutes(app: FastifyInstance) {
       return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
     const { code, account, password, shortName, displayName } = parsed.data;
+
+    // Google 的测试密钥对任何令牌都放行，留在生产里等于没有人机验证。
+    if (isGoogleTestKey(current.recaptchaSecretKey)) {
+      req.log.warn('用的是 Google 的 reCAPTCHA 测试密钥，任何令牌都会通过，换成自己的密钥');
+    }
 
     // 先验人机再干别的：后面每一步都比它贵，尤其是 argon2 那次哈希。
     //

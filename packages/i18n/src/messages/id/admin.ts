@@ -649,4 +649,6 @@ export const adminId: AdminMessages = {
   'settings.recaptcha.configured': 'Sudah diatur',
   'settings.recaptcha.missing': 'Belum diatur',
   'settings.recaptcha.keepSecret': 'Kosongkan untuk mempertahankan secret key saat ini',
+  'settings.recaptcha.testKey':
+    'Ini kunci uji publik dari Google. Semua token diloloskan, jadi pendaftaran praktis tanpa perlindungan. Ganti dengan milikmu sebelum live.',
 };

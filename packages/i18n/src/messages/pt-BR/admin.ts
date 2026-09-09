@@ -649,4 +649,6 @@ export const adminPtBR: AdminMessages = {
   'settings.recaptcha.configured': 'Configurado',
   'settings.recaptcha.missing': 'Não configurado',
   'settings.recaptcha.keepSecret': 'Deixe vazio para manter a chave secreta atual',
+  'settings.recaptcha.testKey':
+    'Estas são as chaves públicas de teste do Google. Elas deixam qualquer token passar, então o cadastro fica sem proteção. Troque pelas suas antes de publicar.',
 };

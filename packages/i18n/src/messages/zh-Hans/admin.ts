@@ -608,4 +608,6 @@ export const adminZhHans: AdminMessages = {
   'settings.recaptcha.configured': '已配置',
   'settings.recaptcha.missing': '未配置',
   'settings.recaptcha.keepSecret': '留空则保留当前私钥',
+  'settings.recaptcha.testKey':
+    '这是 Google 的公开测试密钥，对任何令牌都放行，等于注册没有人机验证。上线前换成你自己的密钥。',
 };

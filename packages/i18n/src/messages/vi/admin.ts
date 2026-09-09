@@ -643,4 +643,6 @@ export const adminVi: AdminMessages = {
   'settings.recaptcha.configured': 'Đã cấu hình',
   'settings.recaptcha.missing': 'Chưa cấu hình',
   'settings.recaptcha.keepSecret': 'Để trống để giữ khóa bí mật hiện tại',
+  'settings.recaptcha.testKey':
+    'Đây là khóa thử nghiệm công khai của Google. Chúng cho mọi token đi qua, nên đăng ký coi như không được bảo vệ. Hãy thay bằng khóa của bạn trước khi lên production.',
 };
