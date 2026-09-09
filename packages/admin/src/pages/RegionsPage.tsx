@@ -318,15 +318,27 @@ function BulkRegionsModal({
       title={t('bulk.title')}
       width={560}
       footer={
-        <>
-          <Button variant="default" onClick={close}>
-            {t('common.cancel')}
-          </Button>
-          {result ? (
-            <Button variant="primary" onClick={() => setResult(null)}>
-              {t('bulk.retryFailed')}
+        result ? (
+          // 全建成了就没有「失败行」可回去改，只留一个收尾按钮
+          result.failedCount === 0 ? (
+            <Button variant="primary" onClick={close}>
+              {t('common.close')}
             </Button>
           ) : (
+            <>
+              <Button variant="default" onClick={close}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="primary" onClick={() => setResult(null)}>
+                {t('bulk.retryFailed')}
+              </Button>
+            </>
+          )
+        ) : (
+          <>
+            <Button variant="default" onClick={close}>
+              {t('common.cancel')}
+            </Button>
             <Button
               variant="primary"
               loading={submitting}
@@ -335,8 +347,8 @@ function BulkRegionsModal({
             >
               {t('bulk.start')}
             </Button>
-          )}
-        </>
+          </>
+        )
       }
     >
       {result ? (

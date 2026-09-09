@@ -849,6 +849,7 @@ function CreateUserModal({
 interface BulkResult {
   createdCount: number;
   failedCount: number;
+  created: { line: number; shortName: string }[];
   failed: { line: number; error: string }[];
 }
 
@@ -896,14 +897,21 @@ function BulkCreateModal({
       width={640}
       footer={
         result ? (
-          <>
-            <Button variant="default" onClick={close}>
-              {t('common.cancel')}
+          // 全建成了就没有「失败行」可回去改，只留一个收尾按钮
+          result.failedCount === 0 ? (
+            <Button variant="primary" onClick={close}>
+              {t('common.close')}
             </Button>
-            <Button variant="primary" onClick={() => setResult(null)}>
-              {t('bulk.retryFailed')}
-            </Button>
-          </>
+          ) : (
+            <>
+              <Button variant="default" onClick={close}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="primary" onClick={() => setResult(null)}>
+                {t('bulk.retryFailed')}
+              </Button>
+            </>
+          )
         ) : (
           <>
             <Button variant="default" onClick={close}>
@@ -934,30 +942,34 @@ function BulkCreateModal({
           </div>
 
           <div className="max-h-80 overflow-y-auto rounded-[var(--radius-control)] border border-border">
-            {Array.from({ length: result.createdCount + result.failedCount }, (_, i) => i + 1).map(
-              (line) => {
-                const failure = result.failed.find((f) => f.line === line);
-                return (
-                  <div
-                    key={line}
-                    className={`flex items-center gap-2.5 border-b border-border px-3 py-2 text-[13px] last:border-b-0
-                    ${failure ? 'bg-danger-soft' : ''}`}
-                  >
-                    {failure ? (
-                      <XCircle className="size-4 shrink-0 text-danger" />
-                    ) : (
-                      <CheckCircle2 className="size-4 shrink-0 text-accent" />
-                    )}
-                    <span className="w-14 shrink-0 whitespace-nowrap font-mono text-muted">
-                      {t('bulk.line', { line })}
-                    </span>
-                    <span className={failure ? 'text-danger' : 'text-muted'}>
-                      {failure ? failure.error : t('bulk.done')}
-                    </span>
-                  </div>
-                );
-              },
-            )}
+            {/* 逐行回放按服务端给的行号排，不按结果条数从 1 数 —— 中间的空行是
+                跳过的，从 1 数会让后面每一行的行号都对不上用户的原文。 */}
+            {[
+              ...result.created.map((row) => ({
+                line: row.line,
+                text: `/${row.shortName}`,
+                ok: true,
+              })),
+              ...result.failed.map((row) => ({ line: row.line, text: row.error, ok: false })),
+            ]
+              .sort((a, b) => a.line - b.line)
+              .map((row) => (
+                <div
+                  key={row.line}
+                  className={`flex items-center gap-2.5 border-b border-border px-3 py-2 text-[13px] last:border-b-0
+                    ${row.ok ? '' : 'bg-danger-soft'}`}
+                >
+                  {row.ok ? (
+                    <CheckCircle2 className="size-4 shrink-0 text-accent" />
+                  ) : (
+                    <XCircle className="size-4 shrink-0 text-danger" />
+                  )}
+                  <span className="w-14 shrink-0 whitespace-nowrap font-mono text-muted">
+                    {t('bulk.line', { line: row.line })}
+                  </span>
+                  <span className={row.ok ? 'font-mono text-fg' : 'text-danger'}>{row.text}</span>
+                </div>
+              ))}
           </div>
         </div>
       ) : (
