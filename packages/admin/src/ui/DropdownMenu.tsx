@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 export interface DropdownMenuItem {
   key: string;
   label: string;
+  /** 右侧的次要信息，例如版本号。 */
+  hint?: string;
   icon?: ReactNode;
   onSelect: () => void;
   danger?: boolean;
@@ -42,6 +44,9 @@ export function DropdownMenu({ trigger, items, align = 'end' }: DropdownMenuProp
             >
               {item.icon}
               {item.label}
+              {item.hint ? (
+                <span className="ml-auto font-mono text-[12px] text-muted">{item.hint}</span>
+              ) : null}
             </RadixDropdown.Item>
           ))}
         </RadixDropdown.Content>

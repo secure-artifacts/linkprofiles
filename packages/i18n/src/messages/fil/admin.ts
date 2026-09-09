@@ -28,6 +28,10 @@ export const adminFil: AdminMessages = {
   'account.menu.logout': 'Mag-sign out',
   'account.language.saved': 'Na-update ang wika ng interface',
 
+  'changelog.title': 'Mga release note',
+  'changelog.current': 'Kasalukuyang tumatakbo ang {{version}}',
+  'changelog.chineseOnly': 'Nakasulat lamang sa Pinasimpleng Intsik ang mga release note.',
+
   'editor.pageLanguage.title': 'Wika ng page',
   'editor.pageLanguage.hint':
     'Itinatakda ang wikang idineklara ng public page at ang mga nakapirming teksto nito. Pag-aari ito ng page na ito, hindi ng account mo, at hindi ito sumusunod sa bisita.',

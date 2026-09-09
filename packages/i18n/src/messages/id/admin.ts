@@ -25,6 +25,10 @@ export const adminId: AdminMessages = {
   'account.menu.language': 'Bahasa',
   'account.menu.logout': 'Keluar',
   'account.language.saved': 'Bahasa antarmuka diperbarui',
+
+  'changelog.title': 'Catatan rilis',
+  'changelog.current': 'Saat ini menjalankan {{version}}',
+  'changelog.chineseOnly': 'Catatan rilis ditulis hanya dalam bahasa Mandarin Sederhana.',
   'editor.pageLanguage.title': 'Bahasa halaman',
   'editor.pageLanguage.hint':
     'Menentukan bahasa yang dinyatakan halaman publik dan teks tetap yang ditampilkannya. Ini milik halaman ini, bukan akunmu, dan tidak mengikuti pengunjung.',

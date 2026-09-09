@@ -27,6 +27,10 @@ export const adminZhHans: AdminMessages = {
   'account.menu.logout': '登出',
   'account.language.saved': '界面语言已更新',
 
+  'changelog.title': '更新日志',
+  'changelog.current': '当前运行的是 {{version}}',
+  'changelog.chineseOnly': '更新日志统一用简体中文记录，不随界面语言翻译。',
+
   'editor.pageLanguage.title': '页面语言',
   'editor.pageLanguage.hint':
     '决定公开页声明的语言与页面上的固定文案。它属于这个页面而不是你的账号，也不跟随访客。',

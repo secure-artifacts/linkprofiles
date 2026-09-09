@@ -2,6 +2,7 @@ import type { Locale } from '@link-profile/i18n';
 import {
   ChevronDown,
   ChevronRight,
+  History,
   KeyRound,
   Languages,
   Link2,
@@ -9,12 +10,13 @@ import {
   UserRoundPen,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { request } from './api/client.js';
 import { ChangePasswordModal } from './components/ChangePasswordModal.js';
 import { ChangeAccountModal } from './components/ChangeAccountModal.js';
 import { useBreadcrumbTrail } from './nav/breadcrumb.js';
 import { canOpen } from './nav/sections.js';
+import { CURRENT_VERSION } from './changelog/entries.js';
 import { LanguageSwitcher } from './components/LanguageSwitcher.js';
 import { useAdminT } from './i18n/runtime.js';
 import { ROLE_KEYS, useSession } from './session.js';
@@ -33,6 +35,7 @@ export function AppShell({
   const [changingAccount, setChangingAccount] = useState(false);
   const trail = useBreadcrumbTrail();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
   // 编辑器的地址是 /profiles/:id，不在任何一个入口的路径底下，光靠 NavLink
   // 自己匹配会一个都不高亮。它是从页面列表点进去的，就跟着列表那一项亮。
@@ -118,6 +121,13 @@ export function AppShell({
                   label: t('account.menu.changePassword'),
                   icon: <KeyRound className="size-3.5" />,
                   onSelect: () => setChangingPassword(true),
+                },
+                {
+                  key: 'changelog',
+                  label: t('changelog.title'),
+                  hint: `v${CURRENT_VERSION}`,
+                  icon: <History className="size-3.5" />,
+                  onSelect: () => navigate('/changelog'),
                 },
                 {
                   key: 'logout',

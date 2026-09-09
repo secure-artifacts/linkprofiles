@@ -9,6 +9,7 @@ import { AdminsPage } from './pages/AdminsPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
 import { RegionsPage } from './pages/RegionsPage.js';
 import { AnalyticsPage } from './pages/AnalyticsPage.js';
+import { ChangelogPage } from './pages/ChangelogPage.js';
 import { EditorPage } from './pages/EditorPage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { ProfilesPage } from './pages/ProfilesPage.js';
@@ -89,6 +90,7 @@ export function App() {
                 <Route path="admins" element={allow('admins', <AdminsPage />)} />
                 <Route path="settings" element={allow('settings', <SettingsPage />)} />
                 <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="changelog" element={<ChangelogPage />} />
                 <Route path="*" element={<Navigate to={landing} replace />} />
               </Route>
             </Routes>

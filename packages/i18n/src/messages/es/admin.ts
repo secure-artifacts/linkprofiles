@@ -25,6 +25,10 @@ export const adminEs: AdminMessages = {
   'account.menu.language': 'Idioma',
   'account.menu.logout': 'Cerrar sesión',
   'account.language.saved': 'Idioma de la interfaz actualizado',
+
+  'changelog.title': 'Notas de versión',
+  'changelog.current': 'Ahora mismo se ejecuta la {{version}}',
+  'changelog.chineseOnly': 'Las notas de versión se escriben solo en chino simplificado.',
   'editor.pageLanguage.title': 'Idioma de la página',
   'editor.pageLanguage.hint':
     'Define el idioma que declara la página pública y los textos fijos que muestra. Pertenece a esta página, no a tu cuenta, y no sigue al visitante.',

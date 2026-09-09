@@ -25,6 +25,10 @@ export const adminVi: AdminMessages = {
   'account.menu.language': 'Ngôn ngữ',
   'account.menu.logout': 'Đăng xuất',
   'account.language.saved': 'Đã cập nhật ngôn ngữ giao diện',
+
+  'changelog.title': 'Ghi chú phát hành',
+  'changelog.current': 'Hiện đang chạy {{version}}',
+  'changelog.chineseOnly': 'Ghi chú phát hành chỉ được viết bằng tiếng Trung giản thể.',
   'editor.pageLanguage.title': 'Ngôn ngữ trang',
   'editor.pageLanguage.hint':
     'Quy định ngôn ngữ mà trang công khai khai báo và các câu chữ cố định hiển thị trên đó. Nó thuộc về trang này chứ không phải tài khoản của bạn, và không chạy theo khách truy cập.',

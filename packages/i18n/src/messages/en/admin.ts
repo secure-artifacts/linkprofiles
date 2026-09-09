@@ -27,6 +27,10 @@ export const adminEn = {
   'account.menu.logout': 'Sign out',
   'account.language.saved': 'Interface language updated',
 
+  'changelog.title': 'Release notes',
+  'changelog.current': 'Currently running {{version}}',
+  'changelog.chineseOnly': 'Release notes are written in Simplified Chinese only.',
+
   'editor.pageLanguage.title': 'Page language',
   'editor.pageLanguage.hint':
     'Sets the language the public page declares and the wording it renders. It belongs to this page, not to your account, and does not follow the visitor.',

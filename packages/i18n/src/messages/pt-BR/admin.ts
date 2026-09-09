@@ -25,6 +25,10 @@ export const adminPtBR: AdminMessages = {
   'account.menu.language': 'Idioma',
   'account.menu.logout': 'Sair',
   'account.language.saved': 'Idioma da interface atualizado',
+
+  'changelog.title': 'Notas de versão',
+  'changelog.current': 'Rodando a {{version}} no momento',
+  'changelog.chineseOnly': 'As notas de versão são escritas apenas em chinês simplificado.',
   'editor.pageLanguage.title': 'Idioma da página',
   'editor.pageLanguage.hint':
     'Define o idioma que a página pública declara e os textos fixos que ela mostra. Pertence a esta página, não à sua conta, e não acompanha o visitante.',
