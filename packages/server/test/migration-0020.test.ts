@@ -21,6 +21,7 @@ const ids = {
   bob: randomUUID(),
   carol: randomUUID(),
   dup: randomUUID(),
+  literal2: randomUUID(),
   aliceUser: randomUUID(),
   bobUser: randomUUID(),
   carolUser: randomUUID(),
@@ -59,6 +60,10 @@ beforeAll(async () => {
             values (${ids.carol}, 'admin', 'carol', 'x', '运营一组', '2024-01-03T00:00:00Z')`;
   await sql`insert into users (id, role, account, password_hash, label, created_at)
             values (${ids.dup}, 'admin', 'dup', 'x', '未分配', '2024-01-04T00:00:00Z')`;
+  // carol 会因为与 alice 重名而拿到「运营一组 2」，而这个管理员字面上就叫
+  // 「运营一组 2」。只在同名分组内报数的写法会在这里撞唯一索引、整次迁移回滚。
+  await sql`insert into users (id, role, account, password_hash, label, created_at)
+            values (${ids.literal2}, 'admin', 'literal', 'x', '运营一组 2', '2024-01-05T00:00:00Z')`;
 
   await sql`insert into users (id, role, account, password_hash, label, owning_admin_id)
             values (${ids.aliceUser}, 'user', 'alice-one', 'x', '', ${ids.alice})`;
@@ -108,6 +113,7 @@ test('每个管理员恰好得到一个默认区域，超级管理员没有', as
   expect(byAdmin.get(ids.bob)).toBe(1);
   expect(byAdmin.get(ids.carol)).toBe(1);
   expect(byAdmin.get(ids.dup)).toBe(1);
+  expect(byAdmin.get(ids.literal2)).toBe(1);
   expect(byAdmin.has(ids.superadmin)).toBe(false);
 });
 
@@ -121,6 +127,18 @@ test('默认区域重名时追加序号', async () => {
   const [carolRegion] = await sql`select name from regions where owner_admin_id = ${ids.carol}`;
   expect(aliceRegion?.['name']).toBe('运营一组');
   expect(carolRegion?.['name']).toBe('运营一组 2');
+});
+
+test('追加出来的序号名撞上另一个管理员的真实名字时继续往后找，而不是让迁移炸掉', async () => {
+  // carol 先占了「运营一组 2」，字面就叫这个名字的管理员只能再往后排
+  const [literalRegion] =
+    await sql`select name from regions where owner_admin_id = ${ids.literal2}`;
+  expect(literalRegion?.['name']).toBe('运营一组 2 2');
+
+  // 名字仍然全站唯一，一个都没丢
+  const [counts] =
+    await sql`select count(*)::int as total, count(distinct name)::int as unique_names from regions`;
+  expect(counts?.['total']).toBe(counts?.['unique_names']);
 });
 
 test('管理员的用户名称正好是「未分配」时也不与自带区域撞名', async () => {
@@ -153,7 +171,7 @@ test('每个用户都拿到了区域，管理员与超级管理员都没有', as
     await sql`select role, count(*)::int as n from users where region_id is null group by role`;
   const byRole = new Map(rows.map((r) => [r['role'], r['n']]));
   expect(byRole.get('user')).toBeUndefined();
-  expect(byRole.get('admin')).toBe(4);
+  expect(byRole.get('admin')).toBe(5);
   expect(byRole.get('superadmin')).toBe(1);
 });
 

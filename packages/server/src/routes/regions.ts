@@ -10,6 +10,16 @@ import { issueInviteCode } from '../regions/invite-code.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** drizzle 把驱动的错误包一层再抛，带 SQLSTATE 的在 cause 链上。 */
+function isForeignKeyViolation(err: unknown): boolean {
+  for (let cur: unknown = err, depth = 0; cur && depth < 5; depth += 1) {
+    const pg = cur as { code?: string; cause?: unknown };
+    if (pg.code === '23503') return true;
+    cur = pg.cause;
+  }
+  return false;
+}
+
 const regionName = z.string().trim().min(1, 'field.region.name.required').max(60);
 
 const createRegionBody = z.object({
@@ -99,11 +109,12 @@ export async function regionRoutes(app: FastifyInstance) {
       });
     if (!row) return fail(reply, 409, 'region_name_taken');
 
-    const issued = await issueInviteCode(app.db, row.id);
+    // 超级管理员建得出无归属区域，那种区域不该带码。
+    const issued = ownerAdminId === null ? null : await issueInviteCode(app.db, row.id);
     return reply.code(201).send({
       ...row,
       memberCount: 0,
-      inviteCode: issued.ok ? issued.code : null,
+      inviteCode: issued?.ok ? issued.code : null,
     });
   });
 
@@ -189,11 +200,13 @@ export async function regionRoutes(app: FastifyInstance) {
 
       const issued = await issueInviteCode(app.db, target.id, parsed.data.code);
       if (!issued.ok) {
-        return issued.reason === 'taken'
-          ? fail(reply, 409, 'invite_code_taken')
-          : fail(reply, 400, 'invalid_body', {
-              issues: [{ path: ['code'], message: issued.message }],
-            });
+        // unowned 是拿到区域行锁之后才发现的：上面那道检查与它之间，
+        // 归属管理员可能刚好被删掉。
+        if (issued.reason === 'unowned') return fail(reply, 409, 'region_unowned');
+        if (issued.reason === 'taken') return fail(reply, 409, 'invite_code_taken');
+        return fail(reply, 400, 'invalid_body', {
+          issues: [{ path: ['code'], message: issued.message }],
+        });
       }
 
       return { inviteCode: issued.code };
@@ -226,7 +239,15 @@ export async function regionRoutes(app: FastifyInstance) {
         });
       }
 
-      await app.db.delete(regions).where(eq(regions.id, target.id));
+      try {
+        await app.db.delete(regions).where(eq(regions.id, target.id));
+      } catch (err) {
+        // 上面数完到这里删掉之间，有人可能刚把用户移进来或注册进来。
+        // `onDelete: 'restrict'` 会挡住，但那是个外键违例，不处理就是一个
+        // 莫名其妙的 500。数据库才是最终裁判，照它的结果回同一个 409。
+        if (!isForeignKeyViolation(err)) throw err;
+        return fail(reply, 409, 'region_not_empty', { messageKey: 'code.region_not_empty' });
+      }
       return reply.code(204).send();
     },
   );

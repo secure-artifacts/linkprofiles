@@ -1,6 +1,6 @@
 import { validateInviteCode } from '@link-profile/shared';
 import { inviteCodes } from '@link-profile/shared/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from './helpers/context.js';
 import { createLoginableUser } from './helpers/factories.js';
@@ -138,6 +138,37 @@ test('自定义码不合格式被拒', async () => {
     const res = await reset(aliceToken, region.id, { code: bad });
     expect(res.statusCode, bad).toBe(400);
   }
+});
+
+test('并发重置同一个区域的码，不会两条都成功也不会炸成 500', async () => {
+  const region = await newRegion(aliceToken, '华东一批');
+
+  const results = await Promise.all([
+    reset(aliceToken, region.id),
+    reset(aliceToken, region.id),
+    reset(aliceToken, region.id),
+  ]);
+  for (const res of results) {
+    expect(res.statusCode, JSON.stringify(res.json())).toBe(200);
+  }
+
+  // 「每区域至多一个有效码」这条不变式必须还在
+  const active = await ctx.db
+    .select({ code: inviteCodes.code })
+    .from(inviteCodes)
+    .where(and(eq(inviteCodes.regionId, region.id), eq(inviteCodes.isActive, true)));
+  expect(active).toHaveLength(1);
+});
+
+test('超级管理员建的无归属区域不带邀请码', async () => {
+  const res = await ctx.app.inject({
+    method: 'POST',
+    url: '/_api/regions',
+    ...withSession(superToken),
+    payload: { name: '先放着没人管', ownerAdminId: null },
+  });
+  expect(res.statusCode).toBe(201);
+  expect(res.json()).toMatchObject({ ownerAdminId: null, inviteCode: null });
 });
 
 test('管理员重置不了别人名下区域的码', async () => {

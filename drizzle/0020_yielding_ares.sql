@@ -15,25 +15,36 @@ ALTER TABLE "users" ADD CONSTRAINT "users_region_id_regions_id_fk" FOREIGN KEY (
 CREATE INDEX "users_region_idx" ON "users" USING btree ("region_id");--> statement-breakpoint
 INSERT INTO "regions" ("id", "name", "owner_admin_id", "is_default")
 VALUES ('00000000-0000-4000-8000-000000000001', '未分配', NULL, false);--> statement-breakpoint
-WITH admin_base AS (
-	SELECT u."id" AS admin_id,
-	       coalesce(nullif(btrim(u."label"), ''), u."account") AS nm,
-	       u."created_at" AS ord
-	FROM "users" u
-	WHERE u."role" = 'admin'
-), candidates AS (
-	SELECT NULL::uuid AS admin_id, '未分配'::text AS nm, '-infinity'::timestamptz AS ord
-	UNION ALL
-	SELECT admin_id, nm, ord FROM admin_base
-), ranked AS (
-	SELECT admin_id, nm,
-	       row_number() OVER (PARTITION BY nm ORDER BY ord, admin_id) AS rn
-	FROM candidates
-)
-INSERT INTO "regions" ("name", "owner_admin_id", "is_default")
-SELECT CASE WHEN rn = 1 THEN nm ELSE nm || ' ' || rn END, admin_id, true
-FROM ranked
-WHERE admin_id IS NOT NULL;--> statement-breakpoint
+DO $mig$
+DECLARE
+	rec record;
+	base text;
+	candidate text;
+	n int;
+BEGIN
+	FOR rec IN
+		SELECT u."id" AS admin_id,
+		       coalesce(nullif(btrim(u."label"), ''), u."account") AS nm
+		FROM "users" u
+		WHERE u."role" = 'admin'
+		ORDER BY u."created_at", u."id"
+	LOOP
+		base := rec.nm;
+		n := 1;
+		-- 逐个试到一个没被占的名字为止。不能只在同名分组内报数：分组算出来的
+		-- 「foo 2」可能正好是另一个管理员字面上就叫的名字，那样整次迁移会撞
+		-- regions_name_unique 回滚，生产库卡在上一版。
+		LOOP
+			candidate := CASE WHEN n = 1 THEN base ELSE base || ' ' || n END;
+			EXIT WHEN NOT EXISTS (SELECT 1 FROM "regions" WHERE "name" = candidate);
+			n := n + 1;
+		END LOOP;
+
+		INSERT INTO "regions" ("name", "owner_admin_id", "is_default")
+		VALUES (candidate, rec.admin_id, true);
+	END LOOP;
+END
+$mig$;--> statement-breakpoint
 UPDATE "users" u
 SET "region_id" = r."id"
 FROM "regions" r
