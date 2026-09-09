@@ -101,7 +101,6 @@ export function RegisterPage({ onBackToLogin }: { onBackToLogin: () => void }) {
       });
       setDone(true);
     } catch (err) {
-      // 一枚令牌只能用一次，失败之后必须重勾
       resetCaptcha();
       toast.error((err as Error).message);
     } finally {
@@ -216,7 +215,6 @@ export function RegisterPage({ onBackToLogin }: { onBackToLogin: () => void }) {
               />
             </div>
 
-            {/* reCAPTCHA v2 复选框：必须由本人勾选，见 ADR-0022 */}
             <div ref={captchaBox} className="mt-5 flex justify-center" />
 
             <Button

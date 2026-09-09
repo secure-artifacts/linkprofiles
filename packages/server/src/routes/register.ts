@@ -45,7 +45,7 @@ export async function registerRoutes(app: FastifyInstance) {
    * 人机验证没配齐也一律当关着 —— 失败要往安全的一边倒：宁可注册不开，
    * 也不能因为没填密钥就把匿名入口敞着。
    */
-  async function openSettings(reply: FastifyReply) {
+  async function requireRegistrationReady(reply: FastifyReply) {
     const current = await readSettings(app.db);
     if (!current.registrationEnabled) {
       await fail(reply, 403, 'registration_closed');
@@ -63,15 +63,14 @@ export async function registerRoutes(app: FastifyInstance) {
    *
    * 无归属区域的码即便还在库里也当无效——没人管的区域不该继续进人。
    */
-  /** 注册页渲染人机验证控件要用的公开配置。 */
   app.get('/register/config', async (_req, reply) => {
-    const current = await openSettings(reply);
+    const current = await requireRegistrationReady(reply);
     if (!current) return reply;
     return { recaptchaSiteKey: current.recaptchaSiteKey };
   });
 
   app.get('/register/preview', async (req, reply) => {
-    if (!(await openSettings(reply))) return reply;
+    if (!(await requireRegistrationReady(reply))) return reply;
 
     const parsed = previewQuery.safeParse(req.query);
     if (!parsed.success) return fail(reply, 400, 'invite_code_invalid');
@@ -95,7 +94,7 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.post('/register', async (req, reply) => {
-    const current = await openSettings(reply);
+    const current = await requireRegistrationReady(reply);
     if (!current) return reply;
 
     const parsed = registerBody.safeParse(req.body);

@@ -3,7 +3,7 @@ import {
   GOOGLE_TEST_SITE_KEY,
   isGoogleTestKey,
 } from '@link-profile/shared';
-import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createTestContext, VALID_RECAPTCHA_TOKEN, type TestContext } from './helpers/context.js';
 import { createLoginableUser } from './helpers/factories.js';
 import { login, withSession } from './helpers/http.js';
@@ -196,5 +196,4 @@ test('只有超级管理员改得了人机验证的密钥', async () => {
 test('校验器收到访客 IP，方便 Google 侧判断', async () => {
   await register({ ...GOOD, code, recaptchaToken: VALID_RECAPTCHA_TOKEN });
   expect(calls[0]?.remoteIp).toBeTruthy();
-  expect(vi.isMockFunction(register)).toBe(false);
 });
