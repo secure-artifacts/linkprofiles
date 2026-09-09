@@ -81,7 +81,11 @@ function Preview() {
       const wasMuted = video.muted;
       video.muted = !wasMuted;
       button.setAttribute('aria-pressed', wasMuted ? 'true' : 'false');
-      button.setAttribute('aria-label', wasMuted ? '关闭声音' : '开启声音');
+      // 两份文案由渲染时按页面语言写进 data 属性，与公开页那段脚本同一条路径。
+      button.setAttribute(
+        'aria-label',
+        button.getAttribute(wasMuted ? 'data-label-mute' : 'data-label-unmute') ?? '',
+      );
       if (wasMuted) void video.play().catch(() => {});
     };
 

@@ -13,18 +13,22 @@ import type { AnalyticsResponse, CountryDailyBreakdown } from '../api/types.js';
 import worldMap from '../assets/world-map.json';
 import { Segmented } from '../ui/Segmented.js';
 import { countryLabel, percent, platformLabel, sourceLabel } from './labels.js';
+import { useAdminT, useLocale } from '../i18n/runtime.js';
+import { compareText } from '@link-profile/shared';
 
 type CountryMetric = 'pageViews' | 'clicks' | 'leads';
 type PlatformMetric = { key: string; clicks: number; leads: number };
 type GlobalCountryData = Pick<AnalyticsResponse, 'totals' | 'crossBreakdowns' | 'countryDaily'>;
 
-const METRIC_LABELS: Record<CountryMetric, string> = {
-  pageViews: '打开次数',
-  clicks: '全部点击',
-  leads: '联系点击',
-};
+const METRIC_KEYS = {
+  pageViews: 'analytics.opens',
+  clicks: 'analytics.clicks',
+  leads: 'analytics.leads',
+} as const satisfies Record<CountryMetric, string>;
 
 export function GlobalCountryAnalytics({ data }: { data: GlobalCountryData }) {
+  const t = useAdminT();
+  const locale = useLocale();
   const countries = data.crossBreakdowns.countries;
   const [metric, setMetric] = useState<CountryMetric>('pageViews');
   const [selectedCountry, setSelectedCountry] = useState(countries[0]?.key ?? '');
@@ -48,7 +52,7 @@ export function GlobalCountryAnalytics({ data }: { data: GlobalCountryData }) {
     return (
       <section className="rounded-[var(--radius-panel)] border border-border bg-surface p-4">
         <Header />
-        <p className="py-10 text-center text-[13px] text-muted">当前时间范围暂无国家数据</p>
+        <p className="py-10 text-center text-[13px] text-muted">{t('analytics.empty.countries')}</p>
       </section>
     );
   }
@@ -71,21 +75,21 @@ export function GlobalCountryAnalytics({ data }: { data: GlobalCountryData }) {
           value={metric}
           onChange={(value) => setMetric(value as CountryMetric)}
           options={[
-            { value: 'pageViews', label: '打开次数' },
-            { value: 'clicks', label: '全部点击' },
-            { value: 'leads', label: '联系点击' },
+            { value: 'pageViews', label: t('analytics.opens') },
+            { value: 'clicks', label: t('analytics.clicks') },
+            { value: 'leads', label: t('analytics.leads') },
           ]}
         />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <Summary label="覆盖国家 / 地区" value={knownCountries} />
-        <Summary label="全球打开次数" value={data.totals.pageViews} />
-        <Summary label="全球联系点击" value={data.totals.leads} />
+        <Summary label={t('country.coverage')} value={knownCountries} />
+        <Summary label={t('country.globalOpens')} value={data.totals.pageViews} />
+        <Summary label={t('country.globalLeads')} value={data.totals.leads} />
         <Summary
-          label="打开次数最多"
-          value={countryLabel(topCountry.key)}
-          hint={`${topCountry.pageViews} 次打开`}
+          label={t('country.mostOpens')}
+          value={countryLabel(t, locale, topCountry.key)}
+          hint={t('country.opensCount', { count: topCountry.pageViews })}
         />
       </div>
 
@@ -94,7 +98,7 @@ export function GlobalCountryAnalytics({ data }: { data: GlobalCountryData }) {
           <svg
             viewBox={worldMap.viewBox}
             role="img"
-            aria-label={`按${METRIC_LABELS[metric]}着色的全球国家地图`}
+            aria-label={t('country.map.aria', { metric: t(METRIC_KEYS[metric]) })}
             className="h-auto w-full"
           >
             {worldMap.layers.map((layer) => {
@@ -123,19 +127,23 @@ export function GlobalCountryAnalytics({ data }: { data: GlobalCountryData }) {
                 >
                   <title>
                     {country
-                      ? `${countryLabel(country.key)}：${country.pageViews} 次打开，${country.leads} 次联系点击`
-                      : `${countryLabel(layer.id)}：暂无数据`}
+                      ? t('country.map.tooltip', {
+                          country: countryLabel(t, locale, country.key),
+                          opens: country.pageViews,
+                          leads: country.leads,
+                        })
+                      : t('country.map.noData', { country: countryLabel(t, locale, layer.id) })}
                   </title>
                 </path>
               );
             })}
           </svg>
           <div className="mt-1 flex items-center justify-end gap-2 px-2 text-[11px] text-muted">
-            <span>少</span>
+            <span>{t('analytics.low')}</span>
             {[0.18, 0.38, 0.6, 0.82, 1].map((opacity) => (
               <span key={opacity} className="size-3 rounded-sm bg-accent" style={{ opacity }} />
             ))}
-            <span>多</span>
+            <span>{t('analytics.high')}</span>
           </div>
         </div>
 
@@ -166,14 +174,13 @@ export function GlobalCountryAnalytics({ data }: { data: GlobalCountryData }) {
 }
 
 function Header() {
+  const t = useAdminT();
   return (
     <div>
       <h2 id="global-country-title" className="text-base font-semibold text-fg">
-        全球国家分析
+        {t('country.title')}
       </h2>
-      <p className="mt-1 text-[12px] text-muted">
-        汇总全部可见个人页；点击地图或国家排行，查看每天的打开与联系方式点击。
-      </p>
+      <p className="mt-1 text-[12px] text-muted">{t('country.hint')}</p>
     </div>
   );
 }
@@ -199,13 +206,15 @@ function CountryRanking({
   selected: string;
   onSelect: (country: string) => void;
 }) {
+  const t = useAdminT();
+  const locale = useLocale();
   const rows = [...countries].sort((a, b) => b[metric] - a[metric]).slice(0, 12);
   const max = Math.max(1, ...rows.map((country) => country[metric]));
   return (
     <div className="rounded-[var(--radius-control)] border border-border p-3">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-[13px] font-semibold text-fg">国家排行</h3>
-        <span className="text-[11px] text-muted">{METRIC_LABELS[metric]}</span>
+        <h3 className="text-[13px] font-semibold text-fg">{t('country.ranking.title')}</h3>
+        <span className="text-[11px] text-muted">{t(METRIC_KEYS[metric])}</span>
       </div>
       <div className="max-h-[420px] overflow-y-auto pr-1">
         {rows.map((country, index) => (
@@ -220,7 +229,7 @@ function CountryRanking({
             <span className="font-mono text-[11px] text-muted">{index + 1}</span>
             <span className="min-w-0">
               <span className="block truncate text-[12px] font-medium text-fg">
-                {countryLabel(country.key)}
+                {countryLabel(t, locale, country.key)}
               </span>
               <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-surface-hover">
                 <span
@@ -238,10 +247,14 @@ function CountryRanking({
 }
 
 function CountryDailyTrend({ country, rows }: { country: string; rows: CountryDailyBreakdown[] }) {
+  const t = useAdminT();
+  const locale = useLocale();
   return (
     <div className="rounded-[var(--radius-control)] border border-border p-3">
-      <h3 className="text-[13px] font-semibold text-fg">{countryLabel(country)} · 每日趋势</h3>
-      <p className="mt-0.5 text-[11px] text-muted">打开次数、全部点击与联系点击</p>
+      <h3 className="text-[13px] font-semibold text-fg">
+        {t('country.dailyTrend', { country: countryLabel(t, locale, country) })}
+      </h3>
+      <p className="mt-0.5 text-[11px] text-muted">{t('country.ranking.hint')}</p>
       {rows.length ? (
         <ResponsiveContainer width="100%" height={240}>
           <ComposedChart data={rows} margin={{ top: 16, right: 8, left: -14, bottom: 0 }}>
@@ -263,7 +276,11 @@ function CountryDailyTrend({ country, rows }: { country: string; rows: CountryDa
             <RechartsTooltip
               formatter={(value, name) => [
                 String(value ?? 0),
-                name === 'pageViews' ? '打开次数' : name === 'clicks' ? '全部点击' : '联系点击',
+                name === 'pageViews'
+                  ? t('analytics.opens')
+                  : name === 'clicks'
+                    ? t('analytics.clicks')
+                    : t('analytics.leads'),
               ]}
               contentStyle={{ borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}
             />
@@ -292,20 +309,27 @@ function CountryDailyTrend({ country, rows }: { country: string; rows: CountryDa
 }
 
 function PlatformComposition({ country, rows }: { country: string; rows: PlatformMetric[] }) {
+  const t = useAdminT();
+  const locale = useLocale();
   const total = rows.reduce((sum, row) => sum + row.clicks, 0);
   const max = Math.max(1, ...rows.map((row) => row.clicks));
   return (
     <div className="rounded-[var(--radius-control)] border border-border p-3">
-      <h3 className="text-[13px] font-semibold text-fg">{countryLabel(country)} · 联系方式点击</h3>
-      <p className="mt-0.5 text-[11px] text-muted">WhatsApp、Messenger 等条目的点击构成</p>
+      <h3 className="text-[13px] font-semibold text-fg">
+        {t('country.channelClicks', { country: countryLabel(t, locale, country) })}
+      </h3>
+      <p className="mt-0.5 text-[11px] text-muted">{t('country.platformMix')}</p>
       {rows.length ? (
         <div className="mt-4 flex flex-col gap-3">
           {rows.map((row) => (
             <div key={row.key}>
               <div className="flex items-baseline justify-between gap-3 text-[12px]">
-                <span className="font-medium text-fg">{platformLabel(row.key)}</span>
+                <span className="font-medium text-fg">{platformLabel(t, row.key)}</span>
                 <span className="font-mono text-fg">
-                  {row.clicks} 次 · {total ? percent(row.clicks / total) : '0.0%'}
+                  {t('country.clicksShare', {
+                    count: row.clicks,
+                    percent: total ? percent(row.clicks / total) : '0.0%',
+                  })}
                 </span>
               </div>
               <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-hover">
@@ -337,26 +361,26 @@ function CountrySummaryTable({
   selected: string;
   onSelect: (country: string) => void;
 }) {
+  const t = useAdminT();
+  const locale = useLocale();
   return (
     <div className="mt-4">
       <div className="mb-2">
-        <h3 className="text-[13px] font-semibold text-fg">全部国家汇总</h3>
-        <p className="mt-0.5 text-[11px] text-muted">
-          包含打开次数、流量来源和主要联系方式；点击一行查看该国每日明细。
-        </p>
+        <h3 className="text-[13px] font-semibold text-fg">{t('country.table.title')}</h3>
+        <p className="mt-0.5 text-[11px] text-muted">{t('country.table.hint')}</p>
       </div>
       <div className="overflow-x-auto rounded-[var(--radius-control)] border border-border">
         <table className="w-full min-w-[860px] border-collapse text-[12px]">
           <thead className="bg-bg text-left text-muted">
             <tr>
-              <th className="px-3 py-2 font-medium">国家 / 地区</th>
-              <th className="px-3 py-2 text-right font-medium">打开</th>
-              <th className="px-3 py-2 text-right font-medium">全部点击</th>
-              <th className="px-3 py-2 text-right font-medium">联系点击</th>
-              <th className="px-3 py-2 font-medium">主要流量来源</th>
+              <th className="px-3 py-2 font-medium">{t('country.column.country')}</th>
+              <th className="px-3 py-2 text-right font-medium">{t('country.column.opens')}</th>
+              <th className="px-3 py-2 text-right font-medium">{t('analytics.clicks')}</th>
+              <th className="px-3 py-2 text-right font-medium">{t('analytics.leads')}</th>
+              <th className="px-3 py-2 font-medium">{t('country.column.topSources')}</th>
               {topPlatforms.map((platform) => (
                 <th key={platform} className="px-3 py-2 text-right font-medium">
-                  {platformLabel(platform)}
+                  {platformLabel(t, platform)}
                 </th>
               ))}
             </tr>
@@ -375,12 +399,16 @@ function CountrySummaryTable({
                   }`}
                   onClick={() => onSelect(country.key)}
                 >
-                  <td className="px-3 py-2.5 font-medium text-fg">{countryLabel(country.key)}</td>
+                  <td className="px-3 py-2.5 font-medium text-fg">
+                    {countryLabel(t, locale, country.key)}
+                  </td>
                   <Number value={country.pageViews} />
                   <Number value={country.clicks} />
                   <Number value={country.leads} accent />
                   <td className="px-3 py-2.5 text-muted">
-                    {topSource ? `${sourceLabel(topSource.key)} · ${topSource.pageViews}` : '暂无'}
+                    {topSource
+                      ? `${sourceLabel(t, topSource.key)} · ${topSource.pageViews}`
+                      : t('analytics.none')}
                   </td>
                   {topPlatforms.map((platform) => (
                     <Number key={platform} value={platforms.get(platform) ?? 0} />
@@ -404,21 +432,25 @@ function CountryDailyTable({
   rows: CountryDailyBreakdown[];
   platformKeys: string[];
 }) {
+  const t = useAdminT();
+  const locale = useLocale();
   return (
     <div className="mt-4">
-      <h3 className="text-[13px] font-semibold text-fg">{countryLabel(country)} · 每天明细</h3>
-      <p className="mt-0.5 text-[11px] text-muted">每天打开多少次，以及各联系方式被点击多少次。</p>
+      <h3 className="text-[13px] font-semibold text-fg">
+        {t('country.dailyDetail', { country: countryLabel(t, locale, country) })}
+      </h3>
+      <p className="mt-0.5 text-[11px] text-muted">{t('country.daily.hint')}</p>
       <div className="mt-2 overflow-x-auto rounded-[var(--radius-control)] border border-border">
         <table className="w-full min-w-[760px] border-collapse text-[12px]">
           <thead className="bg-bg text-muted">
             <tr>
-              <th className="px-3 py-2 text-left font-medium">日期</th>
-              <th className="px-3 py-2 text-right font-medium">打开</th>
-              <th className="px-3 py-2 text-right font-medium">全部点击</th>
-              <th className="px-3 py-2 text-right font-medium">联系点击</th>
+              <th className="px-3 py-2 text-left font-medium">{t('analytics.date')}</th>
+              <th className="px-3 py-2 text-right font-medium">{t('country.column.opens')}</th>
+              <th className="px-3 py-2 text-right font-medium">{t('analytics.clicks')}</th>
+              <th className="px-3 py-2 text-right font-medium">{t('analytics.leads')}</th>
               {platformKeys.map((platform) => (
                 <th key={platform} className="px-3 py-2 text-right font-medium">
-                  {platformLabel(platform)}
+                  {platformLabel(t, platform)}
                 </th>
               ))}
             </tr>
@@ -455,7 +487,8 @@ function Number({ value, accent = false }: { value: number; accent?: boolean }) 
 }
 
 function Empty() {
-  return <p className="py-8 text-center text-[12px] text-muted">当前范围暂无数据</p>;
+  const t = useAdminT();
+  return <p className="py-8 text-center text-[12px] text-muted">{t('analytics.empty.inRange')}</p>;
 }
 
 function groupDailyByCountry(rows: CountryDailyBreakdown[]) {
@@ -465,7 +498,7 @@ function groupDailyByCountry(rows: CountryDailyBreakdown[]) {
     bucket.push(row);
     grouped.set(row.country, bucket);
   }
-  for (const bucket of grouped.values()) bucket.sort((a, b) => a.day.localeCompare(b.day));
+  for (const bucket of grouped.values()) bucket.sort((a, b) => compareText(a.day, b.day));
   return grouped;
 }
 
@@ -484,7 +517,7 @@ function aggregatePlatformsByCountry(rows: CountryDailyBreakdown[]) {
   return new Map(
     [...grouped].map(([country, platforms]) => [
       country,
-      [...platforms.values()].sort((a, b) => b.clicks - a.clicks || a.key.localeCompare(b.key)),
+      [...platforms.values()].sort((a, b) => b.clicks - a.clicks || compareText(a.key, b.key)),
     ]),
   );
 }
@@ -497,7 +530,7 @@ function topPlatformKeys(rows: CountryDailyBreakdown[], limit: number) {
     }
   }
   return [...totals]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .sort((a, b) => b[1] - a[1] || compareText(a[0], b[0]))
     .slice(0, limit)
     .map(([key]) => key);
 }

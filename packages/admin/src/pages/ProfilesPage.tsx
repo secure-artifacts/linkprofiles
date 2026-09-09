@@ -13,12 +13,15 @@ import { Input } from '../ui/Input.js';
 import { Spinner } from '../ui/Spinner.js';
 import { useToast } from '../ui/Toast.js';
 import { useConfirm } from '../ui/useConfirm.js';
+import { useAdminT } from '../i18n/runtime.js';
+import { isoDate } from '../format.js';
 
+/** 布局的名字在 CONTEXT.md 里就是这四个，属于术语而不是文案，不进译文目录。 */
 const LAYOUT_LABELS: Record<string, string> = {
-  classic: '经典',
-  hero: '大图',
-  banner: '横幅',
-  shape: '异形',
+  classic: 'Classic',
+  hero: 'Hero',
+  banner: 'Banner',
+  shape: 'Shape',
 };
 
 /**
@@ -28,6 +31,7 @@ const LAYOUT_LABELS: Record<string, string> = {
  * 能不能新建、改地址、删除（那一档权限用户没有，服务端拦，这里同步隐藏）。
  */
 export function ProfilesPage() {
+  const t = useAdminT();
   const { userId = '' } = useParams();
   const session = useSession();
   const navigate = useNavigate();
@@ -52,8 +56,8 @@ export function ProfilesPage() {
   const ownerName = owner?.label || owner?.account || '';
   useBreadcrumb(
     isSelf
-      ? [{ label: '我的页面' }]
-      : [{ label: '用户', to: '/users' }, { label: ownerName || '账号' }],
+      ? [{ label: t('nav.myPages') }]
+      : [{ label: t('nav.users'), to: '/users' }, { label: ownerName || t('nav.account') }],
   );
 
   const load = useCallback(async () => {
@@ -81,28 +85,27 @@ export function ProfilesPage() {
 
   const remove = async (profile: ProfileSummary) => {
     const ok = await confirm({
-      title: `删除页面 /${profile.shortName}？`,
+      title: t('profiles.delete.confirm', { shortName: profile.shortName }),
       description: (
         <div className="flex flex-col gap-1.5 text-[13px] text-fg">
           <span>
-            这个地址会进入墓碑并<strong className="font-semibold">永不再分配</strong>
-            ，已经发出去的链接从此返回 404。
+            {t('profiles.tombstone.lead')}
+            <strong className="font-semibold">{t('profiles.tombstone.retired')}</strong>
+            {t('profiles.tombstone.tail')}
           </span>
-          <span>页面上的图片与视频会从磁盘删除；埋点数据保留，历史汇总不断档。</span>
+          <span>{t('profiles.delete.mediaNote')}</span>
           {profiles.length === 1 ? (
-            <span className="text-danger">
-              这是该账号最后一个页面。删掉之后他登录进来会是空的，需要你再给他新建。
-            </span>
+            <span className="text-danger">{t('profiles.lastPageWarning')}</span>
           ) : null}
         </div>
       ),
-      confirmText: '删除',
+      confirmText: t('common.delete'),
       danger: true,
     });
     if (!ok) return;
     try {
       await request(`/profiles/${profile.id}`, { method: 'DELETE' });
-      toast.success('已删除');
+      toast.success(t('common.deleted'));
       await load();
     } catch (err) {
       toast.error((err as Error).message);
@@ -116,16 +119,16 @@ export function ProfilesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
           <h1 className="text-xl font-semibold text-fg">
-            {isSelf ? '我的页面' : `${ownerName} 的页面`}
+            {isSelf ? t('nav.myPages') : t('profiles.owner.pages', { name: ownerName })}
           </h1>
           <span className="text-[13px] text-muted">
-            一个账号可以有多个个人页，每个页面有自己的地址、布局与数据。
-            {isSelf ? '页面的删除请找管理员——地址一旦回收就永不再分配。' : ''}
+            {t('profiles.multiHint')}
+            {isSelf ? t('profiles.delete.askAdmin') : ''}
           </span>
         </div>
         <Button variant="primary" onClick={() => setCreating(true)}>
           <Plus className="size-4" />
-          新建页面
+          {t('profiles.create.title')}
         </Button>
       </div>
 
@@ -133,7 +136,7 @@ export function ProfilesPage() {
 
       {profiles.length === 0 ? (
         <div className="rounded-[var(--radius-panel)] border border-dashed border-border bg-surface px-6 py-16 text-center text-[13px] text-muted">
-          还没有任何页面。
+          {t('profiles.empty')}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -159,7 +162,7 @@ export function ProfilesPage() {
                     <span className="truncate font-display text-[15px] font-semibold text-fg">
                       {profile.displayName || profile.shortName}
                     </span>
-                    <span className="text-[11px] text-muted">点击预览进入编辑</span>
+                    <span className="text-[11px] text-muted">{t('profiles.previewHint')}</span>
                   </span>
                 </button>
                 <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted">
@@ -170,7 +173,7 @@ export function ProfilesPage() {
                     href={`/${profile.shortName}`}
                     target="_blank"
                     rel="noreferrer"
-                    aria-label={`在新窗口打开 /${profile.shortName}`}
+                    aria-label={t('profiles.openInNewTab', { shortName: profile.shortName })}
                     className="rounded p-1 text-accent hover:bg-bg"
                   >
                     <ExternalLink className="size-3.5" />
@@ -181,14 +184,18 @@ export function ProfilesPage() {
               <div className="relative h-56 overflow-hidden border-y border-border bg-bg/60">
                 <iframe
                   src={`/_api/profiles/${profile.id}/preview`}
-                  title={`${profile.displayName || profile.shortName} 的页面预览`}
+                  title={t('profiles.previewAlt', {
+                    name: profile.displayName || profile.shortName,
+                  })}
                   sandbox="allow-same-origin"
                   tabIndex={-1}
                   className="pointer-events-none absolute left-1/2 top-0 h-[820px] w-[390px] origin-top -translate-x-1/2 scale-[0.68] border-0"
                 />
                 <button
                   type="button"
-                  aria-label={`编辑 ${profile.displayName || profile.shortName}`}
+                  aria-label={t('profiles.editAria', {
+                    name: profile.displayName || profile.shortName,
+                  })}
                   onClick={() => navigate(`/profiles/${profile.id}`)}
                   className="absolute inset-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 />
@@ -203,26 +210,26 @@ export function ProfilesPage() {
                   size="sm"
                   onClick={() => navigate(`/analytics?profileId=${profile.id}`)}
                 >
-                  数据
+                  {t('profiles.action.analytics')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setSharing(profile)}>
                   <Share2 className="size-3.5" />
-                  推广
+                  {t('profiles.action.promo')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setDuplicating(profile)}>
                   <Copy className="size-3.5" />
-                  复制
+                  {t('profiles.action.duplicate')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setManagingApi(profile)}>
                   <KeyRound className="size-3.5" />
                   API
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setRenaming(profile)}>
-                  改地址
+                  {t('profiles.action.changeAddress')}
                 </Button>
                 {canDelete ? (
                   <Button variant="danger-ghost" size="sm" onClick={() => void remove(profile)}>
-                    删除
+                    {t('common.delete')}
                   </Button>
                 ) : null}
               </div>
@@ -263,10 +270,11 @@ function ApiKeysModal({
   profile: ProfileSummary | null;
   onClose: () => void;
 }) {
+  const t = useAdminT();
   const toast = useToast();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [keys, setKeys] = useState<ApiKeySummary[]>([]);
-  const [label, setLabel] = useState('自动化接口');
+  const [label, setLabel] = useState(t('apiKeys.title'));
   const [expiresAt, setExpiresAt] = useState('');
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -291,7 +299,7 @@ function ApiKeysModal({
   useEffect(() => {
     if (!profileId) return;
     setCreatedToken(null);
-    setLabel('自动化接口');
+    setLabel(t('apiKeys.title'));
     setExpiresAt('');
     void loadKeys();
   }, [profileId, loadKeys]);
@@ -300,7 +308,7 @@ function ApiKeysModal({
 
   const create = async () => {
     if (!label.trim()) {
-      setError('密钥名称不能为空');
+      setError(t('apiKeys.label.required'));
       return;
     }
     setCreating(true);
@@ -317,7 +325,7 @@ function ApiKeysModal({
         },
       );
       setCreatedToken(result.token);
-      toast.success('API Key 已创建');
+      toast.success(t('apiKeys.created'));
       await loadKeys();
     } catch (err) {
       setError((err as Error).message);
@@ -328,14 +336,14 @@ function ApiKeysModal({
 
   const revoke = async (key: ApiKeySummary) => {
     const ok = await confirm({
-      title: `停用密钥“${key.label}”？`,
-      description: '使用这个密钥的外部程序会立即无法继续调用，操作不可恢复。',
-      confirmText: '停用',
+      title: t('apiKeys.revoke.confirm', { label: key.label }),
+      description: t('apiKeys.revoke.warning'),
+      confirmText: t('apiKeys.revoke'),
       danger: true,
     });
     if (!ok) return;
     await request(`/profiles/${profile.id}/api-keys/${key.id}`, { method: 'DELETE' });
-    toast.success('密钥已停用');
+    toast.success(t('apiKeys.revoked'));
     await loadKeys();
   };
 
@@ -344,31 +352,27 @@ function ApiKeysModal({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={`API 管理 · /${profile.shortName}`}
+      title={t('apiKeys.manage.title', { shortName: profile.shortName })}
       width={720}
     >
       <div className="flex flex-col gap-4">
         {error ? <Alert tone="danger" message={error} /> : null}
-        <Alert
-          tone="info"
-          message="用于 CRM、自动化脚本或其他系统更新联系方式"
-          description="密钥只对当前页面有效；接口只修改提交的平台，不会覆盖样式、排序或统计数据。"
-        />
+        <Alert tone="info" message={t('apiKeys.purpose')} description={t('apiKeys.scope')} />
 
         {createdToken ? (
           <div className="flex flex-col gap-2 rounded-[var(--radius-control)] border border-warning bg-warning-soft p-3">
-            <span className="text-[13px] font-semibold text-fg">请立即复制，关闭后不再显示</span>
+            <span className="text-[13px] font-semibold text-fg">{t('apiKeys.copyNow')}</span>
             <div className="flex gap-2">
               <Input value={createdToken} readOnly />
               <Button
                 variant="primary"
                 onClick={() => {
                   void navigator.clipboard.writeText(createdToken);
-                  toast.success('密钥已复制');
+                  toast.success(t('apiKeys.copied'));
                 }}
               >
                 <Copy className="size-4" />
-                复制
+                {t('profiles.action.duplicate')}
               </Button>
             </div>
           </div>
@@ -378,23 +382,23 @@ function ApiKeysModal({
           <Input
             value={label}
             onChange={(event) => setLabel(event.target.value)}
-            placeholder="密钥名称"
+            placeholder={t('apiKeys.field.label')}
           />
           <Input
             type="date"
             value={expiresAt}
             onChange={(event) => setExpiresAt(event.target.value)}
-            aria-label="有效期，留空表示长期有效"
+            aria-label={t('apiKeys.field.expiry')}
           />
           <Button variant="primary" loading={creating} onClick={() => void create()}>
             <KeyRound className="size-4" />
-            创建密钥
+            {t('apiKeys.create')}
           </Button>
-          <span className="text-[11px] text-muted sm:col-span-3">有效期留空表示长期有效。</span>
+          <span className="text-[11px] text-muted sm:col-span-3">{t('apiKeys.expiryHint')}</span>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">调用地址</span>
+          <span className="text-[13px] font-medium text-fg">{t('apiKeys.endpoint')}</span>
           <code className="overflow-x-auto rounded-[var(--radius-control)] border border-border bg-bg px-3 py-2 text-[12px] text-muted">
             PATCH {endpoint}
           </code>
@@ -406,7 +410,7 @@ function ApiKeysModal({
               <Spinner />
             </div>
           ) : keys.length === 0 ? (
-            <div className="px-3 py-8 text-center text-[12px] text-muted">还没有 API Key</div>
+            <div className="px-3 py-8 text-center text-[12px] text-muted">{t('apiKeys.empty')}</div>
           ) : (
             keys.map((key) => (
               <div
@@ -421,16 +425,16 @@ function ApiKeysModal({
                 </div>
                 <span className="hidden text-[11px] text-muted sm:block">
                   {key.lastUsedAt
-                    ? `最近使用 ${new Date(key.lastUsedAt).toLocaleDateString('zh-CN')}`
-                    : '尚未使用'}
+                    ? t('apiKeys.lastUsed', { date: isoDate(key.lastUsedAt) })
+                    : t('apiKeys.neverUsed')}
                 </span>
                 <span className="hidden text-[11px] text-muted md:block">
                   {key.expiresAt
-                    ? `${new Date(key.expiresAt).toLocaleDateString('zh-CN')} 到期`
-                    : '长期有效'}
+                    ? t('apiKeys.expiresOn', { date: isoDate(key.expiresAt) })
+                    : t('apiKeys.noExpiry')}
                 </span>
                 <Button variant="danger-ghost" size="sm" onClick={() => void revoke(key)}>
-                  停用
+                  {t('apiKeys.revoke')}
                 </Button>
               </div>
             ))
@@ -457,6 +461,7 @@ function ShareLinksModal({
   profile: ProfileSummary | null;
   onClose: () => void;
 }) {
+  const t = useAdminT();
   const [customSource, setCustomSource] = useState('');
   const toast = useToast();
   if (!profile) return null;
@@ -466,22 +471,18 @@ function ShareLinksModal({
   const copy = async (source: string) => {
     const url = `${base}?src=${encodeURIComponent(source)}`;
     await navigator.clipboard.writeText(url);
-    toast.success(`已复制 ${source} 推广链接`);
+    toast.success(t('promo.copied', { source }));
   };
 
   return (
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={`推广链接 · /${profile.shortName}`}
+      title={t('promo.title', { shortName: profile.shortName })}
       width={600}
     >
       <div className="flex flex-col gap-4">
-        <Alert
-          tone="info"
-          message="不同平台必须使用各自的推广链接"
-          description="这样数据分析才能准确区分访客是从 TikTok、Instagram 还是 YouTube 进入。"
-        />
+        <Alert tone="info" message={t('promo.perPlatform')} description={t('promo.why')} />
         <div className="flex flex-col overflow-hidden rounded-[var(--radius-control)] border border-border">
           {SOURCE_PRESETS.map((source) => (
             <div
@@ -494,18 +495,18 @@ function ShareLinksModal({
               </code>
               <Button size="sm" variant="default" onClick={() => void copy(source.id)}>
                 <Copy className="size-3.5" />
-                复制
+                {t('profiles.action.duplicate')}
               </Button>
             </div>
           ))}
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">自定义来源</span>
+          <span className="text-[13px] font-medium text-fg">{t('promo.customSource')}</span>
           <div className="flex gap-2">
             <Input
               value={customSource}
               onChange={(event) => setCustomSource(event.target.value)}
-              placeholder="如 newsletter，只能用小写字母、数字、_ 或 -"
+              placeholder={t('promo.customSource.hint')}
             />
             <Button
               variant="default"
@@ -513,7 +514,7 @@ function ShareLinksModal({
               onClick={() => void copy(customSource.trim().toLowerCase())}
             >
               <Copy className="size-4" />
-              复制
+              {t('profiles.action.duplicate')}
             </Button>
           </div>
         </label>
@@ -529,6 +530,7 @@ function DuplicateProfileModal({
   profile: ProfileSummary | null;
   onClose: () => void;
 }) {
+  const t = useAdminT();
   const navigate = useNavigate();
   const toast = useToast();
   const [shortName, setShortName] = useState('');
@@ -540,7 +542,9 @@ function DuplicateProfileModal({
     if (!profile) return;
     const suffix = '-copy';
     setShortName(`${profile.shortName.slice(0, 30 - suffix.length)}${suffix}`);
-    setDisplayName(`${profile.displayName || profile.shortName} 副本`.slice(0, 60));
+    setDisplayName(
+      t('duplicate.suffix', { name: profile.displayName || profile.shortName }).slice(0, 60),
+    );
     setError(null);
   }, [profile]);
 
@@ -548,7 +552,7 @@ function DuplicateProfileModal({
 
   const submit = async () => {
     if (!shortName.trim() || !displayName.trim()) {
-      setError('页面地址和显示名都必填');
+      setError(t('duplicate.required'));
       return;
     }
     setSubmitting(true);
@@ -557,7 +561,7 @@ function DuplicateProfileModal({
         method: 'POST',
         body: { shortName: shortName.trim(), displayName: displayName.trim() },
       });
-      toast.success('页面已复制，统计数据从零开始');
+      toast.success(t('duplicate.done'));
       onClose();
       navigate(`/profiles/${created.id}`);
     } catch (err) {
@@ -571,14 +575,14 @@ function DuplicateProfileModal({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={`复制页面 · /${profile.shortName}`}
+      title={t('duplicate.title', { shortName: profile.shortName })}
       footer={
         <>
           <Button variant="default" onClick={onClose}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" loading={submitting} onClick={() => void submit()}>
-            复制并编辑
+            {t('duplicate.action')}
           </Button>
         </>
       }
@@ -587,20 +591,22 @@ function DuplicateProfileModal({
         {error ? <Alert tone="danger" message={error} /> : null}
         <Alert
           tone="info"
-          message="将生成一个可独立编辑的新页面"
-          description="布局、主题、简介、联系按钮、图片和视频都会复制；访问量与点击量不会复制。"
+          message={t('duplicate.subtitle')}
+          description={t('duplicate.whatCopies')}
         />
         <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">新页面地址</span>
+          <span className="text-[13px] font-medium text-fg">{t('duplicate.field.shortName')}</span>
           <Input
             addonBefore="/"
             value={shortName}
             onChange={(event) => setShortName(event.target.value)}
-            placeholder="小写字母、数字与连字符，3–30 位"
+            placeholder={t('users.shortName.rule')}
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">新显示名</span>
+          <span className="text-[13px] font-medium text-fg">
+            {t('duplicate.field.displayName')}
+          </span>
           <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
         </label>
       </div>
@@ -619,6 +625,7 @@ function CreateProfileModal({
   onClose: () => void;
   onDone: () => Promise<void> | void;
 }) {
+  const t = useAdminT();
   const [shortName, setShortName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -635,7 +642,7 @@ function CreateProfileModal({
 
   const submit = async () => {
     if (!shortName.trim()) {
-      setError('页面地址必填');
+      setError(t('users.validation.shortNameRequired'));
       return;
     }
     setSubmitting(true);
@@ -644,7 +651,7 @@ function CreateProfileModal({
         method: 'POST',
         body: { shortName: shortName.trim(), displayName: displayName.trim() },
       });
-      toast.success('已创建');
+      toast.success(t('common.created'));
       onClose();
       await onDone();
     } catch (err) {
@@ -658,14 +665,14 @@ function CreateProfileModal({
     <Dialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title="新建页面"
+      title={t('profiles.create.title')}
       footer={
         <>
           <Button variant="default" onClick={onClose}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" loading={submitting} onClick={() => void submit()}>
-            创建
+            {t('common.create')}
           </Button>
         </>
       }
@@ -673,21 +680,21 @@ function CreateProfileModal({
       <div className="flex flex-col gap-4">
         {error ? <Alert tone="danger" message={error} /> : null}
         <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">页面地址</span>
+          <span className="text-[13px] font-medium text-fg">{t('shortName.field.new')}</span>
           <Input
             addonBefore="/"
             value={shortName}
             onChange={(e) => setShortName(e.target.value)}
-            placeholder="小写字母、数字与连字符，3–30 位"
+            placeholder={t('users.shortName.rule')}
           />
-          <span className="text-[12px] text-muted">一经发布即为对外资产，删除后永不再分配。</span>
+          <span className="text-[12px] text-muted">{t('shortName.publicAsset')}</span>
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">显示名</span>
+          <span className="text-[13px] font-medium text-fg">{t('profiles.field.displayName')}</span>
           <Input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="留空则先跟地址一致，之后可以在编辑器里改"
+            placeholder={t('profiles.create.displayNameHint')}
           />
         </label>
       </div>
@@ -704,6 +711,7 @@ function RenameProfileModal({
   onClose: () => void;
   onDone: () => Promise<void> | void;
 }) {
+  const t = useAdminT();
   const [shortName, setShortName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -735,7 +743,7 @@ function RenameProfileModal({
         method: 'PATCH',
         body: { shortName: next },
       });
-      toast.success('已改地址');
+      toast.success(t('shortName.changed'));
       onClose();
       await onDone();
     } catch (err) {
@@ -750,12 +758,12 @@ function RenameProfileModal({
     <Dialog
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`改地址 · /${profile.shortName}`}
+      title={t('shortName.change.title', { shortName: profile.shortName })}
       width={520}
       footer={
         <>
           <Button variant="default" onClick={confirming ? () => setConfirming(false) : onClose}>
-            {confirming ? '再改改' : '取消'}
+            {confirming ? t('shortName.change.back') : t('common.cancel')}
           </Button>
           <Button
             variant={confirming ? 'danger' : 'primary'}
@@ -763,7 +771,7 @@ function RenameProfileModal({
             disabled={next.length === 0 || unchanged}
             onClick={() => (confirming ? void save() : setConfirming(true))}
           >
-            {confirming ? `确认改成 /${next}` : '下一步'}
+            {confirming ? t('shortName.change.confirm', { next }) : t('shortName.change.next')}
           </Button>
         </>
       }
@@ -780,41 +788,37 @@ function RenameProfileModal({
             </div>
             <Alert
               tone="warning"
-              message="改完之后会发生这些事"
+              message={t('shortName.change.consequences')}
               description={
                 <ul className="flex list-disc flex-col gap-1 pl-4">
                   <li>
-                    印在名片、二维码、投放素材上的
+                    {t('shortName.change.printed')}
                     <span className="font-mono"> /{profile.shortName} </span>
-                    立刻失效，访客拿到 404。
+                    {t('shortName.change.printedTail')}
                   </li>
-                  <li>旧地址会被释放，可能被别人抢注，到时候就改不回来了。</li>
-                  <li>埋点数据跟着页面走，历史汇总不断档。</li>
+                  <li>{t('shortName.change.released')}</li>
+                  <li>{t('shortName.change.tracking')}</li>
                 </ul>
               }
             />
-            <p className="text-[12px] text-muted">
-              这次改动会记进变更历史，暂时没人抢注的话还能照着改回去。
-            </p>
+            <p className="text-[12px] text-muted">{t('shortName.change.logged')}</p>
           </div>
         ) : (
           <>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium text-fg">页面地址</span>
+              <span className="text-[13px] font-medium text-fg">{t('shortName.field.new')}</span>
               <Input
                 addonBefore="/"
                 value={shortName}
                 onChange={(e) => setShortName(e.target.value)}
-                placeholder="小写字母、数字与连字符，3–30 位"
+                placeholder={t('users.shortName.rule')}
               />
-              <span className="text-[12px] text-muted">
-                被删除页面占用过的地址永不再分配，换不到。
-              </span>
+              <span className="text-[12px] text-muted">{t('shortName.change.tombstoned')}</span>
             </label>
 
             {changes.length > 0 ? (
               <div className="flex flex-col gap-2">
-                <span className="text-[13px] font-medium text-fg">改过的地址</span>
+                <span className="text-[13px] font-medium text-fg">{t('shortName.history')}</span>
                 <div className="flex max-h-44 flex-col overflow-y-auto rounded-[var(--radius-control)] border border-border">
                   {changes.map((change) => (
                     <div
@@ -827,7 +831,7 @@ function RenameProfileModal({
                       <ArrowRight className="size-3 shrink-0 text-border" />
                       <span className="font-mono text-fg">/{change.toShortName}</span>
                       <span className="ml-auto shrink-0 text-muted">
-                        {new Date(change.createdAt).toLocaleDateString('zh-CN')}
+                        {isoDate(change.createdAt)}
                         {change.changedByLabel ? ` · ${change.changedByLabel}` : ''}
                       </span>
                       {change.fromShortName === profile.shortName ? null : (
@@ -836,7 +840,7 @@ function RenameProfileModal({
                           onClick={() => setShortName(change.fromShortName)}
                           className="shrink-0 text-accent hover:underline"
                         >
-                          改回去
+                          {t('shortName.revert')}
                         </button>
                       )}
                     </div>

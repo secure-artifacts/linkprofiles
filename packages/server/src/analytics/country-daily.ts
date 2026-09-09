@@ -1,5 +1,6 @@
 import type { Sql } from 'postgres';
 import type { QueryScope } from './queries.js';
+import { compareText } from '@link-profile/shared';
 
 export interface CountryDailyPlatform {
   key: string;
@@ -75,7 +76,7 @@ export async function queryCountryDaily(
       pageViews: row.page_views,
       clicks: row.clicks,
       leads: row.leads,
-      platforms: platforms.sort((a, b) => b.clicks - a.clicks || a.key.localeCompare(b.key)),
+      platforms: platforms.sort((a, b) => b.clicks - a.clicks || compareText(a.key, b.key)),
     };
   });
 }

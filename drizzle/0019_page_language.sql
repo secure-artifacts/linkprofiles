@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "page_language" text DEFAULT 'zh-Hans' NOT NULL;

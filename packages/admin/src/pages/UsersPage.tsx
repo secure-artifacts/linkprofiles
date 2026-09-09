@@ -15,6 +15,7 @@ import { Select } from '../ui/Select.js';
 import { Tag } from '../ui/Tag.js';
 import { useToast } from '../ui/Toast.js';
 import { useConfirm } from '../ui/useConfirm.js';
+import { useAdminT } from '../i18n/runtime.js';
 
 const PAGE_SIZE = 20;
 
@@ -26,9 +27,10 @@ const PAGE_SIZE = 20;
  * 做成显眼的红色标记，避免它们长期没人管理。
  */
 export function UsersPage() {
+  const t = useAdminT();
   const session = useSession();
   const navigate = useNavigate();
-  useBreadcrumb([{ label: '用户' }]);
+  useBreadcrumb([{ label: t('nav.users') }]);
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [admins, setAdmins] = useState<AdminSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,41 +69,42 @@ export function UsersPage() {
 
   const remove = async (user: UserSummary) => {
     const ok = await confirm({
-      title: `删除用户 ${user.label || user.account}？`,
+      title: t('users.delete.confirm', { name: user.label || user.account }),
       description: (
         <div className="flex flex-col gap-1.5 text-[13px] text-fg">
           <span>
-            他名下 {user.profileCount} 个页面的地址会全部进入墓碑并
-            <strong className="font-semibold">永不再分配</strong>，旧链接从此返回 404。
+            {t('users.delete.pagesCount', { count: user.profileCount })}
+            <strong className="font-semibold">{t('users.delete.retiredAddress')}</strong>
+            {t('users.delete.retiredTail')}
           </span>
-          <span>他上传的图片与视频会从磁盘删除；埋点数据保留，历史汇总不断档。</span>
+          <span>{t('users.delete.mediaNote')}</span>
         </div>
       ),
-      confirmText: '删除',
+      confirmText: t('common.delete'),
       danger: true,
     });
     if (!ok) return;
     await request(`/users/${user.id}`, { method: 'DELETE' });
-    toast.success('已删除');
+    toast.success(t('common.deleted'));
     await load();
   };
 
   const assign = async (user: UserSummary, owningAdminId: string | null) => {
     await request(`/users/${user.id}/owner`, { method: 'PUT', body: { owningAdminId } });
-    toast.success('已重新指派');
+    toast.success(t('users.reassigned'));
     await load();
   };
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-fg">用户</h1>
+        <h1 className="text-xl font-semibold text-fg">{t('nav.users')}</h1>
         <div className="flex gap-2">
           <Button variant="default" onClick={() => setBulkOpen(true)}>
-            批量创建
+            {t('users.bulk.title')}
           </Button>
           <Button variant="primary" onClick={() => setCreating(true)}>
-            新建用户
+            {t('users.create.title')}
           </Button>
         </div>
       </div>
@@ -109,8 +112,8 @@ export function UsersPage() {
       {isSuperadmin && unownedCount > 0 ? (
         <Alert
           tone="warning"
-          message={`有 ${unownedCount} 个用户处于无归属状态`}
-          description="它们的归属管理员已被删除。请重新指派，否则这些账号会一直没人管理。"
+          message={t('users.unowned.count', { count: unownedCount })}
+          description={t('users.unowned.hint')}
         />
       ) : null}
 
@@ -118,24 +121,24 @@ export function UsersPage() {
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-bg text-left text-[12px] font-medium text-muted">
-              <th className="px-4 py-2.5">后台备注</th>
-              <th className="px-4 py-2.5">登录用户名</th>
-              <th className="px-4 py-2.5">页面</th>
-              {isSuperadmin ? <th className="px-4 py-2.5">归属管理员</th> : null}
-              <th className="px-4 py-2.5">操作</th>
+              <th className="px-4 py-2.5">{t('common.field.label')}</th>
+              <th className="px-4 py-2.5">{t('common.field.account')}</th>
+              <th className="px-4 py-2.5">{t('users.pages')}</th>
+              {isSuperadmin ? <th className="px-4 py-2.5">{t('users.owningAdmin')}</th> : null}
+              <th className="px-4 py-2.5">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
                 <td colSpan={isSuperadmin ? 5 : 4} className="px-4 py-8 text-center text-muted">
-                  加载中…
+                  {t('common.loading')}
                 </td>
               </tr>
             ) : pageUsers.length === 0 ? (
               <tr>
                 <td colSpan={isSuperadmin ? 5 : 4} className="px-4 py-8 text-center text-muted">
-                  暂无用户
+                  {t('users.empty')}
                 </td>
               </tr>
             ) : (
@@ -154,18 +157,18 @@ export function UsersPage() {
                       onClick={() => navigate(`/users/${user.id}/profiles`)}
                       className="text-accent hover:underline"
                     >
-                      {user.profileCount} 个页面
+                      {t('users.pagesCount', { count: user.profileCount })}
                     </button>
                   </td>
                   {isSuperadmin ? (
                     <td className="px-4 py-2">
                       {user.owningAdminId === null ? (
                         <div className="flex items-center gap-2">
-                          <Tag tone="danger">无归属</Tag>
+                          <Tag tone="danger">{t('users.unowned')}</Tag>
                           <div className="w-36">
                             <Select
                               size="sm"
-                              placeholder="指派给…"
+                              placeholder={t('users.assignTo')}
                               value={undefined}
                               options={admins.map((a) => ({
                                 value: a.id,
@@ -187,20 +190,20 @@ export function UsersPage() {
                         size="sm"
                         onClick={() => navigate(`/users/${user.id}/profiles`)}
                       >
-                        管理页面
+                        {t('users.managePages')}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => setEditing(user)}>
-                        账号设置
+                        {t('users.accountSettings')}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(`/analytics?userId=${user.id}`)}
                       >
-                        数据
+                        {t('users.analytics')}
                       </Button>
                       <Button variant="danger-ghost" size="sm" onClick={() => void remove(user)}>
-                        删除
+                        {t('common.delete')}
                       </Button>
                     </div>
                   </td>
@@ -212,9 +215,7 @@ export function UsersPage() {
 
         {users.length > PAGE_SIZE ? (
           <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-[13px] text-muted">
-            <span>
-              共 {users.length} 位用户，每页 {PAGE_SIZE} 条
-            </span>
+            <span>{t('users.pagination', { total: users.length, size: PAGE_SIZE })}</span>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -222,7 +223,7 @@ export function UsersPage() {
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                上一页
+                {t('common.prevPage')}
               </Button>
               <span className="font-mono">
                 {page} / {totalPages}
@@ -233,7 +234,7 @@ export function UsersPage() {
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
-                下一页
+                {t('common.nextPage')}
               </Button>
             </div>
           </div>
@@ -263,6 +264,7 @@ function AccountSettingsModal({
   onClose: () => void;
   onDone: () => Promise<void> | void;
 }) {
+  const t = useAdminT();
   const [label, setLabel] = useState('');
   const [account, setAccount] = useState('');
   const [profileOptions, setProfileOptions] = useState<ProfileSummary[]>([]);
@@ -325,9 +327,9 @@ function AccountSettingsModal({
       }
       const selectedProfile = profileOptions.find((profile) => profile.id === profileId);
       const nextDisplayName = displayName.trim();
-      if (selectedProfile && !nextDisplayName) throw new Error('显示名字不能为空');
+      if (selectedProfile && !nextDisplayName) throw new Error(t('users.displayName.required'));
       if (selectedProfile && nextDisplayName.length > 60)
-        throw new Error('显示名字不能超过 60 个字符');
+        throw new Error(t('users.displayName.tooLong'));
       if (selectedProfile && nextDisplayName !== selectedProfile.displayName) {
         await request(`/profiles/${selectedProfile.id}`, {
           method: 'PATCH',
@@ -337,7 +339,7 @@ function AccountSettingsModal({
       if (newPassword) {
         await request(`/users/${user.id}/password`, { method: 'PUT', body: { newPassword } });
       }
-      toast.success('已保存');
+      toast.success(t('common.saved'));
       onClose();
       await onDone();
     } catch (err) {
@@ -351,11 +353,11 @@ function AccountSettingsModal({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={`账号设置 · ${user.label || user.account}`}
+      title={t('users.settings.title', { name: user.label || user.account })}
       footer={
         <>
           <Button variant="default" onClick={onClose}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -363,28 +365,26 @@ function AccountSettingsModal({
             disabled={loadingProfiles}
             onClick={() => void save()}
           >
-            保存
+            {t('common.save')}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">登录用户名</span>
+          <span className="text-[13px] font-medium text-fg">{t('common.field.account')}</span>
           <Input
             value={account}
             onChange={(e) => setAccount(e.target.value.toLowerCase())}
-            placeholder="例如 lisa.usa"
+            placeholder={t('common.accountExample')}
             autoComplete="off"
           />
-          <span className="text-[12px] text-muted">
-            修改后旧用户名不能登录，该用户所有设备会退出；个人页地址不会改变。
-          </span>
+          <span className="text-[12px] text-muted">{t('users.rename.warning')}</span>
         </div>
 
         {profileOptions.length > 1 ? (
           <div className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-fg">选择个人页</span>
+            <span className="text-[13px] font-medium text-fg">{t('users.selectProfile')}</span>
             <Select
               value={profileId}
               options={profileOptions.map((profile) => ({
@@ -402,40 +402,39 @@ function AccountSettingsModal({
 
         {profileId ? (
           <div className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-fg">显示名字</span>
+            <span className="text-[13px] font-medium text-fg">{t('users.field.displayName')}</span>
             <Input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="显示在个人页上的名字"
+              placeholder={t('users.field.displayName.hint')}
               maxLength={60}
             />
             <span className="text-[12px] text-muted">
-              显示在 /{profileOptions.find((profile) => profile.id === profileId)?.shortName}{' '}
-              个人页上。
+              {t('users.shownOn', {
+                shortName: profileOptions.find((profile) => profile.id === profileId)?.shortName,
+              })}
             </span>
           </div>
         ) : null}
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">后台备注</span>
+          <span className="text-[13px] font-medium text-fg">{t('common.field.label')}</span>
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="用来辨认账号，不出现在个人页上"
+            placeholder={t('users.field.label.hint')}
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-fg">重置密码</span>
+          <span className="text-[13px] font-medium text-fg">{t('users.resetPassword')}</span>
           <PasswordInput
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="留空则不改密码"
+            placeholder={t('users.field.password.keep')}
             autoComplete="new-password"
           />
-          <span className="text-[12px] text-muted">
-            重置后他当前的登录会立刻失效，需要用新密码重新登录。
-          </span>
+          <span className="text-[12px] text-muted">{t('users.resetPassword.warning')}</span>
         </div>
       </div>
     </Dialog>
@@ -449,6 +448,7 @@ interface ModalProps {
 }
 
 function CreateUserModal({ open, onClose, onDone }: ModalProps) {
+  const t = useAdminT();
   const [label, setLabel] = useState('');
   const [account, setAccount] = useState('');
   const [shortName, setShortName] = useState('');
@@ -473,7 +473,11 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
     const parsedAccount = validateAccountName(account);
     if (!valid) {
       setError(
-        !account.trim() ? '登录用户名必填' : !shortName.trim() ? '页面地址必填' : '密码至少 8 位',
+        !account.trim()
+          ? t('users.validation.accountRequired')
+          : !shortName.trim()
+            ? t('users.validation.shortNameRequired')
+            : t('common.validation.passwordMin'),
       );
       return;
     }
@@ -485,7 +489,7 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
         method: 'POST',
         body: { label, account: parsedAccount.value, shortName, password },
       });
-      toast.success('已创建');
+      toast.success(t('common.created'));
       onClose();
       await onDone();
     } catch (err) {
@@ -499,14 +503,14 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
     <Dialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title="新建用户"
+      title={t('users.create.title')}
       footer={
         <>
           <Button variant="default" onClick={onClose}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" loading={submitting} onClick={() => void submit()}>
-            创建
+            {t('common.create')}
           </Button>
         </>
       }
@@ -514,30 +518,30 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
       <div className="flex flex-col gap-4">
         {error ? <Alert tone="danger" message={error} /> : null}
 
-        <Field label="后台备注" hint="用来辨认账号，不出现在个人页上">
+        <Field label={t('common.field.label')} hint={t('users.field.label.hint')}>
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="如：华东组 · 小王"
+            placeholder={t('users.label.example')}
           />
         </Field>
-        <Field label="登录用户名" hint="3–32 位小写字母、数字、点、下划线或横线">
+        <Field label={t('common.field.account')} hint={t('users.account.rule')}>
           <Input
             value={account}
             onChange={(e) => setAccount(e.target.value)}
-            placeholder="登录用，全站唯一"
+            placeholder={t('users.account.hint')}
             autoComplete="off"
           />
         </Field>
-        <Field label="页面地址" hint="第一个个人页的网址。一经发布即为对外资产，删除后永不再分配">
+        <Field label={t('users.field.shortName')} hint={t('users.shortName.hint')}>
           <Input
             addonBefore="/"
             value={shortName}
             onChange={(e) => setShortName(e.target.value)}
-            placeholder="小写字母、数字与连字符，3–30 位"
+            placeholder={t('users.shortName.rule')}
           />
         </Field>
-        <Field label="初始密码">
+        <Field label={t('common.field.password.initial')}>
           <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -555,9 +559,10 @@ interface BulkResult {
   failed: { line: number; error: string }[];
 }
 
-const BULK_PLACEHOLDER = '张三\tzhangsan\tzhangsan\tpassword-1234';
+const BULK_PLACEHOLDER = 'Lisa Reyes\tlisa.usa\tlisa-usa\tpassword-1234';
 
 function BulkCreateModal({ open, onClose, onDone }: ModalProps) {
+  const t = useAdminT();
   const [text, setText] = useState('');
   const [result, setResult] = useState<BulkResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -585,25 +590,25 @@ function BulkCreateModal({ open, onClose, onDone }: ModalProps) {
     <Dialog
       open={open}
       onOpenChange={(o) => !o && close()}
-      title="批量创建"
+      title={t('users.bulk.title')}
       width={640}
       footer={
         result ? (
           <>
             <Button variant="default" onClick={close}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button variant="primary" onClick={() => setResult(null)}>
-              返回修改失败行
+              {t('users.bulk.retryFailed')}
             </Button>
           </>
         ) : (
           <>
             <Button variant="default" onClick={close}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button variant="primary" loading={submitting} onClick={() => void submit()}>
-              开始创建
+              {t('users.bulk.start')}
             </Button>
           </>
         )
@@ -613,13 +618,13 @@ function BulkCreateModal({ open, onClose, onDone }: ModalProps) {
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
             <div className="flex-1 rounded-[var(--radius-control)] border border-border bg-bg px-4 py-3">
-              <div className="text-[12px] text-muted">成功</div>
+              <div className="text-[12px] text-muted">{t('users.bulk.succeeded')}</div>
               <div className="font-mono text-2xl font-semibold text-accent">
                 {result.createdCount}
               </div>
             </div>
             <div className="flex-1 rounded-[var(--radius-control)] border border-border bg-bg px-4 py-3">
-              <div className="text-[12px] text-muted">失败</div>
+              <div className="text-[12px] text-muted">{t('users.bulk.failed')}</div>
               <div className="font-mono text-2xl font-semibold text-danger">
                 {result.failedCount}
               </div>
@@ -642,10 +647,10 @@ function BulkCreateModal({ open, onClose, onDone }: ModalProps) {
                       <CheckCircle2 className="size-4 shrink-0 text-accent" />
                     )}
                     <span className="w-14 shrink-0 whitespace-nowrap font-mono text-muted">
-                      第 {line} 行
+                      {t('users.bulk.line', { line })}
                     </span>
                     <span className={failure ? 'text-danger' : 'text-muted'}>
-                      {failure ? failure.error : '创建成功'}
+                      {failure ? failure.error : t('users.bulk.done')}
                     </span>
                   </div>
                 );
@@ -656,13 +661,13 @@ function BulkCreateModal({ open, onClose, onDone }: ModalProps) {
       ) : (
         <div className="flex flex-col gap-3">
           <p className="text-[13px] text-muted">
-            从表格里直接复制粘贴，每行四列、制表符分隔：
+            {t('users.bulk.format')}
             <br />
             <code className="rounded bg-bg px-1.5 py-0.5 font-mono text-[12px]">
-              后台备注 ⇥ 登录用户名 ⇥ 页面地址 ⇥ 密码
+              {t('users.bulk.columns')}
             </code>
             <br />
-            能建的会先建好，失败的行会单独列出来，不必整批重来。
+            {t('users.bulk.partial')}
           </p>
           <Textarea
             value={text}

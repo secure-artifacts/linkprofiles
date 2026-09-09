@@ -7,12 +7,13 @@ import {
   rejectImage,
   rejectVideo,
 } from '@link-profile/shared';
+import type { ErrorKey } from '@link-profile/i18n';
 import { media, profiles } from '@link-profile/shared/schema';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { FORBIDDEN, UNAUTHORIZED } from '../auth/guards.js';
 import { storeImage, storeVideo } from '../media/storage.js';
 import { resolveProfileAccess } from '../profiles/access.js';
+import { fail, forbidden, unauthorized } from '../http/errors.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -36,26 +37,34 @@ export async function mediaRoutes(app: FastifyInstance) {
    * 服务端这边两种情况收到的都是一个普通的图片字段。
    */
   app.post<{ Params: { id: string } }>('/profiles/:id/media', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
+    if (!req.currentUser) return unauthorized(reply);
+    if (!UUID.test(req.params.id)) return forbidden(reply);
 
     const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     const parts = await collectMultipart(req);
-    if ('error' in parts) return reply.code(400).send(parts);
+    if ('error' in parts) {
+      return fail(reply, 400, parts.error, {
+        messageKey: parts.messageKey,
+        messageVars: parts.messageVars,
+      });
+    }
 
     const slot = parts.slot;
     if (!SLOTS.includes(slot as Slot)) {
-      return reply.code(400).send({ error: 'invalid_slot', message: `不认识的位置：${slot}` });
+      return fail(reply, 400, 'invalid_slot', {
+        messageKey: 'media.invalidSlot',
+        messageVars: { slot },
+      });
     }
 
     const main = parts.files.get('file');
-    if (!main) return reply.code(400).send({ error: 'missing_file', message: '没有收到文件' });
+    if (!main) return fail(reply, 400, 'missing_file', { messageKey: 'media.missingFile' });
 
     const isVideo = main.mimeType.startsWith('video/');
     if (isVideo && slot !== 'avatar') {
-      return reply.code(400).send({ error: 'video_not_allowed', message: '只有头像位可以放视频' });
+      return fail(reply, 400, 'video_not_allowed', { messageKey: 'media.videoOnlyOnAvatar' });
     }
 
     if (isVideo) {
@@ -68,25 +77,20 @@ export async function mediaRoutes(app: FastifyInstance) {
         durationMs,
       });
       if (rejection) {
-        return reply
-          .code(400)
-          .send({ error: `video_${rejection.reason}`, message: rejection.message });
+        return fail(reply, 400, `video_${rejection.reason}`, { message: rejection.message });
       }
 
       // 封面必须一起交上来：公开页要先渲染封面，视频不得成为 LCP 元素。
       const poster = parts.files.get('poster');
       if (!poster) {
-        return reply.code(400).send({
-          error: 'missing_poster',
-          message: '视频需要一并提交首帧封面；浏览器端抽帧失败时请手动上传一张封面图',
-        });
+        return fail(reply, 400, 'missing_poster', { messageKey: 'media.posterRequired' });
       }
       const posterProblem = rejectImage({
         mimeType: poster.mimeType,
         bytes: poster.data.byteLength,
       });
       if (posterProblem) {
-        return reply.code(400).send({ error: 'invalid_poster', message: posterProblem });
+        return fail(reply, 400, 'invalid_poster', { message: posterProblem });
       }
 
       const videoId = randomUUID();
@@ -115,7 +119,7 @@ export async function mediaRoutes(app: FastifyInstance) {
     }
 
     const problem = rejectImage({ mimeType: main.mimeType, bytes: main.data.byteLength });
-    if (problem) return reply.code(400).send({ error: 'invalid_image', message: problem });
+    if (problem) return fail(reply, 400, 'invalid_image', { message: problem });
 
     const mediaId = randomUUID();
     const stored = await storeImage(Buffer.from(main.data), {
@@ -145,11 +149,11 @@ export async function mediaRoutes(app: FastifyInstance) {
   app.delete<{ Params: { id: string; slot: string } }>(
     '/profiles/:id/media/:slot',
     async (req, reply) => {
-      if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-      if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
+      if (!req.currentUser) return unauthorized(reply);
+      if (!UUID.test(req.params.id)) return forbidden(reply);
 
       const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
-      if (!target) return reply.code(403).send(FORBIDDEN);
+      if (!target) return forbidden(reply);
 
       if (req.params.slot === 'background') {
         await app.db
@@ -167,7 +171,7 @@ export async function mediaRoutes(app: FastifyInstance) {
           .set({ avatarMediaId: null, avatarPosterId: null, updatedAt: new Date() })
           .where(eq(profiles.id, target));
       } else {
-        return reply.code(400).send({ error: 'invalid_slot' });
+        return fail(reply, 400, 'invalid_slot');
       }
 
       return reply.code(204).send();
@@ -186,11 +190,15 @@ interface MultipartFields {
 }
 
 /** 把 multipart 收成内存里的几段。上限已由插件配置卡住。 */
-async function collectMultipart(
-  req: FastifyRequest,
-): Promise<MultipartFields | { error: string; message: string }> {
+interface MultipartProblem {
+  error: string;
+  messageKey: ErrorKey;
+  messageVars?: Record<string, unknown>;
+}
+
+async function collectMultipart(req: FastifyRequest): Promise<MultipartFields | MultipartProblem> {
   if (!req.isMultipart()) {
-    return { error: 'not_multipart', message: '需要以 multipart/form-data 提交' };
+    return { error: 'not_multipart', messageKey: 'media.notMultipart' };
   }
 
   const files = new Map<string, UploadedFile>();
@@ -211,7 +219,11 @@ async function collectMultipart(
     if ((err as { code?: string }).code === 'FST_REQ_FILE_TOO_LARGE') {
       return {
         error: 'file_too_large',
-        message: `文件太大。图片上限 ${Math.round(IMAGE_MAX_BYTES / 1024 / 1024)} MB，视频上限 ${Math.round(VIDEO_MAX_BYTES / 1024 / 1024)} MB`,
+        messageKey: 'media.fileTooLarge',
+        messageVars: {
+          imageMb: Math.round(IMAGE_MAX_BYTES / 1024 / 1024),
+          videoMb: Math.round(VIDEO_MAX_BYTES / 1024 / 1024),
+        },
       };
     }
     throw err;

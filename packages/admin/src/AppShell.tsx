@@ -1,17 +1,36 @@
-import { ChevronDown, ChevronRight, KeyRound, Link2, LogOut, UserRoundPen } from 'lucide-react';
+import type { Locale } from '@link-profile/i18n';
+import {
+  ChevronDown,
+  ChevronRight,
+  KeyRound,
+  Languages,
+  Link2,
+  LogOut,
+  UserRoundPen,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { request } from './api/client.js';
 import { ChangePasswordModal } from './components/ChangePasswordModal.js';
 import { ChangeAccountModal } from './components/ChangeAccountModal.js';
 import { useBreadcrumbTrail } from './nav/breadcrumb.js';
-import { ROLE_LABELS, useSession } from './session.js';
+import { LanguageDialog } from './components/LanguageDialog.js';
+import { useAdminT } from './i18n/runtime.js';
+import { ROLE_KEYS, useSession } from './session.js';
 import { DropdownMenu } from './ui/DropdownMenu.js';
 
-export function AppShell({ onSignedOut }: { onSignedOut: () => void }) {
+export function AppShell({
+  onSignedOut,
+  onLanguageChanged,
+}: {
+  onSignedOut: () => void;
+  onLanguageChanged: (locale: Locale) => void;
+}) {
+  const t = useAdminT();
   const session = useSession();
   const [changingPassword, setChangingPassword] = useState(false);
   const [changingAccount, setChangingAccount] = useState(false);
+  const [changingLanguage, setChangingLanguage] = useState(false);
   const trail = useBreadcrumbTrail();
   const { pathname } = useLocation();
 
@@ -23,18 +42,18 @@ export function AppShell({ onSignedOut }: { onSignedOut: () => void }) {
   const items =
     session.role === 'user'
       ? [
-          { to: profilesPath, label: '我的页面', alsoActive: inEditor },
-          { to: '/analytics', label: '数据分析', alsoActive: false },
+          { to: profilesPath, label: t('nav.myPages'), alsoActive: inEditor },
+          { to: '/analytics', label: t('nav.analytics'), alsoActive: false },
         ]
       : [
-          { to: '/users', label: '用户', alsoActive: inEditor },
+          { to: '/users', label: t('nav.users'), alsoActive: inEditor },
           ...(session.role === 'superadmin'
             ? [
-                { to: '/admins', label: '管理员', alsoActive: false },
-                { to: '/settings', label: '全站设置', alsoActive: false },
+                { to: '/admins', label: t('nav.admins'), alsoActive: false },
+                { to: '/settings', label: t('nav.settings'), alsoActive: false },
               ]
             : []),
-          { to: '/analytics', label: '数据分析', alsoActive: false },
+          { to: '/analytics', label: t('nav.analytics'), alsoActive: false },
         ];
 
   return (
@@ -81,7 +100,7 @@ export function AppShell({ onSignedOut }: { onSignedOut: () => void }) {
                   focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <span className="rounded-full border border-accent-soft bg-accent-soft px-2 py-0.5 text-[12px] font-medium text-accent">
-                    {ROLE_LABELS[session.role]}
+                    {t(ROLE_KEYS[session.role])}
                   </span>
                   <span className="font-medium text-fg">{session.account}</span>
                   <ChevronDown className="size-3.5 text-muted" />
@@ -90,19 +109,25 @@ export function AppShell({ onSignedOut }: { onSignedOut: () => void }) {
               items={[
                 {
                   key: 'account',
-                  label: '修改登录用户名',
+                  label: t('account.menu.changeAccount'),
                   icon: <UserRoundPen className="size-3.5" />,
                   onSelect: () => setChangingAccount(true),
                 },
                 {
                   key: 'password',
-                  label: '修改密码',
+                  label: t('account.menu.changePassword'),
                   icon: <KeyRound className="size-3.5" />,
                   onSelect: () => setChangingPassword(true),
                 },
                 {
+                  key: 'language',
+                  label: t('account.menu.language'),
+                  icon: <Languages className="size-3.5" />,
+                  onSelect: () => setChangingLanguage(true),
+                },
+                {
                   key: 'logout',
-                  label: '登出',
+                  label: t('account.menu.logout'),
                   icon: <LogOut className="size-3.5" />,
                   danger: true,
                   onSelect: () => {
@@ -116,7 +141,7 @@ export function AppShell({ onSignedOut }: { onSignedOut: () => void }) {
 
         {trail.length > 0 ? (
           <nav
-            aria-label="面包屑"
+            aria-label={t('nav.breadcrumb')}
             className="flex items-center gap-1 border-b border-border bg-surface px-6 py-2 text-[13px]"
           >
             {trail.map((crumb, index) => (
@@ -146,6 +171,12 @@ export function AppShell({ onSignedOut }: { onSignedOut: () => void }) {
           setChangingPassword(false);
           onSignedOut();
         }}
+      />
+      <LanguageDialog
+        open={changingLanguage}
+        current={session.uiLanguage}
+        onClose={() => setChangingLanguage(false)}
+        onChanged={onLanguageChanged}
       />
       <ChangeAccountModal
         open={changingAccount}

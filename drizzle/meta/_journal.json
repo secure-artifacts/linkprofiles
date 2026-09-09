@@ -127,6 +127,20 @@
       "when": 1787995200000,
       "tag": "0017_account_name_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788918207399,
+      "tag": "0018_ui_language",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788918868854,
+      "tag": "0019_page_language",
+      "breakpoints": true
     }
   ]
 }

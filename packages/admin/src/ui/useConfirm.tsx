@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from './Button.js';
 import { Dialog } from './Dialog.js';
+import { useAdminT } from '../i18n/runtime.js';
 
 interface ConfirmOptions {
   title: string;
@@ -13,6 +14,7 @@ interface ConfirmOptions {
 
 /** 取代 antd `Modal.confirm`：`if (await confirm({...})) { ... }`。渲染一次 `dialog` 挂在组件树里。 */
 export function useConfirm() {
+  const t = useAdminT();
   const [state, setState] = useState<ConfirmOptions | null>(null);
   const resolver = useRef<(value: boolean) => void>(null);
 
@@ -36,10 +38,10 @@ export function useConfirm() {
       footer={
         <>
           <Button variant="default" onClick={() => settle(false)}>
-            {state.cancelText ?? '取消'}
+            {state.cancelText ?? t('common.cancel')}
           </Button>
           <Button variant={state.danger ? 'danger' : 'primary'} onClick={() => settle(true)}>
-            {state.confirmText ?? '确认'}
+            {state.confirmText ?? t('common.confirm')}
           </Button>
         </>
       }

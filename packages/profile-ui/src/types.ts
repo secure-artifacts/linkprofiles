@@ -1,3 +1,4 @@
+import type { Locale } from '@link-profile/i18n';
 import type { Layout, Theme } from '@link-profile/shared';
 
 export type { Layout, Theme };
@@ -55,6 +56,8 @@ export interface ButtonView {
  * 后者由编辑中的草稿经 postMessage 灌入（见 ADR-0004）。
  */
 export interface ProfileView {
+  /** 页面语言。决定固定文案与 HTML 语言声明，不跟随访客，见 ADR-0020。 */
+  language: Locale;
   displayName: string;
   bio: string;
   /** 简介是否逐字打出。关掉或访客设了减少动效时，全文静态显示。 */

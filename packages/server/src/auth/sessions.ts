@@ -16,6 +16,8 @@ export interface CurrentUser {
   role: 'superadmin' | 'admin' | 'user';
   account: string;
   owningAdminId: string | null;
+  /** 界面语言。服务端据此翻自己产出的报错，见 ADR-0021。 */
+  uiLanguage: string;
 }
 
 /** 建一个 30 天有效期的会话，返回要写进 cookie 的明文令牌。 */
@@ -41,6 +43,7 @@ export async function resolveSession(
       role: users.role,
       account: users.account,
       owningAdminId: users.owningAdminId,
+      uiLanguage: users.uiLanguage,
     })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))

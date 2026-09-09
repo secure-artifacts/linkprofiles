@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, type Locale } from '@link-profile/i18n';
+import { publicT } from '@link-profile/i18n/public';
 import { ProfilePage, profileCss, type ProfileView } from '@link-profile/profile-ui';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CLIENT_SCRIPT } from './client-script.js';
@@ -8,6 +10,11 @@ function escapeHtml(value: string): string {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
+}
+
+/** og:locale 用下划线分隔的写法，与 BCP-47 的连字符不同。 */
+function ogLocale(locale: Locale): string {
+  return locale.replace('-', '_');
 }
 
 export interface RenderProfileOptions {
@@ -28,8 +35,9 @@ export interface RenderProfileOptions {
  * 搜索引擎收录，但转发到 WhatsApp 时必须能出卡片。
  */
 function metaTags(profile: ProfileView, canonicalUrl: string, previewImageUrl: string): string {
-  const title = profile.displayName || '个人页';
-  const description = profile.bio || `${title} 的联系方式与链接`;
+  const t = publicT(profile.language);
+  const title = profile.displayName || t('meta.title.fallback');
+  const description = profile.bio || t('meta.description.fallback', { name: title });
 
   return [
     // 阻止搜索引擎收录。社媒爬虫不读这条。
@@ -39,6 +47,8 @@ function metaTags(profile: ProfileView, canonicalUrl: string, previewImageUrl: s
     `<meta property="og:title" content="${escapeHtml(title)}">`,
     `<meta property="og:description" content="${escapeHtml(description)}">`,
     `<meta property="og:url" content="${escapeHtml(canonicalUrl)}">`,
+    // 分享卡片的语言跟着页面语言，与请求头无关，因此同一个链接对所有抓取方一致。
+    `<meta property="og:locale" content="${escapeHtml(ogLocale(profile.language))}">`,
     `<meta property="og:image" content="${escapeHtml(previewImageUrl)}">`,
 
     `<meta name="twitter:card" content="summary_large_image">`,
@@ -80,7 +90,7 @@ export function renderProfileDocument({
 
   return [
     '<!doctype html>',
-    '<html lang="zh">',
+    `<html lang="${escapeHtml(profile.language)}">`,
     '<head>',
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width,initial-scale=1">',
@@ -104,21 +114,25 @@ export function renderProfileDocument({
 /**
  * 地址写错、或指向已注销用户的旧链接，都得到明确的 404，
  * 而不是空白页、报错页、或另一个陌生人的页面。
+ *
+ * 固定英语：这里没有对应的个人页，也就没有可信的语言来源。与登录失败、
+ * 外部 API 报错同一条规则，见 ADR-0020。
  */
 export function renderNotFoundDocument(): string {
+  const t = publicT(DEFAULT_LOCALE);
   return [
     '<!doctype html>',
-    '<html lang="zh">',
+    `<html lang="${DEFAULT_LOCALE}">`,
     '<head>',
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width,initial-scale=1">',
-    '<title>页面不存在</title>',
+    `<title>${escapeHtml(t('notFound.title'))}</title>`,
     '<style>body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#F6F7F8;',
     'color:#14161A;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}',
     'main{text-align:center;padding:24px}h1{font-size:20px;margin:0 0 8px}',
     'p{margin:0;color:#5A616B;font-size:14px}</style>',
     '</head>',
-    '<body><main><h1>页面不存在</h1><p>这个地址没有对应的个人页。</p></main></body>',
+    `<body><main><h1>${escapeHtml(t('notFound.title'))}</h1><p>${escapeHtml(t('notFound.body'))}</p></main></body>`,
     '</html>',
   ].join('');
 }

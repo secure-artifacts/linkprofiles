@@ -197,7 +197,8 @@ try{
       var wasMuted=v.muted;
       v.muted=!wasMuted;
       mb.setAttribute('aria-pressed',wasMuted?'true':'false');
-      mb.setAttribute('aria-label',wasMuted?'关闭声音':'开启声音');
+      // 两份文案由服务端按页面语言写进 data 属性，脚本本身不带任何语言。
+      mb.setAttribute('aria-label',mb.getAttribute(wasMuted?'data-label-mute':'data-label-unmute')||'');
       // 自动播放被浏览器拦下过的话，这次点击是用户手势，正好补一次
       if(wasMuted){var p=v.play();if(p&&p.catch)p.catch(function(){});}
     });

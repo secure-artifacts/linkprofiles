@@ -2,6 +2,7 @@ import type { ProfileView } from '@link-profile/profile-ui';
 import { useEffect, useRef, useState } from 'react';
 import { Segmented } from '../ui/Segmented.js';
 import { isPreviewMessage, PREVIEW_CHANNEL } from './protocol.js';
+import { useAdminT } from '../i18n/runtime.js';
 
 /**
  * 两档视口。
@@ -36,6 +37,7 @@ interface PreviewFrameProps {
  * 重新请求，改一个字闪一下，做不到真正实时。见 ADR-0004。
  */
 export function PreviewFrame({ profile }: PreviewFrameProps) {
+  const t = useAdminT();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [viewport, setViewport] = useState<ViewportKey>('mobile');
@@ -67,8 +69,8 @@ export function PreviewFrame({ profile }: PreviewFrameProps) {
         value={viewport}
         onChange={(value) => setViewport(value as ViewportKey)}
         options={[
-          { value: 'mobile', label: '手机' },
-          { value: 'desktop', label: '桌面' },
+          { value: 'mobile', label: t('preview.viewport.mobile') },
+          { value: 'desktop', label: t('preview.viewport.desktop') },
         ]}
       />
 
@@ -101,14 +103,14 @@ export function PreviewFrame({ profile }: PreviewFrameProps) {
             ref={frameRef}
             // Vite 的多入口产物；开发时同样由 dev server 提供
             src={`${import.meta.env.BASE_URL}preview.html`}
-            title={viewport === 'mobile' ? '移动端预览' : '桌面端预览'}
+            title={viewport === 'mobile' ? t('preview.frame.mobile') : t('preview.frame.desktop')}
             style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
           />
         </div>
       </div>
 
       {/* 说明跟着档位走 —— 之前写死在编辑页里，切到桌面还说「375px」 */}
-      <p className="text-[12px] text-muted">{box.width}px 实时预览 · 未保存的改动也看得到</p>
+      <p className="text-[12px] text-muted">{t('preview.livePreview', { width: box.width })}</p>
     </div>
   );
 }

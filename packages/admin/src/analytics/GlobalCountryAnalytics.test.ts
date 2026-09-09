@@ -65,12 +65,13 @@ describe('GlobalCountryAnalytics', () => {
   it('renders a global map, every-country summary and daily contact-platform details', () => {
     const html = renderToStaticMarkup(createElement(GlobalCountryAnalytics, { data }));
 
-    expect(html).toContain('全球国家分析');
-    expect(html).toContain('按打开次数着色的全球国家地图');
-    expect(html).toContain('全部国家汇总');
-    expect(html).toContain('每天明细');
-    expect(html).toContain('美国');
-    expect(html).toContain('新西兰');
+    expect(html).toContain('Global country analytics');
+    expect(html).toContain('World map coloured by Opens');
+    expect(html).toContain('All countries');
+    expect(html).toContain('daily detail');
+    // 国家名跟界面语言走，默认英语
+    expect(html).toContain('United States');
+    expect(html).toContain('New Zealand');
     expect(html).toContain('TikTok · 2');
     expect(html).toContain('WhatsApp');
     expect(html).toContain('Messenger');

@@ -1,0 +1,43 @@
+import type { ErrorMessages } from '../types.js';
+
+export const errorsZhHans: ErrorMessages = {
+  'code.unauthorized': '未登录或登录已过期',
+  'code.forbidden': '没有权限执行这个操作',
+  'code.invalid_credentials': '账号或密码不对',
+  'code.account_taken': '这个登录用户名已经被占用了',
+  'code.short_name_taken': '这个 short_name 已经被占用了',
+  'code.short_name_retired': '这个 short_name 属于一个已删除的个人页，永不再分配',
+  'code.not_an_admin': '只能指派给管理员',
+  'code.duplicate_platform': '同一个平台只能启用一次',
+  'code.unknown_platform': '不认识的平台',
+  'code.invalid_body': '提交的内容有问题，请检查后重试',
+  'code.unknown': '请求失败（{{status}}）',
+
+  'field.displayName.required': '显示名不能为空',
+  'field.title.required': '标题不能为空',
+  'field.value.required': '内容不能为空',
+  'field.password.min': '密码至少 {{min}} 位',
+  'field.newPassword.min': '新密码至少 {{min}} 位',
+
+  'query.exclusiveScope': 'userId 与 profileId 不能同时指定',
+  'apiKey.expiryInPast': '有效期必须晚于当前时间',
+  'entry.limitReached': '单页自定义链接数量上限 {{max}}',
+  'contact.invalidValue': '联系方式格式不正确',
+  'contact.unknownPlatform': '不支持这个联系方式平台',
+  'contact.notOnPage': '页面中还没有这个联系方式；如需自动添加请传 createMissing=true',
+
+  'media.invalidSlot': '不认识的位置：{{slot}}',
+  'media.missingFile': '没有收到文件',
+  'media.videoOnlyOnAvatar': '只有头像位可以放视频',
+  'media.posterRequired': '视频需要一并提交首帧封面；浏览器端抽帧失败时请手动上传一张封面图',
+  'media.notMultipart': '需要以 multipart/form-data 提交',
+  'media.fileTooLarge': '文件太大。图片上限 {{imageMb}} MB，视频上限 {{videoMb}} MB',
+
+  'adminDist.missing':
+    '后台构建产物不存在：{{root}}。先跑 pnpm --filter @link-profile/admin build，再重启服务。',
+
+  'conflict.accountTaken': '账号 {{account}} 已存在',
+  'conflict.shortNameTaken': 'short_name {{shortName}} 已被占用',
+  'conflict.shortNameRetired': 'short_name {{shortName}} 属于一个已删除的个人页，永不再分配',
+  'field.atLeastOne': '至少提交一个要更新的字段',
+};

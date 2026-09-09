@@ -13,3 +13,4 @@ export * from './tracking/source.js';
 export * from './tracking/user-agent.js';
 export * from './tracking/passthrough.js';
 export * from './analytics/range.js';
+export * from './analytics/compare.js';

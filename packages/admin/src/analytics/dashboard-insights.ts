@@ -1,4 +1,6 @@
+import type { Locale } from '@link-profile/i18n';
 import type { AnalyticsResponse } from '../api/types.js';
+import type { useAdminT } from '../i18n/runtime.js';
 import { countryLabel, percent, sourceLabel } from './labels.js';
 
 export interface DashboardInsight {
@@ -12,20 +14,31 @@ export function periodChange(current: number, previous: number): number | null {
   return (current - previous) / previous;
 }
 
-export function buildDashboardInsights(data: AnalyticsResponse): DashboardInsight[] {
+type T = ReturnType<typeof useAdminT>;
+
+export function buildDashboardInsights(
+  data: AnalyticsResponse,
+  t: T,
+  locale: Locale,
+): DashboardInsight[] {
   const insights: DashboardInsight[] = [];
   const leadChange = periodChange(data.totals.leads, data.comparison.totals.leads);
   if (leadChange === null) {
     insights.push({
       tone: 'positive',
-      title: '本周期开始产生联系点击',
-      description: `上一周期为 0，本周期已有 ${data.totals.leads} 次联系点击。`,
+      title: t('insights.leadsStarted.title'),
+      description: t('insights.leadsStarted.body', { leads: data.totals.leads }),
     });
   } else if (Math.abs(leadChange) >= 0.05) {
     insights.push({
       tone: leadChange > 0 ? 'positive' : 'warning',
-      title: `联系点击${leadChange > 0 ? '增长' : '下降'} ${percent(Math.abs(leadChange))}`,
-      description: `本周期 ${data.totals.leads} 次，上一周期 ${data.comparison.totals.leads} 次。`,
+      title: t(leadChange > 0 ? 'insights.leadsUp.title' : 'insights.leadsDown.title', {
+        percent: percent(Math.abs(leadChange)),
+      }),
+      description: t('insights.leadsChange.body', {
+        current: data.totals.leads,
+        previous: data.comparison.totals.leads,
+      }),
     });
   }
 
@@ -35,8 +48,12 @@ export function buildDashboardInsights(data: AnalyticsResponse): DashboardInsigh
   if (topSource) {
     insights.push({
       tone: 'neutral',
-      title: `${sourceLabel(topSource.key)}贡献联系点击最多`,
-      description: `${topSource.pageViews} 次进入、${topSource.leads} 次联系，联系率 ${percent(topSource.leadRate)}。`,
+      title: t('insights.topSource.title', { source: sourceLabel(t, topSource.key) }),
+      description: t('insights.topSource.body', {
+        views: topSource.pageViews,
+        leads: topSource.leads,
+        rate: percent(topSource.leadRate),
+      }),
     });
   }
 
@@ -47,8 +64,8 @@ export function buildDashboardInsights(data: AnalyticsResponse): DashboardInsigh
   if (unknownRate >= 0.2) {
     insights.push({
       tone: 'warning',
-      title: `${percent(unknownRate)} 的进入没有来源标记`,
-      description: '建议投放时使用带来源参数的推广地址，否则无法判断平台贡献。',
+      title: t('insights.untagged.title', { percent: percent(unknownRate) }),
+      description: t('insights.untagged.body'),
     });
   }
 
@@ -59,8 +76,14 @@ export function buildDashboardInsights(data: AnalyticsResponse): DashboardInsigh
   if (opportunity) {
     insights.push({
       tone: 'warning',
-      title: `${opportunity.displayName || opportunity.shortName} 值得优先优化`,
-      description: `${opportunity.pageViews} 次进入，但联系率只有 ${percent(opportunity.leadRate)}，低于整体 ${percent(overallLeadRate)}。`,
+      title: t('insights.opportunity.title', {
+        name: opportunity.displayName || opportunity.shortName,
+      }),
+      description: t('insights.opportunity.body', {
+        views: opportunity.pageViews,
+        rate: percent(opportunity.leadRate),
+        overall: percent(overallLeadRate),
+      }),
     });
   }
 
@@ -68,8 +91,12 @@ export function buildDashboardInsights(data: AnalyticsResponse): DashboardInsigh
   if (topCountry && insights.length < 4) {
     insights.push({
       tone: 'neutral',
-      title: `${countryLabel(topCountry.key)}是第一访问地区`,
-      description: `${topCountry.pageViews} 次进入、${topCountry.leads} 次联系，联系率 ${percent(topCountry.leadRate)}。`,
+      title: t('insights.topCountry.title', { country: countryLabel(t, locale, topCountry.key) }),
+      description: t('insights.topCountry.body', {
+        views: topCountry.pageViews,
+        leads: topCountry.leads,
+        rate: percent(topCountry.leadRate),
+      }),
     });
   }
 

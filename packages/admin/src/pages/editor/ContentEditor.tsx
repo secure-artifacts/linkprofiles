@@ -29,6 +29,8 @@ import { Input } from '../../ui/Input.js';
 import { Tooltip } from '../../ui/Tooltip.js';
 import { localId } from './draft.js';
 import { entryProblem } from './validation.js';
+import { useAdminT } from '../../i18n/runtime.js';
+import type { AdminKey } from '@link-profile/i18n';
 
 interface ContentEditorProps {
   platforms: SocialPlatformInfo[];
@@ -41,16 +43,15 @@ interface ContentEditorProps {
   onChangeStyle: (patch: { solidBackground?: boolean; iconPlate?: boolean }) => void;
 }
 
-const LEAD_HELP =
-  '勾上后，访客点这一条会额外记一次线索。分析页的线索数与来源排名只统计勾了的条目。' +
-  'WhatsApp、Messenger、邮箱这类能直接对上话的默认勾上；Instagram、YouTube 这类看内容的默认不勾。';
+type T = ReturnType<typeof useAdminT>;
 
-const SOLID_HELP =
-  '开启后所有条目都是实心卡片，关闭则都是描边行。整页统一，不逐条配——想让某一条更显眼，靠把它排在前面。';
+/** 品牌名直接用，描述性的平台名走译文。 */
+const platformName = (t: T, platform: { label: string; labelKey: string | null }) =>
+  platform.labelKey ? t(platform.labelKey as AdminKey) : platform.label;
 
-const PLATE_HELP =
-  '条目左侧品牌图形背后那枚白色衬底。关掉后图形直接压在卡片或页面底色上；' +
-  'X、Threads、TikTok 的图形是纯黑的，在深色主题下会很难辨认。';
+const leadHelp = (t: T) => `${t('entries.isLead.hint')} ${t('entries.isLead.defaults')}`;
+const solidHelp = (t: T) => t('entries.solid.hint');
+const plateHelp = (t: T) => `${t('entries.iconPlate.hint')} ${t('entries.iconPlate.caveat')}`;
 
 /** 从待选面板拖出来的东西，id 加前缀与列表里的条目区分开。 */
 const PALETTE_PREFIX = 'palette:';
@@ -77,6 +78,7 @@ export function ContentEditor({
   iconPlate,
   onChangeStyle,
 }: ContentEditorProps) {
+  const t = useAdminT();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
 
@@ -98,7 +100,7 @@ export function ContentEditor({
       id: localId(),
       kind: 'social',
       // 标题预填平台名，用户可以改成「WhatsApp 上给我留言」这类更具体的说法
-      title: platform.label,
+      title: platformName(t, platform),
       subtitle: '',
       url: '',
       platform: platform.id,
@@ -159,7 +161,12 @@ export function ContentEditor({
 
   const labelOf = (entry: EntryDraft) =>
     entry.title ||
-    (entry.kind === 'social' ? (platformOf(entry.platform)?.label ?? '社媒') : '未命名');
+    (entry.kind === 'social'
+      ? (() => {
+          const p = platformOf(entry.platform);
+          return p ? platformName(t, p) : t('entries.social');
+        })()
+      : t('entries.untitled'));
 
   return (
     <DndContext
@@ -173,8 +180,8 @@ export function ContentEditor({
         {invalidCount > 0 ? (
           <Alert
             tone="warning"
-            message={`有 ${invalidCount} 项还填不完整`}
-            description="点齿轮展开补齐。填好之前，社媒条目不会出现在公开页上，链接则会让整次保存被拒。"
+            message={t('entries.incomplete.count', { count: invalidCount })}
+            description={t('entries.incomplete.hint')}
           />
         ) : null}
 
@@ -182,26 +189,26 @@ export function ContentEditor({
           className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-[var(--radius-control)]
             border border-border bg-bg px-3 py-2.5"
         >
-          <span className="text-[13px] font-medium text-muted">整页统一</span>
+          <span className="text-[13px] font-medium text-muted">{t('entries.wholePage')}</span>
           <HelpToggle
             checked={solidBackground}
             onChange={(checked) => onChangeStyle({ solidBackground: checked })}
-            label="实心背景"
-            help={SOLID_HELP}
+            label={t('entries.solid')}
+            help={solidHelp(t)}
           />
           <HelpToggle
             checked={iconPlate}
             onChange={(checked) => onChangeStyle({ iconPlate: checked })}
-            label="图标白底"
-            help={PLATE_HELP}
+            label={t('entries.iconPlate')}
+            help={plateHelp(t)}
           />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
           <DropList
             id={DROP_LIST}
-            hint="链接与社媒入口共处一个列表，页面上按这个顺序从上往下排。"
-            empty="从右边拖一项进来"
+            hint={t('entries.order.hint')}
+            empty={t('entries.empty')}
             items={entries.map((e) => e.id)}
           >
             {entries.map((entry) => (
@@ -240,7 +247,7 @@ export function ContentEditor({
         </div>
 
         {atLinkLimit ? (
-          <Alert tone="info" message={`自定义链接数量上限 ${MAX_BUTTONS_PER_PROFILE} 个`} />
+          <Alert tone="info" message={t('entries.limit', { max: MAX_BUTTONS_PER_PROFILE })} />
         ) : null}
       </div>
 
@@ -251,9 +258,12 @@ export function ContentEditor({
               text-[13px] font-medium text-fg shadow-[var(--shadow-float)]"
           >
             {dragging === CUSTOM_LINK_ID
-              ? '自定义链接'
+              ? t('entries.kind.custom')
               : dragging.startsWith(PALETTE_PREFIX)
-                ? (platformOf(dragging.slice(PALETTE_PREFIX.length))?.label ?? '')
+                ? (() => {
+                    const p = platformOf(dragging.slice(PALETTE_PREFIX.length));
+                    return p ? platformName(t, p) : '';
+                  })()
                 : (() => {
                     const entry = entries.find((e) => e.id === dragging);
                     return entry ? labelOf(entry) : '';
@@ -357,6 +367,7 @@ function SortableCard({
   onRemove: () => void;
   children: React.ReactNode;
 }) {
+  const t = useAdminT();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
   });
@@ -378,7 +389,7 @@ function SortableCard({
           type="button"
           {...attributes}
           {...listeners}
-          aria-label={`拖拽排序：${title}`}
+          aria-label={t('entries.action.reorder', { title })}
           className="flex min-h-11 min-w-0 flex-1 cursor-grab items-center gap-1.5 rounded-[4px] px-2
             text-left text-[13px] font-medium text-fg hover:bg-surface-hover active:cursor-grabbing"
         >
@@ -409,7 +420,7 @@ function SortableCard({
         <button
           type="button"
           onClick={onToggle}
-          aria-label={`配置：${title}`}
+          aria-label={t('entries.action.configure', { title })}
           aria-expanded={expanded}
           className={`flex size-11 items-center justify-center rounded-[var(--radius-control)] transition-colors
             ${expanded ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-surface-hover hover:text-fg'}`}
@@ -419,7 +430,7 @@ function SortableCard({
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`删除：${title}`}
+          aria-label={t('entries.action.delete', { title })}
           className="flex size-11 items-center justify-center rounded-[var(--radius-control)] text-danger
             hover:bg-danger-soft"
         >
@@ -450,31 +461,34 @@ function Palette({
   onAddPlatform: (platformId: string) => void;
   onAddLink: () => void;
 }) {
+  const t = useAdminT();
   return (
     <aside className="flex h-fit flex-col gap-3 rounded-[var(--radius-panel)] border border-border bg-surface p-3 lg:sticky lg:top-4">
       <div className="flex flex-col gap-0.5">
-        <h3 className="text-[13px] font-semibold text-fg">待选</h3>
-        <p className="text-[12px] text-muted">拖到左边，或直接点一下添加。</p>
+        <h3 className="text-[13px] font-semibold text-fg">{t('entries.palette')}</h3>
+        <p className="text-[12px] text-muted">{t('entries.palette.hint')}</p>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[12px] font-medium text-muted">链接</span>
+        <span className="text-[12px] font-medium text-muted">{t('entries.kind.link')}</span>
         <PaletteItem
           id={CUSTOM_LINK_ID}
-          label="自定义链接"
+          label={t('entries.kind.custom')}
           disabled={atLinkLimit}
           onAdd={onAddLink}
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[12px] font-medium text-muted">社媒平台</span>
+        <span className="text-[12px] font-medium text-muted">
+          {t('entries.kind.socialPlatform')}
+        </span>
         <div className="grid grid-cols-2 gap-1.5">
           {platforms.map((platform) => (
             <PaletteItem
               key={platform.id}
               id={`${PALETTE_PREFIX}${platform.id}`}
-              label={platform.label}
+              label={platformName(t, platform)}
               accentHex={platform.brandHex}
               disabled={usedPlatforms.has(platform.id)}
               onAdd={() => onAddPlatform(platform.id)}
@@ -557,6 +571,7 @@ function EntryFields({
   passthroughCaveat: string;
   onChange: (patch: Partial<EntryDraft>) => void;
 }) {
+  const t = useAdminT();
   return (
     <div className="flex flex-col gap-2">
       <Input
@@ -564,15 +579,17 @@ function EntryFields({
         onChange={(e) => onChange({ title: e.target.value })}
         placeholder={
           entry.kind === 'social'
-            ? `标题，如「${platform?.label ?? ''} 上给我留言」`
-            : '标题，如「作品集」'
+            ? t('entries.field.titleSocial', {
+                platform: platform ? platformName(t, platform) : '',
+              })
+            : t('entries.field.titleCustom')
         }
         maxLength={80}
       />
       <Input
         value={entry.subtitle}
         onChange={(e) => onChange({ subtitle: e.target.value })}
-        placeholder="描述（选填），如「通常当天回复」。留空则不显示这一行"
+        placeholder={t('entries.field.subtitle')}
         maxLength={80}
       />
 
@@ -581,14 +598,14 @@ function EntryFields({
           <Input
             value={entry.value}
             onChange={(e) => onChange({ value: e.target.value })}
-            placeholder={platform?.inputHint ?? '号码 / 邮箱 / 用户名'}
+            placeholder={platform ? t(platform.inputHintKey as AdminKey) : t('entries.field.value')}
           />
           {entry.platform === 'instagram' ? (
             <HelpToggle
               checked={entry.directMessage}
               onChange={(checked) => onChange({ directMessage: checked })}
-              label="点击后直接发 Instagram 消息"
-              help="默认开启，生成 ig.me/m/用户名；关闭后跳转到 Instagram 个人主页。"
+              label={t('entries.field.directMessage')}
+              help={t('entries.field.directMessage.hint')}
             />
           ) : null}
           {entry.platform === 'sms' || entry.platform === 'whatsapp' ? (
@@ -596,7 +613,9 @@ function EntryFields({
               value={entry.message}
               onChange={(e) => onChange({ message: e.target.value })}
               placeholder={
-                entry.platform === 'sms' ? '短信预设内容（选填）' : 'WhatsApp 预设消息（选填）'
+                entry.platform === 'sms'
+                  ? t('entries.field.smsMessage')
+                  : t('entries.field.whatsappMessage')
               }
               maxLength={500}
             />
@@ -606,7 +625,7 @@ function EntryFields({
         <Input
           value={entry.url}
           onChange={(e) => onChange({ url: e.target.value })}
-          placeholder="目标链接"
+          placeholder={t('entries.field.url')}
         />
       )}
 
@@ -614,14 +633,14 @@ function EntryFields({
         <HelpToggle
           checked={entry.isLead}
           onChange={(checked) => onChange({ isLead: checked })}
-          label="联系类渠道（计入线索）"
-          help={LEAD_HELP}
+          label={t('entries.field.isLead')}
+          help={leadHelp(t)}
         />
         <HelpToggle
           checked={entry.passSource}
           onChange={(checked) => onChange({ passSource: checked })}
-          label="把来源透传给目标网站"
-          help={`把访客进页面时地址上的 src 参数原样带到目标网站，方便在对方那边继续归因。\n\n${passthroughCaveat}`}
+          label={t('entries.field.passSource')}
+          help={`${t('entries.field.passSource.hint')}\n\n${passthroughCaveat}`}
         />
       </div>
     </div>

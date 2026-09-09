@@ -11,7 +11,6 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { visibleUsersFilter } from '../auth/policy.js';
 import type { CurrentUser } from '../auth/sessions.js';
-import { UNAUTHORIZED } from '../auth/guards.js';
 import {
   queryButtons,
   queryDimension,
@@ -27,6 +26,7 @@ import {
   type VisibleAccount,
   type VisibleProfile,
 } from '../analytics/scope-performance.js';
+import { fail, unauthorized } from '../http/errors.js';
 
 const querySchema = z
   .object({
@@ -40,7 +40,7 @@ const querySchema = z
     tz: z.string().optional(),
   })
   .refine((v) => !(v.userId && v.profileId), {
-    message: 'userId 与 profileId 不能同时指定',
+    message: 'query.exclusiveScope',
   });
 
 export async function analyticsRoutes(app: FastifyInstance) {
@@ -52,16 +52,16 @@ export async function analyticsRoutes(app: FastifyInstance) {
    * `visibleUsersFilter` 的结果先解析成一组个人页 id 再往下查。
    */
   app.get('/analytics', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!req.currentUser) return unauthorized(reply);
 
     const parsed = querySchema.safeParse(req.query);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_query', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_query', { issues: parsed.error.issues });
     }
 
     const timeZone = parsed.data.tz ?? DEFAULT_DISPLAY_TIMEZONE;
     if (!isValidTimeZone(timeZone)) {
-      return reply.code(400).send({ error: 'invalid_timezone', timeZone });
+      return fail(reply, 400, 'invalid_timezone', { timeZone });
     }
 
     const range = resolveRange(parsed.data, timeZone);
@@ -80,7 +80,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
       (parsed.data.profileId && visibleProfiles.length === 0) ||
       (parsed.data.userId && visibleAccounts.length === 0)
     ) {
-      return reply.code(403).send({ error: 'forbidden' });
+      return fail(reply, 403, 'forbidden');
     }
 
     const scope: QueryScope = {

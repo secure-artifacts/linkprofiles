@@ -1,6 +1,11 @@
+import { createI18n, fixedTranslate, type AdminKey } from '@link-profile/i18n';
+import { adminEn } from '@link-profile/i18n/source';
 import { describe, expect, test } from 'vitest';
 import type { AnalyticsResponse } from '../api/types.js';
 import { buildDashboardInsights, periodChange } from './dashboard-insights.js';
+
+/** 断言英文源文，它是这份文案的唯一来源，见 ADR-0021。 */
+const t = fixedTranslate<AdminKey>(createI18n('admin', { en: { ...adminEn } }), 'admin', 'en');
 
 const data = {
   totals: { pageViews: 100, clicks: 40, leads: 20, ctr: 0.4 },
@@ -38,12 +43,12 @@ const data = {
 
 describe('数据分析自动结论', () => {
   test('识别周期增长、第一来源和来源标记缺失', () => {
-    const insights = buildDashboardInsights(data);
+    const insights = buildDashboardInsights(data, t, 'en');
     expect(insights.map((item) => item.title)).toEqual(
       expect.arrayContaining([
-        '联系点击增长 100.0%',
-        'TikTok贡献联系点击最多',
-        '30.0% 的进入没有来源标记',
+        'Contact clicks up 100.0%',
+        'TikTok brings the most contact clicks',
+        '30.0% of visits carry no source tag',
       ]),
     );
   });

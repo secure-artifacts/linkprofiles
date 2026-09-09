@@ -8,6 +8,7 @@ RUN corepack enable
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY packages/i18n/package.json packages/i18n/
 COPY packages/shared/package.json packages/shared/
 COPY packages/profile-ui/package.json packages/profile-ui/
 COPY packages/server/package.json packages/server/

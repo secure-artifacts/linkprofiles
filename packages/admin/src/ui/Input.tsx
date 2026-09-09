@@ -1,6 +1,7 @@
 import { Eye, EyeOff } from 'lucide-react';
 import { forwardRef, useState } from 'react';
 import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import { useAdminT } from '../i18n/runtime.js';
 
 const FIELD_CLASSES =
   'w-full rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2 text-sm text-fg ' +
@@ -40,6 +41,7 @@ export const Textarea = forwardRef<
 });
 
 export function PasswordInput(props: Omit<InputProps, 'type'>) {
+  const t = useAdminT();
   const [visible, setVisible] = useState(false);
   return (
     <div className="relative">
@@ -50,7 +52,7 @@ export function PasswordInput(props: Omit<InputProps, 'type'>) {
       />
       <button
         type="button"
-        aria-label={visible ? '隐藏密码' : '显示密码'}
+        aria-label={visible ? t('common.password.hide') : t('common.password.show')}
         onClick={() => setVisible((v) => !v)}
         className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-muted hover:text-fg"
       >

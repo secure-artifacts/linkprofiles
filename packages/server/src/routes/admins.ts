@@ -3,15 +3,16 @@ import { users } from '@link-profile/shared/schema';
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { FORBIDDEN, requireCapability } from '../auth/guards.js';
+import { requireCapability } from '../auth/guards.js';
 import { hashPassword } from '../auth/passwords.js';
 import { deleteSessionsForUser } from '../auth/sessions.js';
 import { renameAccount } from '../users/rename-account.js';
 import { findUserConflict } from '../users/conflicts.js';
+import { fail, forbidden } from '../http/errors.js';
 
 const createAdminBody = z.object({
   account: accountNameSchema,
-  password: z.string().min(8, '密码至少 8 位'),
+  password: z.string().min(8, 'field.password.min'),
   label: z.string().trim().default(''),
 });
 
@@ -39,11 +40,11 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post('/admins', { onRequest: [requireCapability('admin:create')] }, async (req, reply) => {
     const parsed = createAdminBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
 
     if (await findUserConflict(app.db, { account: parsed.data.account })) {
-      return reply.code(409).send({ error: 'account_taken' });
+      return fail(reply, 409, 'account_taken');
     }
 
     const [row] = await app.db
@@ -53,6 +54,7 @@ export async function adminRoutes(app: FastifyInstance) {
         account: parsed.data.account,
         passwordHash: await hashPassword(parsed.data.password),
         label: parsed.data.label,
+        uiLanguage: req.currentUser!.uiLanguage,
       })
       .returning({ id: users.id, account: users.account, label: users.label });
 
@@ -65,14 +67,14 @@ export async function adminRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const parsed = updateAdminBody.safeParse(req.body);
       if (!parsed.success) {
-        return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+        return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
       }
       const [target] = await app.db
         .select({ id: users.id, account: users.account })
         .from(users)
         .where(and(eq(users.id, req.params.id), eq(users.role, 'admin')))
         .limit(1);
-      if (!target) return reply.code(403).send(FORBIDDEN);
+      if (!target) return forbidden(reply);
 
       let account = target.account;
       if (parsed.data.account !== undefined) {
@@ -82,7 +84,7 @@ export async function adminRoutes(app: FastifyInstance) {
           account: parsed.data.account,
         });
         if (renamed.status === 'account_taken') {
-          return reply.code(409).send({ error: 'account_taken' });
+          return fail(reply, 409, 'account_taken');
         }
         if (renamed.status === 'changed') {
           account = renamed.account;
@@ -117,7 +119,7 @@ export async function adminRoutes(app: FastifyInstance) {
         .limit(1);
 
       // 不存在与不是管理员给同一个响应，不透露这个 id 是谁。
-      if (!target) return reply.code(403).send(FORBIDDEN);
+      if (!target) return forbidden(reply);
 
       await deleteSessionsForUser(app.db, target.id);
       // 管理员没有 short_name，走普通删除即可；名下用户由外键置空转为无归属

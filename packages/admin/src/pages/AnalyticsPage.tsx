@@ -35,6 +35,8 @@ import { Alert } from '../ui/Alert.js';
 import { Button } from '../ui/Button.js';
 import { Segmented } from '../ui/Segmented.js';
 import { Select } from '../ui/Select.js';
+import { useAdminT, useLocale } from '../i18n/runtime.js';
+import { formatNumber } from '../format.js';
 
 /** 展示时区。默认受众所在地，不是运营自己所在地。 */
 const TIME_ZONES = [
@@ -59,6 +61,7 @@ type Preset = 'today' | '7d' | '30d' | 'custom';
  * 才回得到刚才那个范围。
  */
 export function AnalyticsPage() {
+  const t = useAdminT();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const session = useSession();
@@ -75,16 +78,16 @@ export function AnalyticsPage() {
       ? scope.displayName || scope.shortName
       : scope?.kind === 'account'
         ? scope.label || scope.account
-        : '数据分析总览';
+        : t('analytics.title.overview');
   useBreadcrumb(
     scope?.kind === 'profile'
       ? [
-          { label: '数据分析', to: '/analytics' },
+          { label: t('analytics.title'), to: '/analytics' },
           { label: scope.label || scope.account, to: `/analytics?userId=${scope.userId}` },
           { label: scopeName },
         ]
       : scope?.kind === 'account' && session.role !== 'user'
-        ? [{ label: '数据分析', to: '/analytics' }, { label: scopeName }]
+        ? [{ label: t('analytics.title'), to: '/analytics' }, { label: scopeName }]
         : [{ label: scopeName }],
   );
 
@@ -107,7 +110,7 @@ export function AnalyticsPage() {
       .catch((err: Error) => setError(err.message));
   }, [preset, customRange, timeZone, userId, profileId]);
 
-  if (error) return <Alert tone="danger" message="读不到数据" description={error} />;
+  if (error) return <Alert tone="danger" message={t('analytics.loadFailed')} description={error} />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -124,18 +127,19 @@ export function AnalyticsPage() {
               }
             >
               <ArrowLeft size={15} />
-              返回
+              {t('analytics.back')}
             </Button>
           ) : null}
           <div className="min-w-0">
             <h1 className="truncate font-display text-xl font-semibold text-fg">{scopeName}</h1>
             {scope?.kind === 'portfolio' ? (
-              <p className="mt-1 text-[13px] text-muted">
-                汇总全部可见个人页，并直接比较每个个人页的表现。
-              </p>
+              <p className="mt-1 text-[13px] text-muted">{t('analytics.overview.hint')}</p>
             ) : scope?.kind === 'account' ? (
               <p className="mt-1 text-[13px] text-muted">
-                登录账号 {scope.account} · {data?.performance.profiles.length ?? 0} 个个人页
+                {t('analytics.scope.account', {
+                  account: scope.account,
+                  count: data?.performance.profiles.length ?? 0,
+                })}
               </p>
             ) : scope?.kind === 'profile' ? (
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-muted">
@@ -147,7 +151,8 @@ export function AnalyticsPage() {
                     void navigator.clipboard.writeText(`${location.origin}/${scope.shortName}`)
                   }
                 >
-                  <Copy size={13} /> 复制
+                  <Copy size={13} />
+                  {t('analytics.copy')}
                 </button>
                 <a
                   href={`/${scope.shortName}`}
@@ -155,7 +160,8 @@ export function AnalyticsPage() {
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 hover:text-fg"
                 >
-                  <ExternalLink size={13} /> 打开个人页
+                  <ExternalLink size={13} />
+                  {t('analytics.openProfile')}
                 </a>
               </div>
             ) : null}
@@ -166,10 +172,10 @@ export function AnalyticsPage() {
             value={preset}
             onChange={(value) => setPreset(value as Preset)}
             options={[
-              { value: 'today', label: '今天' },
-              { value: '7d', label: '7 天' },
-              { value: '30d', label: '30 天' },
-              { value: 'custom', label: '自定义' },
+              { value: 'today', label: t('analytics.range.today') },
+              { value: '7d', label: t('analytics.range.7d') },
+              { value: '30d', label: t('analytics.range.30d') },
+              { value: 'custom', label: t('analytics.range.custom') },
             ]}
           />
           {preset === 'custom' ? (
@@ -197,15 +203,15 @@ export function AnalyticsPage() {
             value={timeZone}
             onChange={setTimeZone}
             options={TIME_ZONES.map((tz) => ({ value: tz, label: tz }))}
-            aria-label="展示时区"
+            aria-label={t('analytics.timeZone')}
           />
         </div>
       </div>
 
       <Alert
         tone="info"
-        message="这里的数字是次数，不是人数"
-        description="不做访客去重：同一个人刷十次页就是十次页面浏览，连点五次就是五条线索。对外汇报时请说明这一点。"
+        message={t('analytics.counts.title')}
+        description={t('analytics.counts.body')}
       />
 
       {data ? (
@@ -226,7 +232,7 @@ export function AnalyticsPage() {
           <AnalyticsResults data={data} timeZone={timeZone} />
         )
       ) : (
-        <p className="text-[13px] text-muted">选好起止日期后显示数据。</p>
+        <p className="text-[13px] text-muted">{t('analytics.pickRange')}</p>
       )}
     </div>
   );
@@ -243,6 +249,7 @@ function PortfolioResults({
   onOpenProfile: (id: string) => void;
   onOpenAccount: (id: string) => void;
 }) {
+  const t = useAdminT();
   const [rankBy, setRankBy] = useState<ProfileRankKey>('leads');
   const rankedProfiles = useMemo(
     () => rankProfiles(data.performance.profiles, rankBy, data.comparison.profiles),
@@ -263,36 +270,34 @@ function PortfolioResults({
       <GlobalCountryAnalytics data={data} />
 
       <Panel
-        title={`个人页排行 · ${rankedProfiles.length} 个个人页`}
+        title={t('analytics.ranking.title', { count: rankedProfiles.length })}
         action={
           <Select
             value={rankBy}
             onChange={(value) => setRankBy(value as ProfileRankKey)}
             options={[
-              { value: 'leads', label: '联系点击' },
-              { value: 'pageViews', label: '进入页面' },
-              { value: 'leadRate', label: '联系率' },
-              { value: 'growth', label: '增长最快' },
-              { value: 'opportunity', label: '待优化机会' },
+              { value: 'leads', label: t('analytics.leads') },
+              { value: 'pageViews', label: t('analytics.pageViews') },
+              { value: 'leadRate', label: t('analytics.leadRate') },
+              { value: 'growth', label: t('analytics.fastestGrowing') },
+              { value: 'opportunity', label: t('analytics.opportunity') },
             ]}
-            aria-label="个人页排行方式"
+            aria-label={t('analytics.ranking.sortAria')}
           />
         }
       >
-        <p className="mb-3 text-[12px] text-muted">
-          跨账号直接比较全部个人页；点击任意一行查看该页的来源、国家与联系方式明细。
-        </p>
+        <p className="mb-3 text-[12px] text-muted">{t('analytics.ranking.hint')}</p>
         <ResponsiveTable
           headers={[
-            '排名',
-            '个人页',
-            '所属账号',
-            '主要来源 / 国家',
-            '主要联系方式',
-            '进入页面',
-            '联系点击',
-            '联系率',
-            '较上期',
+            t('analytics.rank'),
+            t('analytics.profile'),
+            t('analytics.ownerAccount'),
+            t('analytics.topSourceCountry'),
+            t('analytics.topChannel'),
+            t('analytics.pageViews'),
+            t('analytics.leads'),
+            t('analytics.leadRate'),
+            t('analytics.vsPrevious'),
           ]}
         >
           {rankedProfiles.map((row, index) => (
@@ -311,12 +316,17 @@ function PortfolioResults({
 
       <AggregateAnalysis data={data} timeZone={timeZone} showGlobalCountry={false} />
 
-      <Panel title={`按账号汇总 · ${data.performance.accounts.length} 个账号`}>
-        <p className="mb-3 text-[12px] text-muted">
-          用于查看每个账号的整体贡献；点击账号可筛选其名下的个人页。
-        </p>
+      <Panel title={t('analytics.accounts.title', { count: data.performance.accounts.length })}>
+        <p className="mb-3 text-[12px] text-muted">{t('analytics.accounts.hint')}</p>
         <ResponsiveTable
-          headers={['账号', '个人页', '进入页面', '按钮点击', '联系点击', '联系 / 进入']}
+          headers={[
+            t('analytics.account'),
+            t('analytics.profile'),
+            t('analytics.pageViews'),
+            t('analytics.entryClicks'),
+            t('analytics.leads'),
+            t('analytics.leadsPerView'),
+          ]}
         >
           {data.performance.accounts.map((row) => (
             <tr
@@ -357,6 +367,8 @@ function PortfolioProfileRow({
   highlight?: AnalyticsResponse['profileHighlights'][number];
   onOpen: (id: string) => void;
 }) {
+  const t = useAdminT();
+  const locale = useLocale();
   const leadChange = periodChange(row.leads, previous?.leads ?? 0);
   return (
     <tr
@@ -374,16 +386,22 @@ function PortfolioProfileRow({
       </td>
       <td className="min-w-40 py-3 pr-4 text-[12px]">
         <div className="text-fg">
-          {highlight?.topSource ? sourceLabel(highlight.topSource.key) : '暂无来源'}
+          {highlight?.topSource ? sourceLabel(t, highlight.topSource.key) : t('overview.noSource')}
         </div>
         <div className="mt-0.5 text-muted">
-          {highlight?.topCountry ? countryLabel(highlight.topCountry.key) : '未知国家'}
+          {highlight?.topCountry
+            ? countryLabel(t, locale, highlight.topCountry.key)
+            : t('analytics.country.unknown')}
         </div>
       </td>
       <td className="min-w-36 py-3 pr-4 text-[12px]">
-        <div className="truncate text-fg">{highlight?.topTarget?.title ?? '暂无联系点击'}</div>
+        <div className="truncate text-fg">
+          {highlight?.topTarget?.title ?? t('analytics.empty.leadClicks')}
+        </div>
         {highlight?.topTarget ? (
-          <div className="mt-0.5 font-mono text-muted">{highlight.topTarget.leads} 次</div>
+          <div className="mt-0.5 font-mono text-muted">
+            {t('analytics.timesCount', { count: highlight.topTarget.leads })}
+          </div>
         ) : null}
       </td>
       <NumberCell value={row.pageViews} />
@@ -407,16 +425,22 @@ function AccountResults({
   timeZone: string;
   onOpen: (id: string) => void;
 }) {
+  const t = useAdminT();
   return (
     <div className="flex flex-col gap-4">
       <AnalyticsResults data={data} timeZone={timeZone} compact />
       <GlobalCountryAnalytics data={data} />
-      <Panel title={`个人页表现 · ${data.performance.profiles.length} 个个人页`}>
-        <p className="mb-3 text-[12px] text-muted">
-          账号数据只在这里汇总；点击个人页进入独立分析，再查看来源、国家与联系方式。
-        </p>
+      <Panel title={t('analytics.profiles.title', { count: data.performance.profiles.length })}>
+        <p className="mb-3 text-[12px] text-muted">{t('analytics.profiles.hint')}</p>
         <ResponsiveTable
-          headers={['个人页', '进入页面', '按钮点击', '联系点击', '按钮点击率', '联系率']}
+          headers={[
+            t('analytics.profile'),
+            t('analytics.pageViews'),
+            t('analytics.entryClicks'),
+            t('analytics.leads'),
+            t('analytics.clickRate'),
+            t('analytics.leadRate'),
+          ]}
         >
           {data.performance.profiles.map((row) => (
             <ProfilePerformanceRow key={row.id} row={row} onOpen={onOpen} />
@@ -470,6 +494,7 @@ function fillTrend(
   trend: AnalyticsResponse['trend'],
   range: AnalyticsResponse['range'],
 ): AnalyticsResponse['trend'] {
+  const t = useAdminT();
   const byBucket = new Map(trend.map((point) => [point.bucket, point]));
   const isHour = range.granularity === 'hour';
   const stepMs = isHour ? 3_600_000 : 86_400_000;
@@ -516,36 +541,38 @@ function AnalyticsResults({
   timeZone: string;
   compact?: boolean;
 }) {
+  const t = useAdminT();
+  const locale = useLocale();
   const trend = useMemo(() => fillTrend(data.trend, data.range), [data]);
   const leadRate = data.totals.pageViews === 0 ? 0 : data.totals.leads / data.totals.pageViews;
   const previousLeadRate = data.comparison.totals.pageViews
     ? data.comparison.totals.leads / data.comparison.totals.pageViews
     : 0;
-  const insights = useMemo(() => buildDashboardInsights(data), [data]);
+  const insights = useMemo(() => buildDashboardInsights(data, t, locale), [data, t, locale]);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <MetricCard
-          label="进入页面"
+          label={t('analytics.pageViews')}
           value={data.totals.pageViews}
-          hint="页面被打开的次数"
+          hint={t('analytics.metric.pageViews')}
           change={periodChange(data.totals.pageViews, data.comparison.totals.pageViews)}
         />
         <MetricCard
-          label="按钮点击"
+          label={t('analytics.entryClicks')}
           value={data.totals.clicks}
-          hint="所有条目的点击次数"
+          hint={t('analytics.metric.clicks')}
           change={periodChange(data.totals.clicks, data.comparison.totals.clicks)}
         />
         <MetricCard
-          label="联系点击"
+          label={t('analytics.leads')}
           value={data.totals.leads}
-          hint="联系类条目的点击次数"
+          hint={t('analytics.metric.leads')}
           change={periodChange(data.totals.leads, data.comparison.totals.leads)}
         />
         <MetricCard
-          label="按钮点击 / 进入"
+          label={t('analytics.metric.clickRate')}
           value={data.totals.ctr * 100}
           suffix="%"
           precision={1}
@@ -553,7 +580,7 @@ function AnalyticsResults({
           changeAsPoints
         />
         <MetricCard
-          label="联系点击 / 进入"
+          label={t('analytics.metric.leadRate')}
           value={leadRate * 100}
           suffix="%"
           precision={1}
@@ -567,12 +594,19 @@ function AnalyticsResults({
       <FunnelSummary data={data} />
 
       <Panel
-        title={`进入与联系趋势（按${data.range.granularity === 'hour' ? '小时' : '天'}，${timeZone}）`}
+        title={t('analytics.trend.title', {
+          granularity: t(
+            data.range.granularity === 'hour'
+              ? 'analytics.granularity.hour'
+              : 'analytics.granularity.day',
+          ),
+          timeZone,
+        })}
       >
         <div className="mb-2 flex flex-wrap gap-4 text-[12px] text-muted">
-          <Legend color={ACCENT} label="进入页面" />
-          <Legend color="#2563eb" label="按钮点击" />
-          <Legend color="#e11d48" label="联系点击" />
+          <Legend color={ACCENT} label={t('analytics.pageViews')} />
+          <Legend color="#2563eb" label={t('analytics.entryClicks')} />
+          <Legend color="#e11d48" label={t('analytics.leads')} />
         </div>
         <ResponsiveContainer width="100%" height={240}>
           <AreaChart data={trend} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
@@ -602,7 +636,11 @@ function AnalyticsResults({
             <RechartsTooltip
               formatter={(value, name) => [
                 String(value ?? 0),
-                name === 'pageViews' ? '进入页面' : name === 'clicks' ? '按钮点击' : '联系点击',
+                name === 'pageViews'
+                  ? t('analytics.pageViews')
+                  : name === 'clicks'
+                    ? t('analytics.entryClicks')
+                    : t('analytics.leads'),
               ]}
               contentStyle={{ borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}
             />
@@ -637,6 +675,7 @@ function AnalyticsResults({
 }
 
 function AnalyticsInsights({ insights }: { insights: ReturnType<typeof buildDashboardInsights> }) {
+  const t = useAdminT();
   if (!insights.length) return null;
   const toneClass = {
     positive: 'border-accent/25 bg-accent-soft text-accent',
@@ -646,8 +685,8 @@ function AnalyticsInsights({ insights }: { insights: ReturnType<typeof buildDash
   return (
     <section>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-fg">系统发现</h2>
-        <span className="text-[11px] text-muted">根据当前范围自动生成</span>
+        <h2 className="text-sm font-semibold text-fg">{t('analytics.findings')}</h2>
+        <span className="text-[11px] text-muted">{t('analytics.findings.hint')}</span>
       </div>
       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
         {insights.map((insight) => (
@@ -665,16 +704,27 @@ function AnalyticsInsights({ insights }: { insights: ReturnType<typeof buildDash
 }
 
 function FunnelSummary({ data }: { data: AnalyticsResponse }) {
+  const t = useAdminT();
   const pageViews = data.totals.pageViews;
   const clickRate = pageViews ? data.totals.clicks / pageViews : 0;
   const leadRate = pageViews ? data.totals.leads / pageViews : 0;
   const stages = [
-    { label: '进入页面', value: pageViews, rate: 1, color: 'bg-accent' },
-    { label: '点击条目', value: data.totals.clicks, rate: clickRate, color: 'bg-[#2563eb]' },
-    { label: '联系点击', value: data.totals.leads, rate: leadRate, color: 'bg-[#e11d48]' },
+    { label: t('analytics.pageViews'), value: pageViews, rate: 1, color: 'bg-accent' },
+    {
+      label: t('analytics.entryClicked'),
+      value: data.totals.clicks,
+      rate: clickRate,
+      color: 'bg-[#2563eb]',
+    },
+    {
+      label: t('analytics.leads'),
+      value: data.totals.leads,
+      rate: leadRate,
+      color: 'bg-[#e11d48]',
+    },
   ];
   return (
-    <Panel title="进入 → 点击 → 联系漏斗">
+    <Panel title={t('analytics.funnel.title')}>
       <div className="grid gap-3 md:grid-cols-3">
         {stages.map((stage, index) => (
           <div key={stage.label} className="relative overflow-hidden rounded-lg bg-bg p-4">
@@ -689,7 +739,9 @@ function FunnelSummary({ data }: { data: AnalyticsResponse }) {
               <div className="mt-1 flex items-end justify-between gap-2">
                 <span className="font-mono text-2xl font-semibold text-fg">{stage.value}</span>
                 <span className="font-mono text-[12px] text-muted">
-                  {index === 0 ? '基准 100%' : `进入占比 ${percent(stage.rate)}`}
+                  {index === 0
+                    ? t('analytics.funnel.base')
+                    : t('analytics.funnel.share', { percent: percent(stage.rate) })}
                 </span>
               </div>
             </div>
@@ -697,9 +749,7 @@ function FunnelSummary({ data }: { data: AnalyticsResponse }) {
         ))}
       </div>
       {data.totals.clicks > data.totals.pageViews ? (
-        <p className="mt-2 text-[11px] text-muted">
-          同一访客可以连续点击多个条目，因此按钮点击次数可能高于进入页面次数。
-        </p>
+        <p className="mt-2 text-[11px] text-muted">{t('analytics.clicksExceedViews')}</p>
       ) : null}
     </Panel>
   );
@@ -714,6 +764,7 @@ function AggregateAnalysis({
   timeZone: string;
   showGlobalCountry?: boolean;
 }) {
+  const t = useAdminT();
   const peakHour = useMemo(() => {
     const max = Math.max(...data.hourlyLeads);
     return max === 0 ? null : data.hourlyLeads.indexOf(max);
@@ -730,7 +781,7 @@ function AggregateAnalysis({
       <CrossAnalysis data={data.crossBreakdowns} />
       <ActivityHeatmap data={data} timeZone={timeZone} />
       <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-        <Panel title="联系点击时段">
+        <Panel title={t('analytics.leadHours')}>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={hourly} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -749,7 +800,7 @@ function AggregateAnalysis({
                 width={28}
               />
               <RechartsTooltip
-                formatter={(value) => [String(value ?? 0), '联系点击']}
+                formatter={(value) => [String(value ?? 0), t('analytics.leads')]}
                 labelFormatter={(hour) => `${hour}:00`}
                 contentStyle={{
                   borderRadius: 6,
@@ -762,17 +813,17 @@ function AggregateAnalysis({
           </ResponsiveContainer>
           {peakHour !== null ? (
             <p className="mt-2 text-[13px] text-muted">
-              联系最活跃时段：{peakHour}:00（{timeZone}）
+              {t('analytics.peakHour', { hour: peakHour, timeZone })}
             </p>
           ) : null}
         </Panel>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          <CompactDimension title="设备" rows={data.dimensions.devices} />
-          <CompactDimension title="操作系统" rows={data.dimensions.operatingSystems} />
+          <CompactDimension title={t('analytics.device')} rows={data.dimensions.devices} />
+          <CompactDimension title={t('analytics.os')} rows={data.dimensions.operatingSystems} />
         </div>
       </div>
       <p className="text-right text-[11px] text-muted">
-        地区数据：
+        {t('analytics.regionData')}
         <a
           href="https://www.maxmind.com"
           target="_blank"
@@ -787,19 +838,20 @@ function AggregateAnalysis({
 }
 
 function ChangeBadge({ value, asPoints = false }: { value: number | null; asPoints?: boolean }) {
+  const t = useAdminT();
   if (value === null) {
     return (
       <span className="inline-flex rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
-        新增
+        {t('analytics.new')}
       </span>
     );
   }
   const positive = value > 0;
   const negative = value < 0;
   const label = asPoints
-    ? `${positive ? '+' : ''}${(value * 100).toFixed(1)} 个百分点`
+    ? t('analytics.points', { value: `${positive ? '+' : ''}${(value * 100).toFixed(1)}` })
     : value === 0
-      ? '持平'
+      ? t('analytics.flat')
       : `${positive ? '+' : ''}${percent(value)}`;
   return (
     <span
@@ -828,6 +880,8 @@ function Legend({ color, label }: { color: string; label: string }) {
 type AnalysisMode = 'source' | 'country' | 'target';
 
 function CrossAnalysis({ data }: { data: AnalyticsResponse['crossBreakdowns'] }) {
+  const t = useAdminT();
+  const locale = useLocale();
   const [mode, setMode] = useState<AnalysisMode>('source');
   const [sourceFilter, setSourceFilter] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
@@ -857,49 +911,51 @@ function CrossAnalysis({ data }: { data: AnalyticsResponse['crossBreakdowns'] })
   const targets = filteredTargets(data.targets, selectedCountry, sourceFilter);
   return (
     <Panel
-      title="详细拆分"
+      title={t('analytics.breakdown.title')}
       action={
         <Segmented
           value={mode}
           onChange={(value) => setMode(value as AnalysisMode)}
           options={[
-            { value: 'source', label: '按来源' },
-            { value: 'country', label: '按国家' },
-            { value: 'target', label: '按联系方式' },
+            { value: 'source', label: t('analytics.breakdown.bySource') },
+            { value: 'country', label: t('analytics.breakdown.byCountry') },
+            { value: 'target', label: t('analytics.breakdown.byChannel') },
           ]}
         />
       }
     >
       <p className="mb-3 text-[12px] text-muted">
         {mode === 'source'
-          ? '每个平台带来多少进入，并产生了哪些联系点击。'
+          ? t('analytics.breakdown.sourceHint')
           : mode === 'country'
-            ? '每个国家的访客来自哪些平台，并点击了多少次联系方式。'
-            : '每个联系方式的点击来自哪些平台。'}
+            ? t('analytics.breakdown.countryHint')
+            : t('analytics.breakdown.channelHint')}
       </p>
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[var(--radius-control)] bg-bg p-2">
-        <span className="px-1 text-[12px] font-medium text-muted">联动筛选</span>
+        <span className="px-1 text-[12px] font-medium text-muted">
+          {t('analytics.filter.linked')}
+        </span>
         <Select
           value={sourceFilter}
           onChange={setSourceFilter}
-          aria-label="筛选来源"
+          aria-label={t('analytics.filter.source')}
           options={[
-            { value: '', label: '全部来源' },
+            { value: '', label: t('analytics.matrix.allSources') },
             ...data.sources.map((source) => ({
               value: source.key,
-              label: sourceLabel(source.key),
+              label: sourceLabel(t, source.key),
             })),
           ]}
         />
         <Select
           value={countryFilter}
           onChange={setCountryFilter}
-          aria-label="筛选国家"
+          aria-label={t('analytics.filter.country')}
           options={[
-            { value: '', label: '全部国家' },
+            { value: '', label: t('analytics.matrix.allCountries') },
             ...data.countries.map((country) => ({
               value: country.key,
-              label: countryLabel(country.key),
+              label: countryLabel(t, locale, country.key),
             })),
           ]}
         />
@@ -912,7 +968,7 @@ function CrossAnalysis({ data }: { data: AnalyticsResponse['crossBreakdowns'] })
             }}
             className="px-2 text-[12px] font-medium text-accent hover:underline"
           >
-            清除筛选
+            {t('analytics.filter.clear')}
           </button>
         ) : null}
       </div>
@@ -962,13 +1018,21 @@ function filteredTargets(
 }
 
 function SourceTable({ rows }: { rows: SourceBreakdown[] }) {
+  const t = useAdminT();
   return (
     <ResponsiveTable
-      headers={['来源', '进入页面', '按钮点击', '联系点击', '联系 / 进入', '主要联系方式']}
+      headers={[
+        t('analytics.source'),
+        t('analytics.pageViews'),
+        t('analytics.entryClicks'),
+        t('analytics.leads'),
+        t('analytics.leadsPerView'),
+        t('analytics.topChannel'),
+      ]}
     >
       {rows.map((row) => (
         <tr key={row.key} className="border-b border-border last:border-0">
-          <td className="py-3 font-medium text-fg">{sourceLabel(row.key)}</td>
+          <td className="py-3 font-medium text-fg">{sourceLabel(t, row.key)}</td>
           <NumberCell value={row.pageViews} />
           <NumberCell value={row.clicks} />
           <NumberCell value={row.leads} />
@@ -983,6 +1047,8 @@ function SourceTable({ rows }: { rows: SourceBreakdown[] }) {
 }
 
 function CountryTable({ rows }: { rows: CountryBreakdown[] }) {
+  const t = useAdminT();
+  const locale = useLocale();
   const [expanded, setExpanded] = useState<string | null>(rows[0]?.key ?? null);
   return (
     <div className="flex flex-col gap-2">
@@ -996,28 +1062,35 @@ function CountryTable({ rows }: { rows: CountryBreakdown[] }) {
             onClick={() => setExpanded(expanded === country.key ? null : country.key)}
             className="grid w-full grid-cols-[1fr_repeat(3,80px)] items-center gap-2 bg-bg px-3 py-3 text-left hover:bg-surface-hover"
           >
-            <span className="font-medium text-fg">{countryLabel(country.key)}</span>
+            <span className="font-medium text-fg">{countryLabel(t, locale, country.key)}</span>
             <span className="text-right font-mono text-fg">
               {country.pageViews}
-              <small className="ml-1 font-sans text-muted">进入</small>
+              <small className="ml-1 font-sans text-muted">{t('analytics.stage.visit')}</small>
             </span>
             <span className="text-right font-mono text-fg">
               {country.clicks}
-              <small className="ml-1 font-sans text-muted">点击</small>
+              <small className="ml-1 font-sans text-muted">{t('analytics.stage.click')}</small>
             </span>
             <span className="text-right font-mono text-fg">
               {country.leads}
-              <small className="ml-1 font-sans text-muted">联系</small>
+              <small className="ml-1 font-sans text-muted">{t('analytics.stage.contact')}</small>
             </span>
           </button>
           {expanded === country.key ? (
             <div className="border-t border-border px-3 py-2">
               <ResponsiveTable
-                headers={['来源', '进入页面', '按钮点击', '联系点击', '联系 / 进入', '联系方式']}
+                headers={[
+                  t('analytics.source'),
+                  t('analytics.pageViews'),
+                  t('analytics.entryClicks'),
+                  t('analytics.leads'),
+                  t('analytics.leadsPerView'),
+                  t('analytics.channel'),
+                ]}
               >
                 {country.sources.map((source) => (
                   <tr key={source.key} className="border-b border-border last:border-0">
-                    <td className="py-2 text-fg">{sourceLabel(source.key)}</td>
+                    <td className="py-2 text-fg">{sourceLabel(t, source.key)}</td>
                     <NumberCell value={source.pageViews} />
                     <NumberCell value={source.clicks} />
                     <NumberCell value={source.leads} />
@@ -1040,12 +1113,23 @@ function CountryTable({ rows }: { rows: CountryBreakdown[] }) {
 }
 
 function TargetTable({ rows }: { rows: TargetBreakdown[] }) {
+  const t = useAdminT();
   return (
-    <ResponsiveTable headers={['联系方式', '类型', '总点击', '联系点击', '来源分布']}>
+    <ResponsiveTable
+      headers={[
+        t('analytics.channel'),
+        t('analytics.type'),
+        t('analytics.totalClicks'),
+        t('analytics.leads'),
+        t('analytics.sourceMix'),
+      ]}
+    >
       {rows.map((row) => (
         <tr key={row.id} className="border-b border-border last:border-0">
-          <td className="py-3 font-medium text-fg">{row.title}</td>
-          <td className="py-3 text-muted">{row.isLead ? '联系类' : '内容类'}</td>
+          <td className="py-3 font-medium text-fg">{row.title ?? t('analytics.deletedEntry')}</td>
+          <td className="py-3 text-muted">
+            {row.isLead ? t('analytics.type.contact') : t('analytics.type.content')}
+          </td>
           <NumberCell value={row.clicks} />
           <NumberCell value={row.leads} />
           <td className="min-w-64 py-3 pl-4">
@@ -1055,7 +1139,7 @@ function TargetTable({ rows }: { rows: TargetBreakdown[] }) {
                   key={source.key}
                   className="rounded-full bg-surface-hover px-2 py-1 text-[12px] text-fg"
                 >
-                  {sourceLabel(source.key)} · {source.clicks}
+                  {sourceLabel(t, source.key)} · {source.clicks}
                 </span>
               ))}
             </div>
@@ -1092,6 +1176,7 @@ function NumberCell({ value }: { value: number }) {
   return <td className="py-3 text-right font-mono text-fg">{value}</td>;
 }
 function TargetPills({ targets }: { targets: ContactTarget[] }) {
+  const t = useAdminT();
   const contacts = targets.filter((target) => target.isLead && target.leads > 0);
   return contacts.length ? (
     <div className="flex flex-wrap gap-1.5">
@@ -1100,16 +1185,17 @@ function TargetPills({ targets }: { targets: ContactTarget[] }) {
           key={target.id}
           className="rounded-full bg-accent-soft px-2 py-1 text-[12px] text-accent"
         >
-          {target.title} · {target.leads}
+          {target.title ?? t('analytics.deletedEntry')} · {target.leads}
         </span>
       ))}
     </div>
   ) : (
-    <span className="text-[12px] text-muted">暂无联系点击</span>
+    <span className="text-[12px] text-muted">{t('analytics.empty.leadClicks')}</span>
   );
 }
 function EmptyData() {
-  return <p className="py-4 text-center text-[13px] text-muted">暂无数据</p>;
+  const t = useAdminT();
+  return <p className="py-4 text-center text-[13px] text-muted">{t('common.noData')}</p>;
 }
 
 function CompactDimension({
@@ -1119,15 +1205,20 @@ function CompactDimension({
   title: string;
   rows: AnalyticsResponse['dimensions']['devices'];
 }) {
+  const t = useAdminT();
   return (
     <Panel title={title}>
       {rows.length ? (
         <div className="flex flex-col gap-2">
           {rows.slice(0, 5).map((row) => (
             <div key={row.key} className="grid grid-cols-[1fr_auto_auto] gap-3 text-[13px]">
-              <span className="text-fg">{row.key || '未知'}</span>
-              <span className="font-mono text-fg">{row.pageViews} 进入</span>
-              <span className="font-mono text-accent">{row.leads} 联系</span>
+              <span className="text-fg">{row.key || t('analytics.unknown')}</span>
+              <span className="font-mono text-fg">
+                {t('analytics.visitsCount', { count: row.pageViews })}
+              </span>
+              <span className="font-mono text-accent">
+                {t('analytics.leadsCount', { count: row.leads })}
+              </span>
             </div>
           ))}
         </div>
@@ -1175,12 +1266,13 @@ function MetricCard({
   change?: number | null;
   changeAsPoints?: boolean;
 }) {
+  const locale = useLocale();
   return (
     <div className="rounded-[var(--radius-panel)] border border-border bg-surface p-4">
       <p className="text-[13px] text-muted">{label}</p>
       <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
         <p className="font-mono text-2xl font-semibold text-fg">
-          {value.toLocaleString('zh-CN', {
+          {formatNumber(value, locale, {
             minimumFractionDigits: precision,
             maximumFractionDigits: precision,
           })}

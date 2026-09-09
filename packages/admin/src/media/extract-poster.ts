@@ -1,3 +1,4 @@
+import { translateAdmin } from '../i18n/runtime.js';
 /**
  * 在浏览器端用 canvas 从视频首帧抽出封面。
  *
@@ -51,7 +52,7 @@ function once(target: HTMLVideoElement, event: string, timeoutMs: number): Promi
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup();
-      reject(new Error(`等待 ${event} 超时`));
+      reject(new Error(translateAdmin('editor.poster.timeout', { event })));
     }, timeoutMs);
 
     const onDone = () => {
@@ -60,7 +61,7 @@ function once(target: HTMLVideoElement, event: string, timeoutMs: number): Promi
     };
     const onError = () => {
       cleanup();
-      reject(new Error(`视频加载失败`));
+      reject(new Error(translateAdmin('editor.poster.videoFailed')));
     };
     const cleanup = () => {
       clearTimeout(timer);

@@ -17,7 +17,8 @@ export interface ProfileHighlightMetric {
 
 export interface ProfileHighlightTarget {
   id: string;
-  title: string;
+  /** 条目已被删除时为 null，占位文案由前端按界面语言渲染。 */
+  title: string | null;
   platform: string;
   leads: number;
 }
@@ -39,7 +40,8 @@ type HighlightMetricRow = {
 type HighlightTargetRow = {
   profile_id: string;
   id: string;
-  title: string;
+  /** 条目已被删除时为 null，占位文案由前端按界面语言渲染。 */
+  title: string | null;
   platform: string;
   leads: number;
 };
@@ -177,7 +179,7 @@ async function queryTopTargets(sql: Sql, scope: QueryScope): Promise<HighlightTa
       select
         c.profile_id,
         c.target_id::text as id,
-        coalesce(b.title, '已删除条目') as title,
+        b.title as title,
         coalesce(b.platform, case when b.kind = 'link' then 'custom' else 'unknown' end, 'unknown') as platform,
         count(*)::int as leads
       from clicks c

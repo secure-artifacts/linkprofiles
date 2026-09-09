@@ -74,7 +74,7 @@ test('访问墓碑中的 short_name 返回 404，而不是另一个陌生人的�
 
   const res = await visit('mimnz');
   expect(res.statusCode).toBe(404);
-  expect(res.body).toContain('页面不存在');
+  expect(res.body).toContain('Page not found');
 });
 
 test('新建用户抢不到墓碑里的 short_name', async () => {

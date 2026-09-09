@@ -5,6 +5,7 @@ import {
   inferPlatformFromUrl,
 } from '@link-profile/shared';
 import type { EditableProfile, EntryDraft, ProfileFields } from '../../api/types.js';
+import { translateAdmin } from '../../i18n/runtime.js';
 
 /**
  * 编辑器里的草稿状态。
@@ -98,6 +99,7 @@ export function draftToProfileView(draft: Draft, live: LiveMedia = {}): ProfileV
     displayName: draft.fields.displayName,
     bio: draft.fields.bio,
     bioTypewriter: draft.fields.bioTypewriter,
+    language: draft.fields.pageLanguage,
     layout: draft.fields.layout,
     theme: draft.fields.theme,
     solidBackground: draft.fields.solidBackground,
@@ -121,7 +123,7 @@ export function draftToProfileView(draft: Draft, live: LiveMedia = {}): ProfileV
         {
           id: entry.id,
           kind: entry.kind,
-          title: entry.title || '未命名条目',
+          title: entry.title || translateAdmin('entries.untitledEntry'),
           subtitle: entry.subtitle,
           url: url ?? '',
           isLead: entry.isLead,

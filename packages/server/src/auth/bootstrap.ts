@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { hashPassword } from './passwords.js';
 import { accountNameSchema } from '@link-profile/shared';
+import { DEFAULT_LOCALE } from '@link-profile/i18n';
 
 export interface BootstrapOptions {
   account: string | undefined;
@@ -37,7 +38,9 @@ export async function bootstrapSuperadmin(
     role: 'superadmin',
     account: normalizedAccount,
     passwordHash: await hashPassword(password),
-    label: '超级管理员',
+    label: 'Superadmin',
+    // 没有创建者可继承，按「拿不到语言上下文时一律英语」给默认值。
+    uiLanguage: DEFAULT_LOCALE,
   });
 
   return 'created';

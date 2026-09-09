@@ -6,6 +6,7 @@ import { Button } from '../ui/Button.js';
 import { Dialog } from '../ui/Dialog.js';
 import { Input, PasswordInput } from '../ui/Input.js';
 import { useToast } from '../ui/Toast.js';
+import { useAdminT } from '../i18n/runtime.js';
 
 export function ChangeAccountModal({
   open,
@@ -18,6 +19,7 @@ export function ChangeAccountModal({
   onClose: () => void;
   onSignedOut: () => void;
 }) {
+  const t = useAdminT();
   const toast = useToast();
   const [account, setAccount] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -36,8 +38,8 @@ export function ChangeAccountModal({
     const parsed = validateAccountName(account);
     if (!parsed.ok) return setError(parsed.error);
     const next = parsed.value;
-    if (!currentPassword) return setError('请输入当前密码');
-    if (next === currentAccount) return setError('新登录用户名与当前相同');
+    if (!currentPassword) return setError(t('common.validation.currentPasswordRequired'));
+    if (next === currentAccount) return setError(t('account.change.same'));
 
     setSubmitting(true);
     setError(null);
@@ -46,7 +48,7 @@ export function ChangeAccountModal({
         method: 'PUT',
         body: { account: next, currentPassword },
       });
-      toast.success(`登录用户名已改为 ${next}，请重新登录`);
+      toast.success(t('account.change.done', { account: next }));
       onSignedOut();
     } catch (err) {
       toast.error((err as Error).message);
@@ -59,36 +61,33 @@ export function ChangeAccountModal({
     <Dialog
       open={open}
       onOpenChange={(value) => !value && onClose()}
-      title="修改登录用户名"
+      title={t('account.change.title')}
       footer={
         <>
           <Button variant="default" onClick={onClose}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" loading={submitting} onClick={() => void submit()}>
-            确认修改
+            {t('account.change.submit')}
           </Button>
         </>
       }
     >
-      <Alert
-        tone="info"
-        message="修改后旧用户名立即失效，所有设备都会退出；个人页地址、数据和 API Key 不会改变。"
-      />
+      <Alert tone="info" message={t('account.change.description')} />
       <div className="mt-4 flex flex-col gap-1.5">
-        <label className="text-[13px] font-medium text-fg">新登录用户名</label>
+        <label className="text-[13px] font-medium text-fg">{t('account.change.field')}</label>
         <Input
           autoComplete="off"
           value={account}
           onChange={(event) => setAccount(event.target.value.toLowerCase())}
-          placeholder="例如 lisa.usa"
+          placeholder={t('common.accountExample')}
         />
-        <span className="text-[12px] text-muted">
-          3–32 位；支持小写字母、数字、点、下划线和横线。
-        </span>
+        <span className="text-[12px] text-muted">{t('account.change.rule')}</span>
       </div>
       <div className="mt-4 flex flex-col gap-1.5">
-        <label className="text-[13px] font-medium text-fg">当前密码</label>
+        <label className="text-[13px] font-medium text-fg">
+          {t('common.field.currentPassword')}
+        </label>
         <PasswordInput
           autoComplete="current-password"
           value={currentPassword}

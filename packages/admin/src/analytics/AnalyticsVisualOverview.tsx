@@ -1,22 +1,24 @@
 import type { AnalyticsResponse } from '../api/types.js';
 import { percent, sourceLabel } from './labels.js';
+import { useAdminT, useLocale } from '../i18n/runtime.js';
 
 type CrossBreakdowns = AnalyticsResponse['crossBreakdowns'];
 
 export function AnalyticsVisualOverview({ data }: { data: CrossBreakdowns }) {
+  const t = useAdminT();
   return (
     <section aria-labelledby="analytics-overview-title">
       <div className="mb-3">
         <h2 id="analytics-overview-title" className="text-base font-semibold text-fg">
-          转化概览
+          {t('overview.title')}
         </h2>
-        <p className="mt-1 text-[12px] text-muted">先看分布和差异，再到下方查看完整明细。</p>
+        <p className="mt-1 text-[12px] text-muted">{t('overview.hint')}</p>
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
-        <VisualCard title="来源转化" description="各来源带来的进入页面与联系点击">
+        <VisualCard title={t('overview.sources.title')} description={t('overview.sources.hint')}>
           <SourceRanking rows={data.sources} />
         </VisualCard>
-        <VisualCard title="联系方式排行" description="联系按钮点击量及主要来源">
+        <VisualCard title={t('overview.channels.title')} description={t('overview.channels.hint')}>
           <ContactRanking rows={data.targets} />
         </VisualCard>
       </div>
@@ -25,6 +27,7 @@ export function AnalyticsVisualOverview({ data }: { data: CrossBreakdowns }) {
 }
 
 function SourceRanking({ rows }: { rows: CrossBreakdowns['sources'] }) {
+  const t = useAdminT();
   const topRows = rows.slice(0, 8);
   const maxViews = Math.max(1, ...topRows.map((row) => row.pageViews));
   if (!topRows.length) return <EmptyVisual />;
@@ -34,9 +37,9 @@ function SourceRanking({ rows }: { rows: CrossBreakdowns['sources'] }) {
       {topRows.map((row) => (
         <div key={row.key}>
           <div className="mb-1.5 flex items-baseline justify-between gap-3 text-[13px]">
-            <span className="truncate font-medium text-fg">{sourceLabel(row.key)}</span>
+            <span className="truncate font-medium text-fg">{sourceLabel(t, row.key)}</span>
             <span className="shrink-0 font-mono text-fg">
-              {row.pageViews} 进入 · <span className="text-accent">{row.leads} 联系</span>
+              {t('analytics.viewsAndLeads', { views: row.pageViews, leads: row.leads })}
             </span>
           </div>
           <div className="relative h-2 overflow-hidden rounded-full bg-surface-hover">
@@ -50,19 +53,20 @@ function SourceRanking({ rows }: { rows: CrossBreakdowns['sources'] }) {
             />
           </div>
           <p className="mt-1 text-right text-[11px] text-muted">
-            联系 / 进入 {percent(row.leadRate)}
+            {t('analytics.leadPerVisit', { percent: percent(row.leadRate) })}
           </p>
         </div>
       ))}
       <div className="flex gap-4 border-t border-border pt-2 text-[11px] text-muted">
-        <Key color="bg-accent/25" label="进入页面" />
-        <Key color="bg-accent" label="联系点击" />
+        <Key color="bg-accent/25" label={t('analytics.pageViews')} />
+        <Key color="bg-accent" label={t('analytics.leads')} />
       </div>
     </div>
   );
 }
 
 function ContactRanking({ rows }: { rows: CrossBreakdowns['targets'] }) {
+  const t = useAdminT();
   const contacts = rows.filter((row) => row.isLead).slice(0, 8);
   const totalClicks = contacts.reduce((sum, row) => sum + row.clicks, 0);
   const maxClicks = Math.max(1, ...contacts.map((row) => row.clicks));
@@ -82,7 +86,9 @@ function ContactRanking({ rows }: { rows: CrossBreakdowns['targets'] }) {
               <div className="mb-1.5 flex items-baseline justify-between gap-2">
                 <span className="truncate text-[13px] font-medium text-fg">{row.title}</span>
                 <span className="shrink-0 text-[11px] text-muted">
-                  {primarySource ? `主要来自 ${sourceLabel(primarySource.key)}` : '暂无来源'}
+                  {primarySource
+                    ? t('overview.mostlyFrom', { source: sourceLabel(t, primarySource.key) })
+                    : t('overview.noSource')}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-surface-hover">
@@ -115,7 +121,8 @@ function Key({ color, label }: { color: string; label: string }) {
 }
 
 function EmptyVisual() {
-  return <p className="py-8 text-center text-[13px] text-muted">当前时间范围暂无数据</p>;
+  const t = useAdminT();
+  return <p className="py-8 text-center text-[13px] text-muted">{t('analytics.empty.range')}</p>;
 }
 
 function VisualCard({

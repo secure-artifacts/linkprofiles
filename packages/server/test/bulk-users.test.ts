@@ -86,7 +86,7 @@ test('个别行出错不影响其余行，结果带行号与原因', async () =>
   expect(body.created.map((c: { line: number }) => c.line)).toEqual([1, 6]);
 
   expect(body.failed).toEqual([
-    { line: 2, error: '账号 mimnz 已存在' },
+    { line: 2, error: 'The account mimnz already exists' },
     { line: 3, error: 'short_name 长度需在 3–30 位之间' },
     { line: 4, error: '密码为空' },
     { line: 5, error: '列数不对，应为四列：用户名称、账号、short_name、密码' },
@@ -119,8 +119,8 @@ test('同一批里的重复也被挡住，先到先得', async () => {
   const body = res.json();
   expect(body.createdCount).toBe(1);
   expect(body.failed).toEqual([
-    { line: 2, error: '账号 samename 已存在' },
-    { line: 3, error: 'short_name first-one 已被占用' },
+    { line: 2, error: 'The account samename already exists' },
+    { line: 3, error: 'The short_name first-one is already taken' },
   ]);
 });
 
@@ -180,7 +180,10 @@ test('批量创建同样抢不到墓碑里的 short_name', async () => {
 
   expect(res.json().createdCount).toBe(0);
   expect(res.json().failed).toEqual([
-    { line: 1, error: 'short_name taken-name 属于一个已删除的个人页，永不再分配' },
+    {
+      line: 1,
+      error: 'The short_name taken-name belongs to a deleted profile page and is never reassigned',
+    },
   ]);
 });
 

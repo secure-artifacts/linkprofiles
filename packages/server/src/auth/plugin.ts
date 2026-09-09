@@ -2,6 +2,7 @@ import cookie from '@fastify/cookie';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { resolveSession, SESSION_COOKIE, type CurrentUser } from './sessions.js';
+import { fail } from '../http/errors.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -26,7 +27,7 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
   app.decorate('requireAuth', async (req: FastifyRequest, reply: FastifyReply) => {
     if (!req.currentUser) {
       // 在任何资源查找之前就拒绝，响应里不含任何「资源是否存在」的线索。
-      await reply.code(401).send({ error: 'unauthorized' });
+      await fail(reply, 401, 'unauthorized');
     }
   });
 });

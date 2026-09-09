@@ -56,6 +56,13 @@ export const profiles = pgTable(
     /** 简介逐字打出来。关掉、或访客设了减少动效时，直接静态显示全文。 */
     bioTypewriter: boolean().notNull().default(false),
 
+    /**
+     * 页面语言。属于个人页而不属于账号，同 short_name —— 一个账号名下的多个
+     * 个人页可以各是一种语言。它决定 HTML 语言声明与页面上的固定文案，
+     * **不跟随访客的浏览器语言**，见 ADR-0020。存 text 的理由同 users.ui_language。
+     */
+    pageLanguage: text().notNull().default('zh-Hans'),
+
     layout: layoutEnum().notNull().default('classic'),
     theme: themeEnum().notNull().default('dawn'),
 

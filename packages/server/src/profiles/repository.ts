@@ -1,3 +1,4 @@
+import { LEGACY_LOCALE, normalizeLocale } from '@link-profile/i18n';
 import type { ButtonView, ProfileView } from '@link-profile/profile-ui';
 import { loadMediaByIds, toMediaSource, toVideoSource } from './media-view.js';
 import {
@@ -55,6 +56,7 @@ export async function findProfileByShortName(
       displayName: profiles.displayName,
       bio: profiles.bio,
       bioTypewriter: profiles.bioTypewriter,
+      pageLanguage: profiles.pageLanguage,
       layout: profiles.layout,
       theme: profiles.theme,
       solidBackground: profiles.solidBackground,
@@ -90,6 +92,7 @@ export async function findProfileByShortName(
       displayName: row.displayName,
       bio: row.bio,
       bioTypewriter: row.bioTypewriter,
+      language: normalizeLocale(row.pageLanguage) ?? LEGACY_LOCALE,
       layout: row.layout,
       theme: row.theme,
       solidBackground: row.solidBackground,

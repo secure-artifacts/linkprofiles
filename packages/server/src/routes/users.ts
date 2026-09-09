@@ -4,19 +4,21 @@ import { and, count, eq, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { FORBIDDEN, loadTargetUser, requireCapability, UNAUTHORIZED } from '../auth/guards.js';
+import { SUPPORTED_LOCALES } from '@link-profile/i18n';
+import { loadTargetUser, requireCapability } from '../auth/guards.js';
 import { hashPassword } from '../auth/passwords.js';
 import { deleteSessionsForUser } from '../auth/sessions.js';
 import { deleteUserAccount } from '../profiles/deletion.js';
 import { findUserConflict } from '../users/conflicts.js';
 import { visibleUsersFilter } from '../auth/policy.js';
 import { renameAccount } from '../users/rename-account.js';
+import { fail, forbidden, unauthorized } from '../http/errors.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const createUserBody = z.object({
   account: accountNameSchema,
-  password: z.string().min(8, '密码至少 8 位'),
+  password: z.string().min(8, 'field.password.min'),
   /** 用户名称：后台中文备注，可重复，不做唯一约束 */
   label: z.string().trim().default(''),
   shortName: shortNameSchema,
@@ -25,7 +27,7 @@ const createUserBody = z.object({
 });
 
 const resetPasswordBody = z.object({
-  newPassword: z.string().min(8, '密码至少 8 位'),
+  newPassword: z.string().min(8, 'field.password.min'),
 });
 
 const assignOwnerBody = z.object({
@@ -35,6 +37,7 @@ const assignOwnerBody = z.object({
 
 const updateUserBody = z.object({
   label: z.string().trim().optional(),
+  uiLanguage: z.enum(SUPPORTED_LOCALES).optional(),
 });
 
 const updateAccountBody = z.object({ account: accountNameSchema });
@@ -48,6 +51,7 @@ const publicColumns = {
   id: users.id,
   account: users.account,
   label: users.label,
+  uiLanguage: users.uiLanguage,
   owningAdminId: users.owningAdminId,
   createdAt: users.createdAt,
 };
@@ -87,11 +91,11 @@ export async function userRoutes(app: FastifyInstance) {
   );
 
   app.get<{ Params: { id: string } }>('/users/:id', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
+    if (!req.currentUser) return unauthorized(reply);
+    if (!UUID.test(req.params.id)) return forbidden(reply);
 
     const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'read');
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     const [row] = await app.db
       .select({ ...publicColumns, profileCount: count(profiles.id) })
@@ -105,12 +109,12 @@ export async function userRoutes(app: FastifyInstance) {
   app.post('/users', { onRequest: [requireCapability('user:create')] }, async (req, reply) => {
     const parsed = createUserBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
     const { account, password, label, shortName, displayName } = parsed.data;
 
     const conflict = await findUserConflict(app.db, { account, shortName });
-    if (conflict) return reply.code(409).send({ error: conflict });
+    if (conflict) return fail(reply, 409, conflict);
 
     const passwordHash = await hashPassword(password);
     // 账号与它的第一个个人页一起建，同一个事务：建了账号却没有页面，
@@ -123,6 +127,8 @@ export async function userRoutes(app: FastifyInstance) {
           account,
           passwordHash,
           label,
+          // 新账号继承创建者的界面语言：菲律宾管理员开的号天然是菲律宾语。
+          uiLanguage: req.currentUser!.uiLanguage,
           // 创建者自动成为归属管理员，见 ADR-0005。
           owningAdminId: req.currentUser!.id,
         })
@@ -134,6 +140,8 @@ export async function userRoutes(app: FastifyInstance) {
           userId: account_!.id,
           shortName,
           displayName: displayName || shortName,
+          // 页面语言跟所有者的界面语言，所有者本人又刚继承了创建者的。
+          pageLanguage: req.currentUser!.uiLanguage,
         })
         .returning({
           id: profiles.id,
@@ -148,23 +156,24 @@ export async function userRoutes(app: FastifyInstance) {
   });
 
   app.patch<{ Params: { id: string } }>('/users/:id', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
+    if (!req.currentUser) return unauthorized(reply);
+    if (!UUID.test(req.params.id)) return forbidden(reply);
 
     const parsed = updateUserBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
 
     // 这里只改账号字段。个人页地址归 `PATCH /profiles/:id/short-name` 管，
     // 它自带二次确认与变更流水，见 ADR-0010。
     const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'update');
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     const [row] = await app.db
       .update(users)
       .set({
         ...(parsed.data.label !== undefined ? { label: parsed.data.label } : {}),
+        ...(parsed.data.uiLanguage !== undefined ? { uiLanguage: parsed.data.uiLanguage } : {}),
         updatedAt: new Date(),
       })
       .where(eq(users.id, target.id))
@@ -175,16 +184,16 @@ export async function userRoutes(app: FastifyInstance) {
 
   /** 管理员修改名下用户的登录用户名；本人自助走 /auth/account 并验证密码。 */
   app.put<{ Params: { id: string } }>('/users/:id/account', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
-    if (req.currentUser.role === 'user') return reply.code(403).send(FORBIDDEN);
+    if (!req.currentUser) return unauthorized(reply);
+    if (!UUID.test(req.params.id)) return forbidden(reply);
+    if (req.currentUser.role === 'user') return forbidden(reply);
 
     const parsed = updateAccountBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
     const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'update');
-    if (!target || target.role !== 'user') return reply.code(403).send(FORBIDDEN);
+    if (!target || target.role !== 'user') return forbidden(reply);
 
     const renamed = await renameAccount(app.db, {
       userId: target.id,
@@ -192,7 +201,7 @@ export async function userRoutes(app: FastifyInstance) {
       account: parsed.data.account,
     });
     if (renamed.status === 'account_taken') {
-      return reply.code(409).send({ error: 'account_taken' });
+      return fail(reply, 409, 'account_taken');
     }
     if (renamed.status === 'changed') await deleteSessionsForUser(app.db, target.id);
     return { account: renamed.status === 'not_found' ? parsed.data.account : renamed.account };
@@ -206,11 +215,11 @@ export async function userRoutes(app: FastifyInstance) {
     '/users/:id/owner',
     { onRequest: [requireCapability('user:assign')] },
     async (req, reply) => {
-      if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
+      if (!UUID.test(req.params.id)) return forbidden(reply);
 
       const parsed = assignOwnerBody.safeParse(req.body);
       if (!parsed.success) {
-        return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+        return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
       }
 
       const [target] = await app.db
@@ -218,7 +227,7 @@ export async function userRoutes(app: FastifyInstance) {
         .from(users)
         .where(and(eq(users.id, req.params.id), eq(users.role, 'user')))
         .limit(1);
-      if (!target) return reply.code(403).send(FORBIDDEN);
+      if (!target) return forbidden(reply);
 
       // 只能指派给真正的管理员，不能塞一个用户或超级管理员的 id 进去。
       if (parsed.data.owningAdminId !== null) {
@@ -227,7 +236,7 @@ export async function userRoutes(app: FastifyInstance) {
           .from(users)
           .where(and(eq(users.id, parsed.data.owningAdminId), eq(users.role, 'admin')))
           .limit(1);
-        if (!admin) return reply.code(400).send({ error: 'not_an_admin' });
+        if (!admin) return fail(reply, 400, 'not_an_admin');
       }
 
       const [row] = await app.db
@@ -248,17 +257,17 @@ export async function userRoutes(app: FastifyInstance) {
    * **只有管理员与超级管理员能调**，否则用户就能绕开旧密码校验改自己的。
    */
   app.put<{ Params: { id: string } }>('/users/:id/password', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
-    if (req.currentUser.role === 'user') return reply.code(403).send(FORBIDDEN);
+    if (!req.currentUser) return unauthorized(reply);
+    if (!UUID.test(req.params.id)) return forbidden(reply);
+    if (req.currentUser.role === 'user') return forbidden(reply);
 
     const parsed = resetPasswordBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
 
     const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'update');
-    if (!target || target.role !== 'user') return reply.code(403).send(FORBIDDEN);
+    if (!target || target.role !== 'user') return forbidden(reply);
 
     await app.db
       .update(users)
@@ -272,12 +281,12 @@ export async function userRoutes(app: FastifyInstance) {
   });
 
   app.delete<{ Params: { id: string } }>('/users/:id', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    if (!UUID.test(req.params.id)) return reply.code(403).send(FORBIDDEN);
+    if (!req.currentUser) return unauthorized(reply);
+    if (!UUID.test(req.params.id)) return forbidden(reply);
 
     const target = await loadTargetUser(app.db, req.currentUser, req.params.id, 'delete');
     // 用户删不了自己
-    if (!target || req.currentUser.role === 'user') return reply.code(403).send(FORBIDDEN);
+    if (!target || req.currentUser.role === 'user') return forbidden(reply);
 
     await deleteSessionsForUser(app.db, target.id);
     // 名下全部个人页的 short_name 迁入墓碑、媒体文件下架、埋点保留，见 16

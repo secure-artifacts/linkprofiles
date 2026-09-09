@@ -166,7 +166,8 @@ test('视频必须一并提交封面，抽帧失败时降级为手动上传', as
 
   expect(res.statusCode).toBe(400);
   expect(res.json().error).toBe('missing_poster');
-  expect(res.json().message).toContain('手动上传');
+  // 请求没带语言，按「拿不到语言上下文时一律英语」渲染
+  expect(res.json().message).toContain('poster');
 });
 
 test('公开页先渲染封面，视频不自动开始下载，也就当不成 LCP 元素', async () => {

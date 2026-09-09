@@ -1,5 +1,6 @@
 import * as RadixSelect from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
+import { useAdminT } from '../i18n/runtime.js';
 
 export interface SelectOption {
   value: string;
@@ -26,6 +27,7 @@ export function Select({
   disabled,
   ...rest
 }: SelectProps) {
+  const t = useAdminT();
   const heightClass = size === 'sm' ? 'h-8 px-2.5 text-[13px]' : 'h-9 px-3 text-sm';
   return (
     <RadixSelect.Root value={value} onValueChange={onChange} disabled={disabled}>
@@ -50,7 +52,7 @@ export function Select({
         >
           <RadixSelect.Viewport className="p-1">
             {options.length === 0 ? (
-              <div className="px-3 py-2 text-[13px] text-muted">暂无数据</div>
+              <div className="px-3 py-2 text-[13px] text-muted">{t('common.noData')}</div>
             ) : (
               options.map((opt) => (
                 <RadixSelect.Item

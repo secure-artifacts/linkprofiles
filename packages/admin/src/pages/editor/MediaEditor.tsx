@@ -18,6 +18,7 @@ import { Button } from '../../ui/Button.js';
 import { Slider } from '../../ui/Slider.js';
 import { useToast } from '../../ui/Toast.js';
 import type { Draft, LiveMedia, PendingMedia } from './draft.js';
+import { useAdminT } from '../../i18n/runtime.js';
 
 interface MediaEditorProps {
   draft: Draft;
@@ -32,22 +33,27 @@ interface MediaEditorProps {
  * 上传之前就摆出来的要求清单。数值全部取自既有常量，不另抄一份 ——
  * 抄一份的下场是限制改了、提示还停在旧数字上，比不写更糟。
  */
-const AVATAR_SPECS = [
-  `图片：JPG / PNG / WebP / AVIF，不超过 ${mb(IMAGE_MAX_BYTES)}`,
-  `裁切成 1:1，最终按长边 ${IMAGE_MAX_EDGE.avatar}px 输出`,
-  `或视频：mp4，不超过 ${mb(VIDEO_MAX_BYTES)}、${VIDEO_MAX_DURATION_MS / 1000} 秒，页面上循环播放，默认静音`,
+type T = ReturnType<typeof useAdminT>;
+
+const avatarSpecs = (t: T) => [
+  t('media.spec.image', { max: mb(IMAGE_MAX_BYTES) }),
+  t('media.spec.cropSquare', { edge: IMAGE_MAX_EDGE.avatar }),
+  t('media.spec.video', {
+    max: mb(VIDEO_MAX_BYTES),
+    seconds: VIDEO_MAX_DURATION_MS / 1000,
+  }),
 ];
 
-const BACKGROUND_SPECS = [
-  `JPG / PNG / WebP / AVIF，不超过 ${mb(IMAGE_MAX_BYTES)}`,
-  `裁切成 375:812（手机竖屏），最终按长边 ${IMAGE_MAX_EDGE.background}px 输出`,
-  '只收图片，不能放视频',
+const backgroundSpecs = (t: T) => [
+  t('media.spec.imagePlain', { max: mb(IMAGE_MAX_BYTES) }),
+  t('media.spec.cropPortrait', { edge: IMAGE_MAX_EDGE.background }),
+  t('media.imagesOnly'),
 ];
 
-const BANNER_SPECS = [
-  `JPG / PNG / WebP / AVIF，不超过 ${mb(IMAGE_MAX_BYTES)}`,
-  `裁切成 3:1，最终按长边 ${IMAGE_MAX_EDGE.banner}px 输出`,
-  '只用于 Banner 布局，与头像位、背景图互不替换',
+const bannerSpecs = (t: T) => [
+  t('media.spec.imagePlain', { max: mb(IMAGE_MAX_BYTES) }),
+  t('media.spec.cropBanner', { edge: IMAGE_MAX_EDGE.banner }),
+  t('media.banner.only'),
 ];
 
 /** 待裁切的图片。裁完才进 pending，取消则整个丢弃。 */
@@ -66,6 +72,7 @@ interface CropTask {
  * 视频不得成为 LCP 元素）。抽不出来就降级为要求手动上传一张封面图。
  */
 export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: MediaEditorProps) {
+  const t = useAdminT();
   const toast = useToast();
   const [extracting, setExtracting] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
@@ -112,7 +119,10 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
       if (file.size > VIDEO_MAX_BYTES) {
         failSlot(
           'avatar',
-          `视频不能超过 ${mb(VIDEO_MAX_BYTES)}，这个文件有 ${(file.size / 1024 / 1024).toFixed(1)} MB`,
+          t('media.video.tooLarge', {
+            max: mb(VIDEO_MAX_BYTES),
+            size: (file.size / 1024 / 1024).toFixed(1),
+          }),
         );
         return;
       }
@@ -216,8 +226,8 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MediaSlot
-          label="头像位"
-          hint="拖进来或点选。图片会先进裁切编辑器；也可以放一段带声音的短视频。"
+          label={t('media.slot.avatar')}
+          hint={t('media.slot.avatar.hint')}
           accept="image/*,video/mp4"
           previewUrl={avatarPreview}
           previewIsVideo={avatarIsVideo}
@@ -229,7 +239,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
           {...(sources.avatar && draft.pendingAvatar && !avatarIsVideo
             ? { onRecrop: () => recrop('avatar') }
             : {})}
-          specs={AVATAR_SPECS}
+          specs={avatarSpecs(t)}
           {...(silentVideo
             ? { notice: '这段视频没有声音，页面右上角那个静音按钮点了也不会有动静。' }
             : {})}
@@ -242,21 +252,17 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
         <MediaSlot
           label="Banner 图"
           hint="Banner 布局顶部的独立横幅。不会再自动使用头像，可单独更换。"
-          specs={BANNER_SPECS}
+          specs={bannerSpecs(t)}
           accept="image/*"
           previewUrl={bannerPreview}
           previewIsVideo={false}
           shape="banner"
           fileName={
-            cropping?.slot === 'banner'
-              ? '正在调整构图…'
-              : (draft.pendingBanner?.file.name ?? null)
+            cropping?.slot === 'banner' ? '正在调整构图…' : (draft.pendingBanner?.file.name ?? null)
           }
           error={slotErrors.banner ?? null}
           onPick={pickBanner}
-          {...(sources.banner && draft.pendingBanner
-            ? { onRecrop: () => recrop('banner') }
-            : {})}
+          {...(sources.banner && draft.pendingBanner ? { onRecrop: () => recrop('banner') } : {})}
           onClear={() => {
             clearSlot('banner');
             onChange({ pendingBanner: null, savedBannerUrl: null });
@@ -265,7 +271,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
         <MediaSlot
           label="背景图"
           hint="拖进来或点选。上传后覆盖主题的背景渐变，条目色与文字色仍然跟着主题走。"
-          specs={BACKGROUND_SPECS}
+          specs={backgroundSpecs(t)}
           accept="image/*"
           previewUrl={backgroundPreview}
           previewIsVideo={false}

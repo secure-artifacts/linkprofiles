@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { requireCapability } from '../auth/guards.js';
 import { hashPassword } from '../auth/passwords.js';
 import { describeConflict, findUserConflict } from '../users/conflicts.js';
+import { errorT } from '@link-profile/i18n/server';
+import { fail, localeOf } from '../http/errors.js';
 
 const bulkBody = z.object({
   /** 从 Google Sheet 粘过来的原文，每行四列制表符分隔 */
@@ -24,9 +26,10 @@ interface BulkFailure {
  */
 export async function bulkUserRoutes(app: FastifyInstance) {
   app.post('/users/bulk', { onRequest: [requireCapability('user:create')] }, async (req, reply) => {
+    const translate = errorT(localeOf(req));
     const parsed = bulkBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
 
     const created: { line: number; id: string; shortName: string }[] = [];
@@ -42,7 +45,7 @@ export async function bulkUserRoutes(app: FastifyInstance) {
       // 与单个创建同一套判定（含墓碑），绕道批量抢注不了已退休的地址
       const conflict = await findUserConflict(app.db, row.value);
       if (conflict) {
-        failed.push({ line: row.line, error: describeConflict(conflict, row.value) });
+        failed.push({ line: row.line, error: describeConflict(translate, conflict, row.value) });
         continue;
       }
 
@@ -56,6 +59,8 @@ export async function bulkUserRoutes(app: FastifyInstance) {
             account: row.value.account,
             passwordHash,
             label: row.value.label,
+            // 界面语言与归属一样继承操作者，批量开号的输入格式不变。
+            uiLanguage: req.currentUser!.uiLanguage,
             // 批量创建的用户归属于操作者，与单个创建同一条规则。
             owningAdminId: req.currentUser!.id,
           })
@@ -67,6 +72,7 @@ export async function bulkUserRoutes(app: FastifyInstance) {
             userId: account!.id,
             shortName: row.value.shortName,
             displayName: row.value.shortName,
+            pageLanguage: req.currentUser!.uiLanguage,
           })
           .returning({ id: profiles.id, shortName: profiles.shortName });
 

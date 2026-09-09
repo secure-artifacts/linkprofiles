@@ -49,7 +49,7 @@ test('不存在的 short_name 返回 404', async () => {
   const res = await ctx.app.inject({ method: 'GET', url: '/nobody-here' });
 
   expect(res.statusCode).toBe(404);
-  expect(res.body).toContain('页面不存在');
+  expect(res.body).toContain('Page not found');
 });
 
 test('short_name 大小写不敏感，不同大小写指向同一个页面', async () => {
@@ -101,7 +101,7 @@ test('系统路径不被个人页路由劫持', async () => {
   // 没有挂任何东西的系统路径直接 404，不去查库
   const unmounted = await ctx.app.inject({ method: 'GET', url: '/_nothing-here' });
   expect(unmounted.statusCode).toBe(404);
-  expect(unmounted.body).toContain('页面不存在');
+  expect(unmounted.body).toContain('Page not found');
 
   // 挂了后台的话 /_admin 是后台自己的响应，无论如何不会是一张个人页
   const admin = await ctx.app.inject({ method: 'GET', url: '/_admin' });

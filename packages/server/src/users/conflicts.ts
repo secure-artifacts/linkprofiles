@@ -1,3 +1,4 @@
+import type { ErrorKey, Translate } from '@link-profile/i18n';
 import { profiles, users } from '@link-profile/shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
@@ -55,17 +56,18 @@ export async function findUserConflict(
   return null;
 }
 
-/** 批量导入按行报错，要的是一句带上具体值的人话，而不是错误码。 */
+/** 批量导入按行报错，要的是一句带上具体值的人话，语言由调用方按请求决定。 */
 export function describeConflict(
+  translate: Translate<ErrorKey>,
   conflict: UserConflict,
   input: { account: string; shortName: string },
 ): string {
   switch (conflict) {
     case 'account_taken':
-      return `账号 ${input.account} 已存在`;
+      return translate('conflict.accountTaken', { account: input.account });
     case 'short_name_taken':
-      return `short_name ${input.shortName} 已被占用`;
+      return translate('conflict.shortNameTaken', { shortName: input.shortName });
     case 'short_name_retired':
-      return `short_name ${input.shortName} 属于一个已删除的个人页，永不再分配`;
+      return translate('conflict.shortNameRetired', { shortName: input.shortName });
   }
 }

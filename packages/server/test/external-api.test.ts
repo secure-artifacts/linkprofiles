@@ -133,3 +133,27 @@ test('只读密钥不能更新，停用后也不能读取', async () => {
   });
   expect(revoked.statusCode).toBe(401);
 });
+
+test('外部调用方的报错固定英语，错误码不随请求头变化', async () => {
+  const key = await createKey(['contacts:read', 'contacts:write']);
+
+  const zhAttempt = await ctx.app.inject({
+    method: 'PATCH',
+    url: `/_api/v1/profiles/${profileId}/contacts`,
+    headers: { authorization: `Bearer ${key.token}`, 'accept-language': 'zh-Hans' },
+    payload: { contacts: { whatsapp: { value: '不是号码' } } },
+  });
+
+  expect(zhAttempt.statusCode).toBe(422);
+  expect(zhAttempt.json().error).toBe('invalid_contact_value');
+  expect(zhAttempt.json().issues[0].message).toBe('That contact value is not in a valid format');
+
+  const filAttempt = await ctx.app.inject({
+    method: 'PATCH',
+    url: `/_api/v1/profiles/${profileId}/contacts`,
+    headers: { authorization: `Bearer ${key.token}`, 'accept-language': 'fil' },
+    payload: { contacts: { whatsapp: { value: '不是号码' } } },
+  });
+
+  expect(filAttempt.json()).toEqual(zhAttempt.json());
+});

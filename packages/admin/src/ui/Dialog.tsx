@@ -1,6 +1,7 @@
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useAdminT } from '../i18n/runtime.js';
 
 interface DialogProps {
   open: boolean;
@@ -22,6 +23,7 @@ export function Dialog({
   children,
   footer,
 }: DialogProps) {
+  const t = useAdminT();
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
@@ -44,7 +46,7 @@ export function Dialog({
               ) : null}
             </div>
             <RadixDialog.Close
-              aria-label="关闭"
+              aria-label={t('common.close')}
               className="rounded-[var(--radius-control)] p-1 text-muted hover:bg-surface-hover hover:text-fg"
             >
               <X className="size-4" />

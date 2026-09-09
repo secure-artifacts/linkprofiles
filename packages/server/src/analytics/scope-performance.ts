@@ -1,5 +1,6 @@
 import type { Sql } from 'postgres';
 import type { QueryScope } from './queries.js';
+import { compareText } from '@link-profile/shared';
 
 export interface VisibleProfile {
   id: string;
@@ -145,11 +146,11 @@ export async function queryScopePerformance(
   }));
 
   accounts.sort(
-    (a, b) => b.leads - a.leads || b.pageViews - a.pageViews || a.account.localeCompare(b.account),
+    (a, b) => b.leads - a.leads || b.pageViews - a.pageViews || compareText(a.account, b.account),
   );
   profiles.sort(
     (a, b) =>
-      b.leads - a.leads || b.pageViews - a.pageViews || a.shortName.localeCompare(b.shortName),
+      b.leads - a.leads || b.pageViews - a.pageViews || compareText(a.shortName, b.shortName),
   );
   return { accounts, profiles };
 }

@@ -14,6 +14,7 @@ import { Dialog } from '../ui/Dialog.js';
 import { Slider } from '../ui/Slider.js';
 import { Spinner } from '../ui/Spinner.js';
 import { useToast } from '../ui/Toast.js';
+import { useAdminT } from '../i18n/runtime.js';
 
 interface CropDialogProps {
   file: File | null;
@@ -38,6 +39,7 @@ const MAX_ZOOM = 4;
  * 一定是满的，公开页那边 `object-fit: cover` 就不会再二次裁一刀。
  */
 export function CropDialog({ file, slot, onCancel, onDone, onPreview }: CropDialogProps) {
+  const t = useAdminT();
   const toast = useToast();
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -198,12 +200,18 @@ export function CropDialog({ file, slot, onCancel, onDone, onPreview }: CropDial
     <Dialog
       open={file !== null}
       onOpenChange={(open) => !open && onCancel()}
-      title={slot === 'avatar' ? '裁切头像' : slot === 'banner' ? '裁切 Banner 图' : '裁切背景图'}
+      title={
+        slot === 'avatar'
+          ? t('editor.crop.title.avatar')
+          : slot === 'banner'
+            ? t('editor.crop.title.banner')
+            : t('editor.crop.title.background')
+      }
       width={560}
       footer={
         <>
           <Button variant="default" onClick={onCancel}>
-            取消
+            {t('editor.crop.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -211,7 +219,7 @@ export function CropDialog({ file, slot, onCancel, onDone, onPreview }: CropDial
             disabled={!image}
             onClick={() => void submit()}
           >
-            使用这一块
+            {t('editor.crop.confirm')}
           </Button>
         </>
       }
@@ -278,7 +286,7 @@ export function CropDialog({ file, slot, onCancel, onDone, onPreview }: CropDial
             max={MAX_ZOOM}
             step={0.01}
             onChange={applyZoom}
-            aria-label="缩放"
+            aria-label={t('editor.crop.zoom')}
           />
           <span className="w-12 shrink-0 text-right font-mono text-[13px] text-fg">
             {zoom.toFixed(2)}×
@@ -294,15 +302,15 @@ export function CropDialog({ file, slot, onCancel, onDone, onPreview }: CropDial
             }}
           >
             <RotateCcw className="size-3.5" />
-            复位
+            {t('editor.crop.reset')}
           </Button>
         </div>
 
         <p className="text-[12px] text-muted">
-          拖动图片调位置，滚轮或滑块缩放。实线框内是裁下来的范围
-          {slot === 'avatar' ? '，虚线圆内是它在页面上真正露出来的部分' : ''}。 裁切在浏览器里完成，
-          <strong className="font-medium text-fg">原图不会保留</strong>
-          ，事后想重裁需要重新上传。
+          {t('editor.crop.hint')}
+          {slot === 'avatar' ? t('editor.crop.hintAvatar') : ''} {t('editor.crop.hintLocal')}
+          <strong className="font-medium text-fg">{t('editor.crop.hintNoOriginal')}</strong>
+          {t('editor.crop.hintReupload')}
         </p>
       </div>
     </Dialog>

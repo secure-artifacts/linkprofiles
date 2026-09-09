@@ -11,7 +11,8 @@ export interface CrossMetrics {
 
 export interface TargetBreakdown {
   id: string;
-  title: string;
+  /** 条目已被删除时为 null，占位文案由前端按界面语言渲染。 */
+  title: string | null;
   platform: string;
   isLead: boolean;
   clicks: number;
@@ -51,7 +52,8 @@ type TargetRow = {
   country: string;
   source: string;
   id: string;
-  title: string;
+  /** 条目已被删除时为 null，占位文案由前端按界面语言渲染。 */
+  title: string | null;
   platform: string;
   is_lead: boolean;
   clicks: number;
@@ -234,7 +236,7 @@ async function queryTargetDetails(sql: Sql, scope: QueryScope): Promise<TargetRo
       coalesce(c.country, '') as country,
       coalesce(c.source, '') as source,
       c.target_id::text as id,
-      coalesce(b.title, '已删除条目') as title,
+      b.title as title,
       coalesce(b.platform, case when b.kind = 'link' then 'custom' else 'unknown' end, 'unknown') as platform,
       bool_or(c.is_lead) as is_lead,
       count(*)::int as clicks,

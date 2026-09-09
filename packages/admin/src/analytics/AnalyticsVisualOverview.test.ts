@@ -44,8 +44,9 @@ describe('AnalyticsVisualOverview', () => {
   it('renders source and contact summaries from the same breakdown', () => {
     const html = renderToStaticMarkup(createElement(AnalyticsVisualOverview, { data }));
 
-    expect(html).toContain('来源转化');
-    expect(html).toContain('联系方式排行');
+    // 组件默认按英文源文渲染，切语言由运行时负责，见 ADR-0021
+    expect(html).toContain('Source conversion');
+    expect(html).toContain('Contact channel ranking');
     expect(html).toContain('TikTok');
     expect(html).toContain('WhatsApp');
   });

@@ -32,7 +32,7 @@ export interface ThemeTokens {
 
 export const THEMES: Record<Theme, ThemeTokens> = {
   dawn: {
-    label: 'Dawn·晨',
+    label: 'Dawn',
     effect: 'standard',
     gradient: ['#FBD9C6', '#EBCBDD', '#D9C6EF'],
     bgend: '#D9C6EF',
@@ -43,7 +43,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '20px',
   },
   harbor: {
-    label: 'Harbor·港',
+    label: 'Harbor',
     effect: 'standard',
     gradient: ['#0B3A46', '#0E2C43', '#12233F'],
     bgend: '#12233F',
@@ -54,7 +54,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '14px',
   },
   moss: {
-    label: 'Moss·苔',
+    label: 'Moss',
     effect: 'standard',
     gradient: ['#17301F', '#25381C', '#33401C'],
     bgend: '#33401C',
@@ -65,7 +65,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '8px',
   },
   ember: {
-    label: 'Ember·炭',
+    label: 'Ember',
     effect: 'standard',
     gradient: ['#3B1B33', '#65291F', '#8A3B22'],
     bgend: '#8A3B22',
@@ -76,7 +76,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '999px',
   },
   slate: {
-    label: 'Slate·石',
+    label: 'Slate',
     effect: 'standard',
     gradient: ['#FAFAFA', '#F1F3F5', '#E6E9EC'],
     bgend: '#E6E9EC',
@@ -87,7 +87,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '6px',
   },
   nocturne: {
-    label: 'Nocturne·夜',
+    label: 'Nocturne',
     effect: 'standard',
     gradient: ['#0A0E27', '#070A1B', '#05060F'],
     bgend: '#05060F',
@@ -98,7 +98,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '16px',
   },
   ocean: {
-    label: 'Ocean·海',
+    label: 'Ocean',
     effect: 'standard',
     gradient: ['#D9F2FF', '#B8DEFF', '#9CC8FF'],
     bgend: '#9CC8FF',
@@ -109,7 +109,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '18px',
   },
   rose: {
-    label: 'Rose·玫瑰',
+    label: 'Rose',
     effect: 'standard',
     gradient: ['#FFE2E8', '#F8C9D6', '#EAB9D1'],
     bgend: '#EAB9D1',
@@ -120,7 +120,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '24px',
   },
   lavender: {
-    label: 'Lavender·薰衣草',
+    label: 'Lavender',
     effect: 'standard',
     gradient: ['#EEE8FF', '#DDD3FF', '#C9BCF4'],
     bgend: '#C9BCF4',
@@ -131,7 +131,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '22px',
   },
   sunset: {
-    label: 'Sunset·落日',
+    label: 'Sunset',
     effect: 'standard',
     gradient: ['#FFE5C2', '#FFC9B0', '#F2A6B3'],
     bgend: '#F2A6B3',
@@ -142,7 +142,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '28px',
   },
   mono: {
-    label: 'Mono·黑白',
+    label: 'Mono',
     effect: 'standard',
     gradient: ['#181818', '#111111', '#080808'],
     bgend: '#080808',
@@ -153,7 +153,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '0px',
   },
   glass: {
-    label: 'Glass·星雾',
+    label: 'Glass Nebula',
     effect: 'liquid-glass',
     gradient: ['#18233F', '#263A68', '#5A3F78'],
     bgend: '#5A3F78',
@@ -164,7 +164,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '26px',
   },
   'glass-ocean': {
-    label: 'Glass·海蓝',
+    label: 'Glass Ocean',
     effect: 'liquid-glass',
     gradient: ['#061B30', '#08384C', '#0A5261'],
     bgend: '#0A5261',
@@ -175,7 +175,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '28px',
   },
   'glass-rose': {
-    label: 'Glass·玫红',
+    label: 'Glass Rose',
     effect: 'liquid-glass',
     gradient: ['#321426', '#53203E', '#6A2B50'],
     bgend: '#6A2B50',
@@ -186,7 +186,7 @@ export const THEMES: Record<Theme, ThemeTokens> = {
     radius: '30px',
   },
   'glass-aurora': {
-    label: 'Glass·极光',
+    label: 'Glass Aurora',
     effect: 'liquid-glass',
     gradient: ['#102233', '#203B50', '#315161'],
     bgend: '#315161',

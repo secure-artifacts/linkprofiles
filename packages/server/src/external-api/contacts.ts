@@ -1,3 +1,4 @@
+import type { ErrorKey } from '@link-profile/i18n';
 import {
   buildSocialTargetUrl,
   findSocialPlatform,
@@ -19,13 +20,17 @@ export interface ContactPatch {
   passSource?: boolean;
 }
 
+/**
+ * 外部调用方拿到的是错误码加一个 key；文案在响应出口按固定英语渲染，
+ * 见 ADR-0021。这里不拼人话，也就不会把某一种语言焊进业务逻辑。
+ */
 export class ContactUpdateError extends Error {
   constructor(
     readonly code: 'unknown_platform' | 'contact_not_found' | 'invalid_contact_value',
     readonly platform: string,
-    message: string,
+    readonly messageKey: ErrorKey,
   ) {
-    super(message);
+    super(messageKey);
   }
 }
 
@@ -78,25 +83,17 @@ export async function updateContactParameters(
 
   for (const [platformId, patch] of Object.entries(patches)) {
     if (!isSocialPlatformId(platformId)) {
-      throw new ContactUpdateError('unknown_platform', platformId, '不支持这个联系方式平台');
+      throw new ContactUpdateError('unknown_platform', platformId, 'contact.unknownPlatform');
     }
     const current = socialByPlatform.get(platformId);
     if (!current && !createMissing) {
-      throw new ContactUpdateError(
-        'contact_not_found',
-        platformId,
-        '页面中还没有这个联系方式；如需自动添加请传 createMissing=true',
-      );
+      throw new ContactUpdateError('contact_not_found', platformId, 'contact.notOnPage');
     }
     const platform = findSocialPlatform(platformId)!;
     const value = (patch.value ?? current?.value ?? '').trim();
     const validation = validateSocialValue(platformId, value);
     if (!validation.ok) {
-      throw new ContactUpdateError(
-        'invalid_contact_value',
-        platformId,
-        validation.error ?? '联系方式格式不正确',
-      );
+      throw new ContactUpdateError('invalid_contact_value', platformId, 'contact.invalidValue');
     }
 
     operations.push({

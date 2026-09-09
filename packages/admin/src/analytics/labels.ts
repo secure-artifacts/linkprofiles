@@ -1,33 +1,54 @@
-const SOURCE_LABELS: Record<string, string> = {
+import type { Locale } from '@link-profile/i18n';
+import type { useAdminT } from '../i18n/runtime.js';
+
+type T = ReturnType<typeof useAdminT>;
+
+/**
+ * 品牌专有名词七种语言写法相同，属于数据而不是文案，不进译文目录；
+ * 需要翻译的只有描述性的那几个，见 ADR-0021 末节。
+ */
+const SOURCE_BRANDS: Record<string, string> = {
   tiktok: 'TikTok',
   instagram: 'Instagram',
   youtube: 'YouTube',
   facebook: 'Facebook',
   whatsapp: 'WhatsApp',
-  direct: '直接访问',
 };
 
-export const sourceLabel = (key: string) =>
-  key ? (SOURCE_LABELS[key] ?? key) : '直接访问 / 未标记';
+export const sourceLabel = (t: T, key: string): string => {
+  if (!key) return t('analytics.source.unknown');
+  if (key === 'direct') return t('analytics.source.direct');
+  return SOURCE_BRANDS[key] ?? key;
+};
 
-const PLATFORM_LABELS: Record<string, string> = {
+const PLATFORM_BRANDS: Record<string, string> = {
   whatsapp: 'WhatsApp',
   messenger: 'Messenger',
   instagram: 'Instagram',
   facebook: 'Facebook',
-  sms: '短信',
-  phone: '电话',
-  email: '邮件',
   telegram: 'Telegram',
-  custom: '自定义链接',
-  unknown: '其他',
 };
 
-export const platformLabel = (key: string) => (PLATFORM_LABELS[key] ?? key) || '其他';
+const PLATFORM_KEYS = {
+  sms: 'analytics.platform.sms',
+  phone: 'analytics.platform.phone',
+  email: 'analytics.platform.email',
+  custom: 'analytics.platform.custom',
+  unknown: 'analytics.platform.other',
+} as const;
 
-const countryNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' });
+export const platformLabel = (t: T, key: string): string => {
+  const brand = PLATFORM_BRANDS[key];
+  if (brand) return brand;
+  const messageKey = PLATFORM_KEYS[key as keyof typeof PLATFORM_KEYS];
+  return messageKey ? t(messageKey) : key || t('analytics.platform.other');
+};
 
-export const countryLabel = (key: string) =>
-  key ? (countryNames.of(key.toUpperCase()) ?? key) : '未知国家';
+/** 国家名跟界面语言走，用 Intl 的现成数据，不自己维护一张表。 */
+export const countryLabel = (t: T, locale: Locale, key: string): string => {
+  if (!key) return t('analytics.country.unknown');
+  const names = new Intl.DisplayNames([locale], { type: 'region' });
+  return names.of(key.toUpperCase()) ?? key;
+};
 
 export const percent = (value: number) => `${(value * 100).toFixed(1)}%`;

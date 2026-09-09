@@ -1,3 +1,4 @@
+import { SUPPORTED_LOCALES } from '@link-profile/i18n';
 import {
   isSocialPlatformId,
   MAX_BUTTONS_PER_PROFILE,
@@ -18,7 +19,7 @@ import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { FORBIDDEN, loadTargetUser, UNAUTHORIZED } from '../auth/guards.js';
+import { loadTargetUser } from '../auth/guards.js';
 import { deleteProfile } from '../profiles/deletion.js';
 import { duplicateProfile } from '../profiles/duplicate.js';
 import {
@@ -32,6 +33,7 @@ import { resolveProfileAccess } from '../profiles/access.js';
 import { findProfileById } from '../profiles/repository.js';
 import { renderProfileDocument } from '../render/document.js';
 import { publicOrigin } from '../render/origin.js';
+import { fail, forbidden, unauthorized } from '../http/errors.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -46,11 +48,13 @@ const createProfileBody = z.object({
 
 const duplicateProfileBody = z.object({
   shortName: shortNameSchema,
-  displayName: z.string().trim().min(1, '显示名不能为空').max(60),
+  displayName: z.string().trim().min(1, 'field.displayName.required').max(60),
 });
 
 const profileBody = z.object({
   displayName: z.string().trim().max(60).optional(),
+  /** 页面语言属于个人页，一个账号名下的多个个人页可以各是一种。 */
+  pageLanguage: z.enum(SUPPORTED_LOCALES).optional(),
   bio: z.string().trim().max(300).optional(),
   bioTypewriter: z.boolean().optional(),
   /** 布局只决定头像与头图区域的形状和占比，不决定配色 */
@@ -75,7 +79,7 @@ const entryInput = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('link'),
     id: z.string().uuid().optional(),
-    title: z.string().trim().min(1, '标题不能为空').max(80),
+    title: z.string().trim().min(1, 'field.title.required').max(80),
     /** 选填的一行说明，留空则页面上不渲染 */
     subtitle: z.string().trim().max(80).default(''),
     url: z.string(),
@@ -86,11 +90,11 @@ const entryInput = z.discriminatedUnion('kind', [
     kind: z.literal('social'),
     id: z.string().uuid().optional(),
     /** 社媒条目现在也有用户自定义的标题与描述，不再只是一枚图标 */
-    title: z.string().trim().min(1, '标题不能为空').max(80),
+    title: z.string().trim().min(1, 'field.title.required').max(80),
     subtitle: z.string().trim().max(80).default(''),
     platform: z.string(),
     /** 用户填的号码 / 邮箱 / 用户名，不是拼好的 URL */
-    value: z.string().trim().min(1, '内容不能为空'),
+    value: z.string().trim().min(1, 'field.value.required'),
     directMessage: z.boolean().default(false),
     message: z.string().trim().max(500).default(''),
     isLead: z.boolean().optional(),
@@ -123,18 +127,19 @@ export async function profileContentRoutes(app: FastifyInstance) {
       label: p.label,
       brandHex: p.brandHex,
       inputKind: p.inputKind,
-      inputHint: p.inputHint,
+      labelKey: p.labelKey,
+      inputHintKey: p.inputHintKey,
       defaultIsLead: p.defaultIsLead,
     })),
   }));
 
   /** 某个账号名下的全部个人页。一个账号可以有多个，见 ADR-0008。 */
   app.get<{ Params: { userId: string } }>('/users/:userId/profiles', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    if (!UUID.test(req.params.userId)) return reply.code(403).send(FORBIDDEN);
+    if (!req.currentUser) return unauthorized(reply);
+    if (!UUID.test(req.params.userId)) return forbidden(reply);
 
     const owner = await loadTargetUser(app.db, req.currentUser, req.params.userId, 'read');
-    if (!owner || owner.role !== 'user') return reply.code(403).send(FORBIDDEN);
+    if (!owner || owner.role !== 'user') return forbidden(reply);
 
     const rows = await app.db
       .select({
@@ -166,12 +171,12 @@ export async function profileContentRoutes(app: FastifyInstance) {
 
   /** 给某个账号新建一个个人页。不限数量。 */
   app.post<{ Params: { userId: string } }>('/users/:userId/profiles', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
-    if (!UUID.test(req.params.userId)) return reply.code(403).send(FORBIDDEN);
+    if (!req.currentUser) return unauthorized(reply);
+    if (!UUID.test(req.params.userId)) return forbidden(reply);
 
     const parsed = createProfileBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
 
     // 建页面不作废任何已发出去的链接，只是多一个地址，所以用户自己也能建
@@ -181,10 +186,10 @@ export async function profileContentRoutes(app: FastifyInstance) {
       req.params.userId,
       'profile:create',
     );
-    if (!owner || owner.role !== 'user') return reply.code(403).send(FORBIDDEN);
+    if (!owner || owner.role !== 'user') return forbidden(reply);
 
     const conflict = await findUserConflict(app.db, { shortName: parsed.data.shortName });
-    if (conflict) return reply.code(409).send({ error: conflict });
+    if (conflict) return fail(reply, 409, conflict);
 
     const [row] = await app.db
       .insert(profiles)
@@ -192,6 +197,7 @@ export async function profileContentRoutes(app: FastifyInstance) {
         userId: owner.id,
         shortName: parsed.data.shortName,
         displayName: parsed.data.displayName || parsed.data.shortName,
+        pageLanguage: owner.uiLanguage,
       })
       .returning({
         id: profiles.id,
@@ -206,10 +212,10 @@ export async function profileContentRoutes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { id: string } }>('/profiles/:id', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!req.currentUser) return unauthorized(reply);
 
     const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'read');
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     return loadEditableProfile(app, target);
   });
@@ -219,12 +225,12 @@ export async function profileContentRoutes(app: FastifyInstance) {
    * 也不会调用 recordPageView，因此打开页面列表不会污染访问数据。
    */
   app.get<{ Params: { id: string } }>('/profiles/:id/preview', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!req.currentUser) return unauthorized(reply);
     const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'read');
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     const profile = await findProfileById(app.db, target);
-    if (!profile) return reply.code(404).send({ error: 'profile_not_found' });
+    if (!profile) return fail(reply, 404, 'profile_not_found');
     const origin = publicOrigin(req);
     const previewImage =
       (profile.view.layout === 'banner' ? profile.view.banner?.src : null) ??
@@ -257,19 +263,19 @@ export async function profileContentRoutes(app: FastifyInstance) {
 
   /** 复制内容、样式、按钮与媒体；访问和点击数据按新页面从零开始。 */
   app.post<{ Params: { id: string } }>('/profiles/:id/duplicate', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!req.currentUser) return unauthorized(reply);
     const parsed = duplicateProfileBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
 
     const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
     const conflict = await findUserConflict(app.db, { shortName: parsed.data.shortName });
-    if (conflict) return reply.code(409).send({ error: conflict });
+    if (conflict) return fail(reply, 409, conflict);
 
     const created = await duplicateProfile(app.db, target, parsed.data);
-    if (!created) return reply.code(404).send({ error: 'profile_not_found' });
+    if (!created) return fail(reply, 404, 'profile_not_found');
     return reply.code(201).send(created);
   });
 
@@ -278,11 +284,11 @@ export async function profileContentRoutes(app: FastifyInstance) {
    * 二维码、投放素材上的旧地址会立刻失效。每次改动留一条流水，改错了照着改回去。
    */
   app.patch<{ Params: { id: string } }>('/profiles/:id/short-name', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!req.currentUser) return unauthorized(reply);
 
     const parsed = z.object({ shortName: shortNameSchema }).safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
 
     const target = await resolveProfileAccess(
@@ -291,13 +297,13 @@ export async function profileContentRoutes(app: FastifyInstance) {
       req.params.id,
       'update:shortName',
     );
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     const [current] = await app.db
       .select({ shortName: profiles.shortName })
       .from(profiles)
       .where(eq(profiles.id, target));
-    if (!current) return reply.code(403).send(FORBIDDEN);
+    if (!current) return forbidden(reply);
 
     // 改成原来那个不算一次改动，不留流水
     if (current.shortName === parsed.data.shortName) return loadEditableProfile(app, target);
@@ -306,7 +312,7 @@ export async function profileContentRoutes(app: FastifyInstance) {
       shortName: parsed.data.shortName,
       excludeProfileId: target,
     });
-    if (conflict) return reply.code(409).send({ error: conflict });
+    if (conflict) return fail(reply, 409, conflict);
 
     const actorId = req.currentUser.id;
     // 改名与流水同一个事务：只写成一半的话，回退时就照不着旧地址了
@@ -334,10 +340,10 @@ export async function profileContentRoutes(app: FastifyInstance) {
    * 在那条路径上已经做了，这里不需要第二个入口。
    */
   app.get<{ Params: { id: string } }>('/profiles/:id/short-name-history', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!req.currentUser) return unauthorized(reply);
 
     const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'read');
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     const rows = await app.db
       .select({
@@ -359,7 +365,7 @@ export async function profileContentRoutes(app: FastifyInstance) {
 
   /** 删一个个人页。它的 short_name 进墓碑，永不再分配。 */
   app.delete<{ Params: { id: string } }>('/profiles/:id', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!req.currentUser) return unauthorized(reply);
     // 删页面是唯一不可逆的那个：地址进墓碑永不再分配，媒体一并从磁盘删除。
     // 与建页面分开管，用户建得了但删不了。
     const target = await resolveProfileAccess(
@@ -368,21 +374,21 @@ export async function profileContentRoutes(app: FastifyInstance) {
       req.params.id,
       'profile:delete',
     );
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     await deleteProfile(app.db, target);
     return reply.code(204).send();
   });
 
   app.patch<{ Params: { id: string } }>('/profiles/:id', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!req.currentUser) return unauthorized(reply);
     const parsed = profileBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
 
     const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     await app.db
       .update(profiles)
@@ -391,6 +397,9 @@ export async function profileContentRoutes(app: FastifyInstance) {
         ...(parsed.data.bio !== undefined ? { bio: parsed.data.bio } : {}),
         ...(parsed.data.bioTypewriter !== undefined
           ? { bioTypewriter: parsed.data.bioTypewriter }
+          : {}),
+        ...(parsed.data.pageLanguage !== undefined
+          ? { pageLanguage: parsed.data.pageLanguage }
           : {}),
         ...(parsed.data.layout !== undefined ? { layout: parsed.data.layout } : {}),
         ...(parsed.data.theme !== undefined ? { theme: parsed.data.theme } : {}),
@@ -416,20 +425,20 @@ export async function profileContentRoutes(app: FastifyInstance) {
    * 挤成一份 —— 那会让原本能建 50 个链接的页面因为加了社媒而建不满。
    */
   app.put<{ Params: { id: string } }>('/profiles/:id/entries', async (req, reply) => {
-    if (!req.currentUser) return reply.code(401).send(UNAUTHORIZED);
+    if (!req.currentUser) return unauthorized(reply);
     const parsed = entriesBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
 
     const target = await resolveProfileAccess(app.db, req.currentUser, req.params.id, 'update');
-    if (!target) return reply.code(403).send(FORBIDDEN);
+    if (!target) return forbidden(reply);
 
     const links = parsed.data.entries.filter((e) => e.kind === 'link');
     if (links.length > MAX_BUTTONS_PER_PROFILE) {
-      return reply.code(400).send({
-        error: 'too_many_buttons',
-        message: `单页自定义链接数量上限 ${MAX_BUTTONS_PER_PROFILE}`,
+      return fail(reply, 400, 'too_many_buttons', {
+        messageKey: 'entry.limitReached',
+        messageVars: { max: MAX_BUTTONS_PER_PROFILE },
       });
     }
 
@@ -450,7 +459,7 @@ export async function profileContentRoutes(app: FastifyInstance) {
       if (input.kind === 'link') {
         const url = validateTargetUrl(input.url);
         if (!url.ok) {
-          return reply.code(400).send({ error: 'invalid_url', index, message: url.error });
+          return fail(reply, 400, 'invalid_url', { index, message: url.error });
         }
         const isLead = input.isLead;
         rows.push({
@@ -465,12 +474,10 @@ export async function profileContentRoutes(app: FastifyInstance) {
       }
 
       if (!isSocialPlatformId(input.platform)) {
-        return reply.code(400).send({ error: 'unknown_platform', index, platform: input.platform });
+        return fail(reply, 400, 'unknown_platform', { index, platform: input.platform });
       }
       if (seenPlatforms.has(input.platform)) {
-        return reply
-          .code(400)
-          .send({ error: 'duplicate_platform', index, platform: input.platform });
+        return fail(reply, 400, 'duplicate_platform', { index, platform: input.platform });
       }
       seenPlatforms.add(input.platform);
 
@@ -536,6 +543,7 @@ async function loadEditableProfile(app: FastifyInstance, profileId: string) {
       displayName: profiles.displayName,
       bio: profiles.bio,
       bioTypewriter: profiles.bioTypewriter,
+      pageLanguage: profiles.pageLanguage,
       layout: profiles.layout,
       theme: profiles.theme,
       solidBackground: profiles.solidBackground,

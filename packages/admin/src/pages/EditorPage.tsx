@@ -17,6 +17,9 @@ import { Spinner } from '../ui/Spinner.js';
 import { useToast } from '../ui/Toast.js';
 import { ContentEditor } from './editor/ContentEditor.js';
 import { MediaEditor } from './editor/MediaEditor.js';
+import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from '@link-profile/i18n';
+import { useAdminT } from '../i18n/runtime.js';
+import { Select } from '../ui/Select.js';
 import {
   draftFromServer,
   draftToProfileView,
@@ -39,6 +42,7 @@ const LAYOUT_LABELS: Record<string, string> = {
  * 公开页同一批组件，见 `PreviewFrame` 与 ADR-0004。
  */
 export function EditorPage() {
+  const t = useAdminT();
   const { profileId = '' } = useParams();
   const session = useSession();
   const toast = useToast();
@@ -84,18 +88,18 @@ export function EditorPage() {
     draft
       ? editingSelf
         ? [
-            { label: '我的页面', to: `/users/${session.id}/profiles` },
+            { label: t('nav.myPages'), to: `/users/${session.id}/profiles` },
             { label: `/${draft.fields.shortName}` },
           ]
         : [
-            { label: '用户', to: '/users' },
-            { label: '页面', to: `/users/${draft.fields.userId}/profiles` },
+            { label: t('nav.users'), to: '/users' },
+            { label: t('editor.breadcrumb.pages'), to: `/users/${draft.fields.userId}/profiles` },
             { label: `/${draft.fields.shortName}` },
           ]
       : [],
   );
 
-  if (error) return <Alert tone="danger" message="打不开这个页面" description={error} />;
+  if (error) return <Alert tone="danger" message={t('editor.loadFailed')} description={error} />;
   if (!draft || !preview) return <Spinner fullscreen />;
 
   /**
@@ -119,6 +123,7 @@ export function EditorPage() {
           displayName: draft.fields.displayName,
           bio: draft.fields.bio,
           bioTypewriter: draft.fields.bioTypewriter,
+          pageLanguage: draft.fields.pageLanguage,
           layout: draft.fields.layout,
           theme: draft.fields.theme,
           solidBackground: draft.fields.solidBackground,
@@ -135,7 +140,7 @@ export function EditorPage() {
       });
 
       await load();
-      toast.success('已保存，刷新公开页即可看到');
+      toast.success(t('editor.saved'));
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -149,7 +154,7 @@ export function EditorPage() {
       <div className="flex min-w-[380px] max-w-[720px] flex-1 flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-display text-[22px] font-semibold text-fg">
-            {editingSelf ? '我的个人页' : '代改个人页'}
+            {editingSelf ? t('editor.title.self') : t('editor.title.onBehalf')}
           </h1>
           <div className="flex gap-2">
             <a
@@ -161,26 +166,26 @@ export function EditorPage() {
                 hover:bg-surface-hover focus-visible:outline focus-visible:outline-2
                 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              打开公开页
+              {t('editor.openPublic')}
             </a>
             <Button variant="primary" size="sm" loading={saving} onClick={() => void save()}>
-              保存
+              {t('editor.save')}
             </Button>
           </div>
         </div>
 
-        <Panel title="基本信息">
+        <Panel title={t('editor.section.basics')}>
           <div className="flex flex-col gap-3">
             <Input
               value={draft.fields.displayName}
               onChange={(e) => patchFields({ displayName: e.target.value })}
-              placeholder="显示名，访客在头像下方看到的名字"
+              placeholder={t('editor.field.displayName')}
               maxLength={60}
             />
             <Textarea
               value={draft.fields.bio}
               onChange={(e) => patchFields({ bio: e.target.value })}
-              placeholder="简介"
+              placeholder={t('editor.field.bio')}
               maxLength={300}
               rows={3}
             />
@@ -189,21 +194,32 @@ export function EditorPage() {
                 checked={draft.fields.bioTypewriter}
                 onChange={(checked) => patchFields({ bioTypewriter: checked })}
               >
-                简介逐字打出
+                {t('editor.bioTypewriter')}
               </Checkbox>
-              <span className="text-[12px] text-muted">· 访客系统设了「减少动效」时自动跳过</span>
+              <span className="text-[12px] text-muted">{t('editor.bioTypewriter.hint')}</span>
             </div>
             <p className="text-[12px] text-muted">
-              页面地址：/{draft.fields.shortName}
-              {editingSelf ? '（地址由管理员维护，改动会使已发出的链接失效）' : ''}
+              {t('editor.address.value', { shortName: draft.fields.shortName })}
+              {editingSelf ? t('editor.address.managed') : ''}
             </p>
           </div>
         </Panel>
 
-        <Panel
-          title="布局"
-          hint="布局只决定头像与头图区域的形状和占比，不决定配色。没传头图时该区域用主题渐变填充。"
-        >
+        <Panel title={t('editor.pageLanguage.title')} hint={t('editor.pageLanguage.hint')}>
+          <div className="max-w-[280px]">
+            <Select
+              aria-label={t('editor.pageLanguage.title')}
+              value={draft.fields.pageLanguage}
+              options={SUPPORTED_LOCALES.map((locale) => ({
+                value: locale,
+                label: LOCALE_LABELS[locale],
+              }))}
+              onChange={(value) => patchFields({ pageLanguage: value as Locale })}
+            />
+          </div>
+        </Panel>
+
+        <Panel title={t('editor.section.layout')} hint={t('editor.section.layout.hint')}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {layoutEnum.enumValues.map((value) => {
               const active = draft.fields.layout === value;
@@ -233,7 +249,7 @@ export function EditorPage() {
           </div>
         </Panel>
 
-        <Panel title="主题" hint="一组主题包含背景渐变、文字与按钮颜色，圆角是主题的一部分。">
+        <Panel title={t('editor.section.theme')} hint={t('editor.section.theme.hint')}>
           <div className="flex flex-wrap gap-2.5">
             {themeEnum.enumValues.map((value) => {
               const tokens = THEMES[value];
@@ -260,7 +276,7 @@ export function EditorPage() {
           </div>
         </Panel>
 
-        <Panel title="素材">
+        <Panel title={t('editor.section.media')}>
           <MediaEditor
             draft={draft}
             onChange={patch}
@@ -269,7 +285,7 @@ export function EditorPage() {
           />
         </Panel>
 
-        <Panel title="内容编排">
+        <Panel title={t('editor.section.entries')}>
           <ContentEditor
             platforms={platforms}
             entries={draft.entries}

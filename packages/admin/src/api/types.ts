@@ -1,3 +1,4 @@
+import type { Locale } from '@link-profile/i18n';
 import type { Layout, Theme } from '@link-profile/shared';
 
 export type Role = 'superadmin' | 'admin' | 'user';
@@ -6,6 +7,7 @@ export interface Session {
   id: string;
   role: Role;
   account: string;
+  uiLanguage: Locale;
 }
 
 export interface UserSummary {
@@ -79,6 +81,8 @@ export interface ProfileFields {
   bio: string;
   /** 简介逐字打出。关掉或访客设了减少动效时，全文静态显示。 */
   bioTypewriter: boolean;
+  /** 页面语言。属于个人页，与账号的界面语言互不牵连，见 ADR-0020。 */
+  pageLanguage: Locale;
   layout: Layout;
   theme: Theme;
   /** 条目一律实心卡片还是一律描边行。整页统一，不逐条配。 */
@@ -106,7 +110,8 @@ export interface SocialPlatformInfo {
   label: string;
   brandHex: string;
   inputKind: 'phone' | 'email' | 'username';
-  inputHint: string;
+  labelKey: string | null;
+  inputHintKey: string;
   defaultIsLead: boolean;
 }
 
@@ -185,7 +190,7 @@ export interface ProfileHighlight {
   profileId: string;
   topSource: ProfileHighlightMetric | null;
   topCountry: ProfileHighlightMetric | null;
-  topTarget: { id: string; title: string; platform: string; leads: number } | null;
+  topTarget: { id: string; title: string | null; platform: string; leads: number } | null;
 }
 
 export interface PerformanceTotals {
@@ -222,7 +227,8 @@ export interface CrossMetrics {
 
 export interface ContactTarget {
   id: string;
-  title: string;
+  /** 条目已被删除时为 null，占位文案由界面按当前语言渲染。 */
+  title: string | null;
   platform: string;
   isLead: boolean;
   clicks: number;

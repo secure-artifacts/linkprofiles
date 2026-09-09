@@ -6,6 +6,9 @@
  * 按普通错误提示，不踢下线（见 04 的说明）。
  */
 
+import { currentLocale, translateError } from '../i18n/runtime.js';
+import type { ErrorKey } from '@link-profile/i18n';
+
 const BASE = '/_api';
 
 export class ApiError extends Error {
@@ -21,7 +24,7 @@ export class ApiError extends Error {
 
 export class UnauthorizedError extends ApiError {
   constructor(payload: unknown) {
-    super(401, payload, '未登录或登录已过期');
+    super(401, payload, translateError('code.unauthorized'));
     this.name = 'UnauthorizedError';
   }
 }
@@ -37,12 +40,14 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const init: RequestInit = {
     method: options.method ?? 'GET',
     credentials: 'same-origin',
+    // 服务端据此翻自己产出的 message；错误码本身不随语言变化。
+    headers: { 'accept-language': currentLocale() },
   };
 
   if (options.formData) {
     init.body = options.formData;
   } else if (options.body !== undefined) {
-    init.headers = { 'content-type': 'application/json' };
+    init.headers = { ...init.headers, 'content-type': 'application/json' };
     init.body = JSON.stringify(options.body);
   }
 
@@ -60,33 +65,31 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return payload as T;
 }
 
-/** 把服务端的错误码翻成一句人话，后台直接拿去显示。 */
+/**
+ * 把服务端的错误码翻成一句人话。
+ *
+ * 在这一侧翻而不是让服务端返回成品文案，是为了切语言瞬时生效：不必重拉
+ * 一遍接口，也不必把这些文案打进服务端产物。服务端确实带了 `message` 时
+ * 优先用它 —— 那是它才知道的细节，例如具体是哪个字段、超了多少。
+ */
+const ERROR_CODE_KEYS: Record<string, ErrorKey> = {
+  forbidden: 'code.forbidden',
+  account_taken: 'code.account_taken',
+  short_name_taken: 'code.short_name_taken',
+  short_name_retired: 'code.short_name_retired',
+  invalid_credentials: 'code.invalid_credentials',
+  not_an_admin: 'code.not_an_admin',
+  duplicate_platform: 'code.duplicate_platform',
+  unknown_platform: 'code.unknown_platform',
+  invalid_body: 'code.invalid_body',
+  invalid_query: 'code.invalid_body',
+};
+
 function describe(status: number, payload: unknown): string {
   const error = (payload as { error?: string; message?: string } | null)?.error;
   const message = (payload as { message?: string } | null)?.message;
   if (message) return message;
 
-  switch (error) {
-    case 'forbidden':
-      return '没有权限执行这个操作';
-    case 'account_taken':
-      return '这个登录用户名已经被占用了';
-    case 'short_name_taken':
-      return '这个 short_name 已经被占用了';
-    case 'short_name_retired':
-      return '这个 short_name 属于一个已删除的用户，永不再分配';
-    case 'invalid_credentials':
-      return '账号或密码不对';
-    case 'not_an_admin':
-      return '只能指派给管理员';
-    case 'duplicate_platform':
-      return '同一个平台只能启用一次';
-    case 'unknown_platform':
-      return '不认识的平台';
-    case 'invalid_body':
-    case 'invalid_query':
-      return '提交的内容有问题，请检查后重试';
-    default:
-      return `请求失败（${status}）`;
-  }
+  const key = error ? ERROR_CODE_KEYS[error] : undefined;
+  return key ? translateError(key) : translateError('code.unknown', { status });
 }

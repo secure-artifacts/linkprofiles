@@ -7,6 +7,7 @@ import {
   updateContactParameters,
 } from '../external-api/contacts.js';
 import { authenticateApiKey } from '../external-api/keys.js';
+import { EXTERNAL_LOCALE, fail } from '../http/errors.js';
 
 const contactPatch = z
   .object({
@@ -18,7 +19,7 @@ const contactPatch = z
     isLead: z.boolean().optional(),
     passSource: z.boolean().optional(),
   })
-  .refine((value) => Object.keys(value).length > 0, '至少提交一个要更新的字段');
+  .refine((value) => Object.keys(value).length > 0, 'field.atLeastOne');
 const updateBody = z.object({
   contacts: z.record(z.string(), contactPatch).refine((value) => Object.keys(value).length > 0),
   createMissing: z.boolean().default(false),
@@ -38,14 +39,14 @@ function allowRequest(keyId: string): { allowed: boolean; remaining: number } {
 export async function externalApiRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/profiles/:id/contacts', async (req, reply) => {
     const key = await authenticateApiKey(app.db, req.headers.authorization, 'contacts:read');
-    if (!key) return reply.code(401).send({ error: 'invalid_api_key' });
+    if (!key) return fail(reply, 401, 'invalid_api_key', { locale: EXTERNAL_LOCALE });
     if (key.profileId !== req.params.id)
-      return reply.code(403).send({ error: 'profile_forbidden' });
+      return fail(reply, 403, 'profile_forbidden', { locale: EXTERNAL_LOCALE });
     const limit = allowRequest(key.id);
     reply
       .header('x-ratelimit-limit', '60')
       .header('x-ratelimit-remaining', String(limit.remaining));
-    if (!limit.allowed) return reply.code(429).send({ error: 'rate_limit_exceeded' });
+    if (!limit.allowed) return fail(reply, 429, 'rate_limit_exceeded', { locale: EXTERNAL_LOCALE });
     return {
       profileId: key.profileId,
       contacts: await listContactParameters(app.db, key.profileId),
@@ -54,18 +55,21 @@ export async function externalApiRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string } }>('/profiles/:id/contacts', async (req, reply) => {
     const key = await authenticateApiKey(app.db, req.headers.authorization, 'contacts:write');
-    if (!key) return reply.code(401).send({ error: 'invalid_api_key' });
+    if (!key) return fail(reply, 401, 'invalid_api_key', { locale: EXTERNAL_LOCALE });
     if (key.profileId !== req.params.id)
-      return reply.code(403).send({ error: 'profile_forbidden' });
+      return fail(reply, 403, 'profile_forbidden', { locale: EXTERNAL_LOCALE });
     const limit = allowRequest(key.id);
     reply
       .header('x-ratelimit-limit', '60')
       .header('x-ratelimit-remaining', String(limit.remaining));
-    if (!limit.allowed) return reply.code(429).send({ error: 'rate_limit_exceeded' });
+    if (!limit.allowed) return fail(reply, 429, 'rate_limit_exceeded', { locale: EXTERNAL_LOCALE });
 
     const parsed = updateBody.safeParse(req.body);
     if (!parsed.success) {
-      return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.issues });
+      return fail(reply, 400, 'invalid_body', {
+        locale: EXTERNAL_LOCALE,
+        issues: parsed.error.issues,
+      });
     }
     try {
       const contacts = await updateContactParameters(
@@ -84,9 +88,9 @@ export async function externalApiRoutes(app: FastifyInstance) {
       return { profileId: key.profileId, updated: platforms, contacts };
     } catch (error) {
       if (error instanceof ContactUpdateError) {
-        return reply.code(422).send({
-          error: error.code,
-          issues: [{ platform: error.platform, field: 'value', message: error.message }],
+        return fail(reply, 422, error.code, {
+          locale: EXTERNAL_LOCALE,
+          issues: [{ platform: error.platform, field: 'value', message: error.messageKey }],
         });
       }
       throw error;

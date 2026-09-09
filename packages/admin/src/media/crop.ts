@@ -6,6 +6,7 @@
  * 事后想重裁、或换一种布局后重新适配，都要重新上传一次原图。
  */
 import { CROP_ASPECT } from '@link-profile/shared';
+import { translateAdmin } from '../i18n/runtime.js';
 
 export { CROP_ASPECT };
 
@@ -29,7 +30,7 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('这张图片读不出来'));
+    image.onerror = () => reject(new Error(translateAdmin('editor.crop.error.unreadable')));
     image.src = url;
   });
 }
@@ -55,7 +56,7 @@ export async function cropToFile(
   canvas.height = Math.max(1, Math.round(sourceHeight * scale));
 
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('浏览器不支持 canvas，无法裁切');
+  if (!ctx) throw new Error(translateAdmin('editor.crop.error.noCanvas'));
   ctx.drawImage(
     image,
     image.naturalWidth * rect.x,
@@ -71,7 +72,7 @@ export async function cropToFile(
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, 'image/jpeg', 0.92),
   );
-  if (!blob) throw new Error('裁切失败');
+  if (!blob) throw new Error(translateAdmin('editor.crop.error.failed'));
 
   return new File([blob], replaceExtension(fileName, 'jpg'), { type: 'image/jpeg' });
 }

@@ -1,5 +1,6 @@
 import { validateSocialValue, validateTargetUrl } from '@link-profile/shared';
 import type { EntryDraft } from '../../api/types.js';
+import { translateAdmin } from '../../i18n/runtime.js';
 
 /**
  * 编辑器里的「这一项现在有问题吗」。
@@ -9,11 +10,11 @@ import type { EntryDraft } from '../../api/types.js';
  * 它没出现、不知道为什么。这里把同一条判断显式化成红边。
  */
 export function entryProblem(entry: EntryDraft): string | null {
-  if (entry.title.trim() === '') return '标题不能为空';
+  if (entry.title.trim() === '') return translateAdmin('entries.validation.titleRequired');
 
   if (entry.kind === 'social') {
     const result = validateSocialValue(entry.platform, entry.value);
-    return result.ok ? null : (result.error ?? '格式不正确');
+    return result.ok ? null : (result.error ?? translateAdmin('entries.validation.badFormat'));
   }
 
   const url = validateTargetUrl(entry.url);

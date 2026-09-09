@@ -1,4 +1,5 @@
 import type { ProfilePerformance } from '../api/types.js';
+import { compareText } from '@link-profile/shared';
 
 export type ProfileRankKey = 'leads' | 'pageViews' | 'leadRate' | 'growth' | 'opportunity';
 
@@ -26,6 +27,6 @@ export function rankProfiles(
       score(b) - score(a) ||
       b.leads - a.leads ||
       b.pageViews - a.pageViews ||
-      a.shortName.localeCompare(b.shortName),
+      compareText(a.shortName, b.shortName),
   );
 }

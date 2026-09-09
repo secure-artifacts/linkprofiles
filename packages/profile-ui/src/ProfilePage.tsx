@@ -3,6 +3,7 @@ import { ButtonList } from './Buttons.js';
 import { MutedIcon, SoundIcon } from './Icon.js';
 import { THEMES } from './themes.js';
 import type { ProfileView } from './types.js';
+import { publicT } from '@link-profile/i18n/public';
 
 interface HeaderProps {
   profile: ProfileView;
@@ -36,6 +37,7 @@ function Bio({ profile }: { profile: ProfileView }) {
 }
 
 function Header({ profile, priority }: HeaderProps) {
+  const t = publicT(profile.language);
   const avatar = (
     <Avatar
       media={profile.avatar}
@@ -64,7 +66,7 @@ function Header({ profile, priority }: HeaderProps) {
               media={profile.banner}
               priority={priority}
               className="bn"
-              alt={`${profile.displayName} 的 Banner 图`}
+              alt={t('banner.alt', { name: profile.displayName })}
             />
           ) : (
             <div className="bn bn-empty" aria-hidden="true" />
@@ -113,6 +115,7 @@ export interface ProfilePageProps {
  * 因此不得依赖任何浏览器专有 API（见 ADR-0004）。
  */
 export function ProfilePage({ profile, priority = false }: ProfilePageProps) {
+  const t = publicT(profile.language);
   // 背景图覆盖主题渐变；遮罩暗度由用户调，样式规则在 styles.css 的 [data-bg-image] 上。
   const backgroundProps = profile.background
     ? {
@@ -140,7 +143,14 @@ export function ProfilePage({ profile, priority = false }: ProfilePageProps) {
           由 CSS 按 aria-pressed 选；点击行为由内联脚本接上。
         */}
         {profile.video ? (
-          <button className="pp-mute" type="button" aria-pressed="false" aria-label="开启声音">
+          <button
+            className="pp-mute"
+            type="button"
+            aria-pressed="false"
+            aria-label={t('avatar.video.unmute')}
+            data-label-unmute={t('avatar.video.unmute')}
+            data-label-mute={t('avatar.video.mute')}
+          >
             <span className="off">
               <MutedIcon />
             </span>

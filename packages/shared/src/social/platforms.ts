@@ -32,12 +32,16 @@ export type SocialInputKind = 'phone' | 'email' | 'username';
 
 export interface SocialPlatform {
   id: SocialPlatformId;
+  /** 品牌专有名词，七种语言写法相同。描述性的平台名另有 labelKey。 */
   label: string;
   brandHex: string;
   inputKind: SocialInputKind;
   /** 联系类渠道默认计入线索，内容类默认不计。用户可在后台逐条修改。 */
   defaultIsLead: boolean;
-  inputHint: string;
+  /** 非品牌名的平台，界面按这个 key 取译文；品牌名的平台为 null。 */
+  labelKey: string | null;
+  /** 输入提示的文案 key，文案本身在 i18n 包里，见 ADR-0021。 */
+  inputHintKey: string;
   buildUrl: (value: string) => string | null;
 }
 
@@ -106,46 +110,51 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
   {
     id: 'whatsapp',
     label: 'WhatsApp',
+    labelKey: null,
     brandHex: '#25D366',
     inputKind: 'phone',
     defaultIsLead: true,
-    inputHint: '带国际区号的号码，如 +1 555 010 9999',
+    inputHintKey: 'platform.hint.whatsapp',
     buildUrl: (v) => (validInternationalPhone(v) ? `https://wa.me/${digitsOnly(v)}` : null),
   },
   {
     id: 'messenger',
     label: 'Messenger',
+    labelKey: null,
     brandHex: '#0866FF',
     inputKind: 'username',
     defaultIsLead: true,
-    inputHint: 'Messenger 用户名，直接开对话而不是跳主页',
+    inputHintKey: 'platform.hint.messenger',
     buildUrl: (v) => (validMessengerUsername(v) ? `https://m.me/${bareUsername(v)}` : null),
   },
   {
     id: 'telegram',
     label: 'Telegram',
+    labelKey: null,
     brandHex: '#26A5E4',
     inputKind: 'username',
     defaultIsLead: true,
-    inputHint: 'Telegram 用户名，不含 @',
+    inputHintKey: 'platform.hint.telegram',
     buildUrl: (v) => `https://t.me/${bareUsername(v)}`,
   },
   {
     id: 'signal',
     label: 'Signal',
+    labelKey: null,
     brandHex: '#3B45FD',
     inputKind: 'phone',
     defaultIsLead: true,
-    inputHint: '带国际区号的号码',
+    inputHintKey: 'platform.hint.signal',
     buildUrl: (v) => `https://signal.me/#p/+${digitsOnly(v)}`,
   },
   {
     id: 'sms',
-    label: '短信',
+    label: 'Text message',
+    labelKey: 'analytics.platform.sms',
     brandHex: '#34C759',
     inputKind: 'phone',
     defaultIsLead: true,
-    inputHint: '带国际区号的手机号；只打开短信应用，不预填内容',
+    inputHintKey: 'platform.hint.sms',
     buildUrl: (v) => {
       if (!validInternationalPhone(v)) return null;
       const number = dialablePhone(v);
@@ -154,11 +163,12 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
   },
   {
     id: 'phone',
-    label: '拨打电话',
+    label: 'Phone call',
+    labelKey: 'analytics.platform.phone',
     brandHex: '#0A84FF',
     inputKind: 'phone',
     defaultIsLead: true,
-    inputHint: '带国际区号的手机号，点击直接打开拨号界面',
+    inputHintKey: 'platform.hint.phone',
     buildUrl: (v) => {
       if (!validInternationalPhone(v)) return null;
       const number = dialablePhone(v);
@@ -168,92 +178,102 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
   {
     id: 'email',
     label: 'Email',
+    labelKey: null,
     brandHex: '#4A5058',
     inputKind: 'email',
     defaultIsLead: true,
-    inputHint: '邮箱地址，点击直接唤起邮件客户端',
+    inputHintKey: 'platform.hint.email',
     buildUrl: (v) => `mailto:${v.trim()}`,
   },
   {
     id: 'instagram',
     label: 'Instagram',
+    labelKey: null,
     brandHex: '#FF0069',
     inputKind: 'username',
     defaultIsLead: false,
-    inputHint: 'Instagram 用户名，不含 @',
+    inputHintKey: 'platform.hint.instagram',
     buildUrl: (v) =>
       validInstagramUsername(v) ? `https://instagram.com/${bareUsername(v)}` : null,
   },
   {
     id: 'facebook',
     label: 'Facebook',
+    labelKey: null,
     brandHex: '#0866FF',
     inputKind: 'username',
     defaultIsLead: false,
-    inputHint: 'Facebook 主页用户名',
+    inputHintKey: 'platform.hint.facebook',
     buildUrl: (v) => `https://facebook.com/${bareUsername(v)}`,
   },
   {
     id: 'youtube',
     label: 'YouTube',
+    labelKey: null,
     brandHex: '#FF0000',
     inputKind: 'username',
     defaultIsLead: false,
-    inputHint: '频道 handle，不含 @',
+    inputHintKey: 'platform.hint.youtube',
     buildUrl: (v) => `https://youtube.com/@${bareUsername(v)}`,
   },
   {
     id: 'tiktok',
     label: 'TikTok',
+    labelKey: null,
     brandHex: '#000000',
     inputKind: 'username',
     defaultIsLead: false,
-    inputHint: 'TikTok 用户名，不含 @',
+    inputHintKey: 'platform.hint.tiktok',
     buildUrl: (v) => `https://tiktok.com/@${bareUsername(v)}`,
   },
   {
     id: 'x',
     label: 'X',
+    labelKey: null,
     brandHex: '#000000',
     inputKind: 'username',
     defaultIsLead: false,
-    inputHint: 'X 用户名，不含 @',
+    inputHintKey: 'platform.hint.x',
     buildUrl: (v) => `https://x.com/${bareUsername(v)}`,
   },
   {
     id: 'threads',
     label: 'Threads',
+    labelKey: null,
     brandHex: '#000000',
     inputKind: 'username',
     defaultIsLead: false,
-    inputHint: 'Threads 用户名，不含 @',
+    inputHintKey: 'platform.hint.threads',
     buildUrl: (v) => `https://threads.net/@${bareUsername(v)}`,
   },
   {
     id: 'snapchat',
     label: 'Snapchat',
+    labelKey: null,
     brandHex: '#FFFC00',
     inputKind: 'username',
     defaultIsLead: false,
-    inputHint: 'Snapchat 用户名',
+    inputHintKey: 'platform.hint.snapchat',
     buildUrl: (v) => `https://snapchat.com/add/${bareUsername(v)}`,
   },
   {
     id: 'linkedin',
     label: 'LinkedIn',
+    labelKey: null,
     brandHex: '#0A66C2',
     inputKind: 'username',
     defaultIsLead: false,
-    inputHint: '个人主页的自定义地址，即 linkedin.com/in/ 后面那一段',
+    inputHintKey: 'platform.hint.linkedin',
     buildUrl: (v) => `https://linkedin.com/in/${bareUsername(v)}`,
   },
   {
     id: 'pinterest',
     label: 'Pinterest',
+    labelKey: null,
     brandHex: '#BD081C',
     inputKind: 'username',
     defaultIsLead: false,
-    inputHint: 'Pinterest 用户名',
+    inputHintKey: 'platform.hint.pinterest',
     buildUrl: (v) => `https://pinterest.com/${bareUsername(v)}`,
   },
 ];

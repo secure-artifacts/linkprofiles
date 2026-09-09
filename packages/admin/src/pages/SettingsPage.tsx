@@ -6,10 +6,12 @@ import { Spinner } from '../ui/Spinner.js';
 import { Checkbox } from '../ui/Checkbox.js';
 import { useToast } from '../ui/Toast.js';
 import { useBreadcrumb } from '../nav/breadcrumb.js';
+import { useAdminT } from '../i18n/runtime.js';
 
 /** 全站设置。只有超级管理员进得来。 */
 export function SettingsPage() {
-  useBreadcrumb([{ label: '全站设置' }]);
+  const t = useAdminT();
+  useBreadcrumb([{ label: t('settings.title') }]);
   const toast = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
@@ -24,10 +26,10 @@ export function SettingsPage() {
 
   return (
     <div className="flex max-w-[720px] flex-col gap-4">
-      <h1 className="font-display text-xl font-semibold text-fg">全站设置</h1>
+      <h1 className="font-display text-xl font-semibold text-fg">{t('settings.title')}</h1>
 
       <div className="rounded-[var(--radius-panel)] border border-border bg-surface p-5">
-        <h2 className="mb-4 text-sm font-semibold text-fg">来源透传</h2>
+        <h2 className="mb-4 text-sm font-semibold text-fg">{t('settings.passthrough')}</h2>
         <div className="flex flex-col gap-4">
           <Checkbox
             checked={settings.sourcePassthroughDefault}
@@ -39,24 +41,28 @@ export function SettingsPage() {
                     body: { sourcePassthroughDefault: checked },
                   }),
                 );
-                toast.success('已保存');
+                toast.success(t('common.saved'));
               } catch (err) {
                 toast.error((err as Error).message);
               }
             }}
           >
-            默认对所有条目开启来源透传
+            {t('settings.passthrough.default')}
           </Checkbox>
 
           <p className="text-[13px] text-muted">
-            条目可以逐条覆盖这个默认值。开启后，访客带{' '}
+            {t('settings.passthrough.explainLead')}{' '}
             <code className="rounded bg-surface-hover px-1 py-0.5 font-mono text-[12px]">
               ?src=
             </code>{' '}
-            访问个人页时，跳转目标的地址上会带上同一个来源。
+            {t('settings.passthrough.explainTail')}
           </p>
 
-          <Alert tone="warning" message="已知取舍" description={settings.sourcePassthroughCaveat} />
+          <Alert
+            tone="warning"
+            message={t('settings.knownTradeoffs')}
+            description={settings.sourcePassthroughCaveat}
+          />
         </div>
       </div>
     </div>

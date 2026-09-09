@@ -6,8 +6,10 @@ import type { Session } from '../api/types.js';
 import { Button } from '../ui/Button.js';
 import { Input, PasswordInput } from '../ui/Input.js';
 import { useToast } from '../ui/Toast.js';
+import { useAdminT } from '../i18n/runtime.js';
 
 export function LoginPage({ onSignedIn }: { onSignedIn: (session: Session) => void }) {
+  const t = useAdminT();
   const toast = useToast();
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
@@ -17,8 +19,8 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (session: Session) => vo
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const nextErrors: typeof errors = {};
-    if (!account) nextErrors.account = '请输入登录用户名';
-    if (!password) nextErrors.password = '请输入密码';
+    if (!account) nextErrors.account = t('login.error.accountRequired');
+    if (!password) nextErrors.password = t('login.error.passwordRequired');
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -56,25 +58,23 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (session: Session) => vo
         <div className="relative">
           <span className="mb-6 block h-0.5 w-10 rounded-full bg-accent" />
           <h1 className="font-display text-[34px] font-bold leading-tight">
-            所有链接，
+            {t('login.hero.titleLine1')}
             <br />
-            一处掌控。
+            {t('login.hero.titleLine2')}
           </h1>
-          <p className="mt-4 max-w-[30ch] text-[13px] text-white/70">
-            管理个人页、账号与数据，让每一次访问都有清晰去向。
-          </p>
+          <p className="mt-4 max-w-[30ch] text-[13px] text-white/70">{t('login.hero.subtitle')}</p>
         </div>
 
-        <p className="relative text-[12px] text-white/40">Link Profile 管理工作台</p>
+        <p className="relative text-[12px] text-white/40">{t('login.hero.footer')}</p>
       </div>
 
       <div className="flex flex-1 items-center justify-center bg-bg p-6">
         <form onSubmit={(e) => void submit(e)} className="w-full max-w-[380px]">
-          <h2 className="font-display text-xl font-semibold text-fg">Link Profile 后台</h2>
-          <p className="mt-1 text-[13px] text-muted">使用登录用户名进入工作台</p>
+          <h2 className="font-display text-xl font-semibold text-fg">{t('login.title')}</h2>
+          <p className="mt-1 text-[13px] text-muted">{t('login.subtitle')}</p>
 
           <div className="mt-6 flex flex-col gap-1.5">
-            <label className="text-[13px] font-medium text-fg">登录用户名</label>
+            <label className="text-[13px] font-medium text-fg">{t('login.field.account')}</label>
             <Input
               autoComplete="username"
               autoFocus
@@ -85,7 +85,7 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (session: Session) => vo
           </div>
 
           <div className="mt-4 flex flex-col gap-1.5">
-            <label className="text-[13px] font-medium text-fg">密码</label>
+            <label className="text-[13px] font-medium text-fg">{t('login.field.password')}</label>
             <PasswordInput
               autoComplete="current-password"
               value={password}
@@ -95,11 +95,11 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (session: Session) => vo
           </div>
 
           <Button type="submit" variant="primary" loading={submitting} className="mt-6 w-full">
-            登录
+            {t('login.submit')}
           </Button>
 
           <p className="mt-6 border-t border-border pt-4 text-[12px] text-muted">
-            遇到登录问题，请联系全站管理员。
+            {t('login.help')}
           </p>
         </form>
       </div>

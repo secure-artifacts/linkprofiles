@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import staticPlugin from '@fastify/static';
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import { fail } from '../http/errors.js';
 
 /**
  * 后台 SPA 的静态资源。
@@ -19,9 +20,9 @@ export async function adminAppRoutes(app: FastifyInstance) {
     // `pnpm build` 清空 dist 的那一刻启动」，而检查只在启动时做一次 ——
     // 什么都不挂的话，后台此后会一直静默 404，看上去像路由配错了。
     const explain = (_req: unknown, reply: FastifyReply) =>
-      reply.code(503).send({
-        error: 'admin_not_built',
-        message: `后台构建产物不存在：${root}。先跑 pnpm --filter @link-profile/admin build，再重启服务。`,
+      fail(reply, 503, 'admin_not_built', {
+        messageKey: 'adminDist.missing',
+        messageVars: { root },
       });
     app.get('/_admin', explain);
     app.get('/_admin/*', explain);
@@ -47,7 +48,7 @@ export async function adminAppRoutes(app: FastifyInstance) {
         // 带扩展名的请求是找资源不是找页面。回 HTML 会让浏览器把
         // 一份 index.html 当 JS 解析，报语法错误而不是干净的 404。
         if (path.extname(req.url.split('?')[0] ?? '')) {
-          return reply.code(404).send({ error: 'not_found' });
+          return fail(reply, 404, 'not_found');
         }
         return reply.sendFile('index.html', root);
       });
