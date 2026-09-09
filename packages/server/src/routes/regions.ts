@@ -87,7 +87,9 @@ export async function regionRoutes(app: FastifyInstance) {
       ? (parsed.data.ownerAdminId ?? null)
       : actor.id;
 
-    if (ownerAdminId !== null && ownerAdminId !== actor.id) {
+    // 归属必须是真管理员。不能因为填的是自己就跳过这一步 —— 超级管理员填
+    // 自己会造出一个他自己都管不了的区域，而 ADR-0017 说超管不拥有区域。
+    if (ownerAdminId !== null) {
       const [admin] = await app.db
         .select({ id: users.id })
         .from(users)

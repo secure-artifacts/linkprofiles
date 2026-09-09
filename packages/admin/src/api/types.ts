@@ -286,6 +286,8 @@ export interface AppSettings {
   recaptchaSiteKey: string;
   /** 站点密钥与私钥都填齐了没有。私钥本身任何接口都不回传。 */
   recaptchaConfigured: boolean;
+  /** 两把密钥里有没有 Google 的公开测试密钥。私钥那把只有服务端判得了。 */
+  recaptchaUsesTestKey: boolean;
   sourcePassthroughDefault: boolean;
   sourcePassthroughCaveat: string;
 }

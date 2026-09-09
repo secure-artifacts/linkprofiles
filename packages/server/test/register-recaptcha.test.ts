@@ -175,6 +175,47 @@ test('校验器抛异常时不会把注册接口带成 500', async () => {
   }
 });
 
+test('站点密钥换成真的、私钥还留着测试值时，照样报警', async () => {
+  // 决定校验放不放行的是私钥，而私钥不回传前端，所以这个判定必须在服务端做
+  await configure({
+    recaptchaSiteKey: 'a-real-looking-site-key',
+    recaptchaSecretKey: GOOGLE_TEST_SECRET_KEY,
+  });
+
+  const res = await ctx.app.inject({
+    method: 'GET',
+    url: '/_api/settings',
+    ...withSession(superToken),
+  });
+  expect(res.json()).toMatchObject({
+    recaptchaSiteKey: 'a-real-looking-site-key',
+    recaptchaUsesTestKey: true,
+  });
+});
+
+test('反过来：站点密钥是测试值也照样报警', async () => {
+  await configure({
+    recaptchaSiteKey: GOOGLE_TEST_SITE_KEY,
+    recaptchaSecretKey: 'a-real-looking-secret',
+  });
+
+  const res = await ctx.app.inject({
+    method: 'GET',
+    url: '/_api/settings',
+    ...withSession(superToken),
+  });
+  expect(res.json().recaptchaUsesTestKey).toBe(true);
+});
+
+test('两把都是真密钥时不报警', async () => {
+  const res = await ctx.app.inject({
+    method: 'GET',
+    url: '/_api/settings',
+    ...withSession(superToken),
+  });
+  expect(res.json()).toMatchObject({ recaptchaUsesTestKey: false, recaptchaConfigured: true });
+});
+
 test('认得出 Google 的公开测试密钥——那对密钥对任何令牌都放行', () => {
   expect(isGoogleTestKey(GOOGLE_TEST_SITE_KEY)).toBe(true);
   expect(isGoogleTestKey(GOOGLE_TEST_SECRET_KEY)).toBe(true);

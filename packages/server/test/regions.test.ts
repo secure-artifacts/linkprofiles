@@ -88,6 +88,19 @@ test('超级管理员只能把区域指给真正的管理员', async () => {
   expect(bad.json()).toMatchObject({ error: 'not_an_admin' });
 });
 
+test('超级管理员不能把区域归属给自己——超管不拥有区域', async () => {
+  const me = await ctx.app.inject({
+    method: 'GET',
+    url: '/_api/auth/me',
+    ...withSession(superToken),
+  });
+  const superId = me.json().id as string;
+
+  const res = await createRegionAs(superToken, { name: '想归给自己', ownerAdminId: superId });
+  expect(res.statusCode).toBe(400);
+  expect(res.json()).toMatchObject({ error: 'not_an_admin' });
+});
+
 test('区域名全站唯一，重名被拒并说明原因', async () => {
   expect((await createRegionAs(aliceToken, { name: '同一个名字' })).statusCode).toBe(201);
 

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { isGoogleTestKey } from '@link-profile/shared';
 import { request } from '../api/client.js';
 import type { AppSettings } from '../api/types.js';
 import { Alert } from '../ui/Alert.js';
@@ -157,7 +156,7 @@ function RecaptchaKeys({
       </div>
       <p className="text-[12px] text-muted">{t('settings.recaptcha.hint')}</p>
 
-      {isGoogleTestKey(settings.recaptchaSiteKey) ? (
+      {settings.recaptchaUsesTestKey ? (
         <Alert tone="danger" message={t('settings.recaptcha.testKey')} />
       ) : null}
 
