@@ -14,7 +14,7 @@ import { request } from './api/client.js';
 import { ChangePasswordModal } from './components/ChangePasswordModal.js';
 import { ChangeAccountModal } from './components/ChangeAccountModal.js';
 import { useBreadcrumbTrail } from './nav/breadcrumb.js';
-import { LanguageDialog } from './components/LanguageDialog.js';
+import { LanguageSwitcher } from './components/LanguageSwitcher.js';
 import { useAdminT } from './i18n/runtime.js';
 import { ROLE_KEYS, useSession } from './session.js';
 import { DropdownMenu } from './ui/DropdownMenu.js';
@@ -30,7 +30,6 @@ export function AppShell({
   const session = useSession();
   const [changingPassword, setChangingPassword] = useState(false);
   const [changingAccount, setChangingAccount] = useState(false);
-  const [changingLanguage, setChangingLanguage] = useState(false);
   const trail = useBreadcrumbTrail();
   const { pathname } = useLocation();
 
@@ -91,6 +90,7 @@ export function AppShell({
           </nav>
 
           <div className="flex shrink-0 items-center gap-3">
+            <LanguageSwitcher current={session.uiLanguage} onChanged={onLanguageChanged} />
             <DropdownMenu
               trigger={
                 <button
@@ -118,12 +118,6 @@ export function AppShell({
                   label: t('account.menu.changePassword'),
                   icon: <KeyRound className="size-3.5" />,
                   onSelect: () => setChangingPassword(true),
-                },
-                {
-                  key: 'language',
-                  label: t('account.menu.language'),
-                  icon: <Languages className="size-3.5" />,
-                  onSelect: () => setChangingLanguage(true),
                 },
                 {
                   key: 'logout',
@@ -171,12 +165,6 @@ export function AppShell({
           setChangingPassword(false);
           onSignedOut();
         }}
-      />
-      <LanguageDialog
-        open={changingLanguage}
-        current={session.uiLanguage}
-        onClose={() => setChangingLanguage(false)}
-        onChanged={onLanguageChanged}
       />
       <ChangeAccountModal
         open={changingAccount}

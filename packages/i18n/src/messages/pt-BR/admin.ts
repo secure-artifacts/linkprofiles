@@ -348,17 +348,15 @@ export const adminPtBR: AdminMessages = {
   'insights.leadsDown.title': 'Cliques de contato caem {{percent}}',
   'insights.leadsChange.body': '{{current}} neste período contra {{previous}} no anterior.',
   'insights.topSource.title': '{{source}} traz mais cliques de contato',
-  'insights.topSource.body':
-    '{{views}} visitas e {{leads}} contatos, com taxa de contato de {{rate}}.',
+  'insights.topSource.body': '{{visits}} e {{contacts}}, com taxa de contato de {{rate}}.',
   'insights.untagged.title': '{{percent}} das visitas chegam sem marcação de origem',
   'insights.untagged.body':
     'Use links de divulgação com parâmetro de origem; sem isso não dá para saber qual plataforma contribuiu.',
   'insights.opportunity.title': '{{name}} merece ser otimizada primeiro',
   'insights.opportunity.body':
-    '{{views}} visitas, mas só {{rate}} de taxa de contato, abaixo dos {{overall}} gerais.',
+    '{{visits}}, mas só {{rate}} de taxa de contato, abaixo dos {{overall}} gerais.',
   'insights.topCountry.title': '{{country}} é a principal região de visitas',
-  'insights.topCountry.body':
-    '{{views}} visitas e {{leads}} contatos, com taxa de contato de {{rate}}.',
+  'insights.topCountry.body': '{{visits}} e {{contacts}}, com taxa de contato de {{rate}}.',
   'analytics.pageViews': 'Visitas',
   'analytics.leads': 'Cliques de contato',
   'analytics.clicks': 'Todos os cliques',
@@ -549,8 +547,29 @@ export const adminPtBR: AdminMessages = {
   'users.delete.pagesCount':
     'Os {{count}} endereços de página desta conta vão para a lista de lápides e',
   'users.pagesCount': '{{count}} páginas',
-  'users.pagination': '{{total}} usuários, {{size}} por página',
+  'users.pagination': '{{count}} usuários, {{size}} por página',
   'users.shownOn': 'Aparece na página de perfil /{{shortName}}.',
   'users.bulk.line': 'Linha {{line}}',
   'preview.livePreview': 'Prévia ao vivo de {{width}}px · as mudanças não salvas também aparecem',
+  'media.slot.banner': 'Imagem de banner',
+  'media.slot.banner.hint':
+    'A faixa independente no topo do layout Banner. Ela não recorre mais ao avatar e é trocada sozinha.',
+  'media.slot.background': 'Imagem de fundo',
+  'media.slot.background.hint':
+    'Arraste ou clique para escolher. Ela cobre o gradiente de fundo do tema; as cores das entradas e do texto continuam seguindo o tema.',
+  'media.cropping': 'Ajustando o enquadramento…',
+  'media.video.silent':
+    'Este vídeo não tem som, então apertar o botão de mudo na página não faz nada.',
+  'media.poster.failed': 'Não deu para extrair o primeiro quadro deste vídeo',
+  'media.poster.why':
+    'A página pública mostra a capa primeiro e só reproduz quando o vídeo carrega, então uma capa é necessária. Escolha uma manualmente.',
+  'media.poster.pick': 'Escolher capa',
+  'media.overlay.hint':
+    'Escuridão da máscara. A máscara só escurece a imagem, então temas de texto claro ficam mais legíveis quanto mais escuro, e os de texto escuro ao contrário.',
+  'media.overlay.label': 'Escuridão da máscara',
+  'media.uploaded': 'Enviado',
+  'media.replace': 'Trocar',
+  'media.pickFile': 'Escolher arquivo',
+  'media.recrop': 'Recortar de novo',
+  'media.clear': 'Limpar',
 };

@@ -33,7 +33,7 @@ export function buildDashboardInsights(
     insights.push({
       tone: leadChange > 0 ? 'positive' : 'warning',
       title: t(leadChange > 0 ? 'insights.leadsUp.title' : 'insights.leadsDown.title', {
-        percent: percent(Math.abs(leadChange)),
+        percent: percent(locale, Math.abs(leadChange)),
       }),
       description: t('insights.leadsChange.body', {
         current: data.totals.leads,
@@ -50,9 +50,9 @@ export function buildDashboardInsights(
       tone: 'neutral',
       title: t('insights.topSource.title', { source: sourceLabel(t, topSource.key) }),
       description: t('insights.topSource.body', {
-        views: topSource.pageViews,
-        leads: topSource.leads,
-        rate: percent(topSource.leadRate),
+        visits: t('analytics.visitsCount', { count: topSource.pageViews }),
+        contacts: t('analytics.leadsCount', { count: topSource.leads }),
+        rate: percent(locale, topSource.leadRate),
       }),
     });
   }
@@ -64,7 +64,7 @@ export function buildDashboardInsights(
   if (unknownRate >= 0.2) {
     insights.push({
       tone: 'warning',
-      title: t('insights.untagged.title', { percent: percent(unknownRate) }),
+      title: t('insights.untagged.title', { percent: percent(locale, unknownRate) }),
       description: t('insights.untagged.body'),
     });
   }
@@ -80,9 +80,9 @@ export function buildDashboardInsights(
         name: opportunity.displayName || opportunity.shortName,
       }),
       description: t('insights.opportunity.body', {
-        views: opportunity.pageViews,
-        rate: percent(opportunity.leadRate),
-        overall: percent(overallLeadRate),
+        visits: t('analytics.visitsCount', { count: opportunity.pageViews }),
+        rate: percent(locale, opportunity.leadRate),
+        overall: percent(locale, overallLeadRate),
       }),
     });
   }
@@ -93,9 +93,9 @@ export function buildDashboardInsights(
       tone: 'neutral',
       title: t('insights.topCountry.title', { country: countryLabel(t, locale, topCountry.key) }),
       description: t('insights.topCountry.body', {
-        views: topCountry.pageViews,
-        leads: topCountry.leads,
-        rate: percent(topCountry.leadRate),
+        visits: t('analytics.visitsCount', { count: topCountry.pageViews }),
+        contacts: t('analytics.leadsCount', { count: topCountry.leads }),
+        rate: percent(locale, topCountry.leadRate),
       }),
     });
   }

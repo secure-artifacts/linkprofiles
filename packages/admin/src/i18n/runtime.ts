@@ -8,7 +8,7 @@ import {
   type Translate,
 } from '@link-profile/i18n';
 import { loadAdminBundle } from '@link-profile/i18n/admin';
-import { adminEn, errorsEn } from '@link-profile/i18n/source';
+import { adminEn, adminPluralsEn, errorsEn } from '@link-profile/i18n/source';
 import i18next from 'i18next';
 import { initReactI18next, useTranslation } from 'react-i18next';
 
@@ -25,7 +25,7 @@ void instance.use(initReactI18next).init({
   fallbackLng: DEFAULT_LOCALE,
   ns: ['admin', 'errors'],
   defaultNS: 'admin',
-  resources: { en: { admin: { ...adminEn }, errors: { ...errorsEn } } },
+  resources: { en: { admin: { ...adminEn, ...adminPluralsEn }, errors: { ...errorsEn } } },
   keySeparator: false,
   nsSeparator: false,
   interpolation: { escapeValue: false },
@@ -43,6 +43,8 @@ export async function applyLocale(locale: Locale): Promise<void> {
     loaded.add(locale);
   }
   await instance.changeLanguage(locale);
+  // 后台外壳是静态 HTML，语言只有到这里才知道；不同步的话读屏会按错的语言发音。
+  document.documentElement.lang = locale;
 }
 
 /** 当前界面语言。API 客户端拿它填 Accept-Language。 */

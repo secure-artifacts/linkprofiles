@@ -328,7 +328,7 @@ function PlatformComposition({ country, rows }: { country: string; rows: Platfor
                 <span className="font-mono text-fg">
                   {t('country.clicksShare', {
                     count: row.clicks,
-                    percent: total ? percent(row.clicks / total) : '0.0%',
+                    percent: total ? percent(locale, row.clicks / total) : '0.0%',
                   })}
                 </span>
               </div>

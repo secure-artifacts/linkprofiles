@@ -345,17 +345,15 @@ export const adminVi: AdminMessages = {
   'insights.leadsDown.title': 'Lượt nhấp liên hệ giảm {{percent}}',
   'insights.leadsChange.body': '{{current}} lượt kỳ này so với {{previous}} lượt kỳ trước.',
   'insights.topSource.title': '{{source}} mang lại nhiều lượt nhấp liên hệ nhất',
-  'insights.topSource.body':
-    '{{views}} lượt vào và {{leads}} lượt liên hệ, tỷ lệ liên hệ {{rate}}.',
+  'insights.topSource.body': '{{visits}} và {{contacts}}, tỷ lệ liên hệ {{rate}}.',
   'insights.untagged.title': '{{percent}} lượt vào không gắn thẻ nguồn',
   'insights.untagged.body':
     'Hãy dùng liên kết quảng bá có tham số nguồn, nếu không sẽ không biết nền tảng nào đóng góp.',
   'insights.opportunity.title': '{{name}} đáng tối ưu trước',
   'insights.opportunity.body':
-    '{{views}} lượt vào nhưng tỷ lệ liên hệ chỉ {{rate}}, thấp hơn mức chung {{overall}}.',
+    '{{visits}} nhưng tỷ lệ liên hệ chỉ {{rate}}, thấp hơn mức chung {{overall}}.',
   'insights.topCountry.title': '{{country}} là khu vực truy cập nhiều nhất',
-  'insights.topCountry.body':
-    '{{views}} lượt vào và {{leads}} lượt liên hệ, tỷ lệ liên hệ {{rate}}.',
+  'insights.topCountry.body': '{{visits}} và {{contacts}}, tỷ lệ liên hệ {{rate}}.',
   'analytics.pageViews': 'Lượt vào trang',
   'analytics.leads': 'Lượt nhấp liên hệ',
   'analytics.clicks': 'Tất cả lượt nhấp',
@@ -543,8 +541,29 @@ export const adminVi: AdminMessages = {
   'users.delete.pagesCount':
     'Toàn bộ {{count}} địa chỉ trang của tài khoản này sẽ vào danh sách bia mộ và',
   'users.pagesCount': '{{count}} trang',
-  'users.pagination': '{{total}} người dùng, {{size}} mỗi trang',
+  'users.pagination': '{{count}} người dùng, {{size}} mỗi trang',
   'users.shownOn': 'Hiển thị trên trang hồ sơ /{{shortName}}.',
   'users.bulk.line': 'Dòng {{line}}',
   'preview.livePreview': 'Xem thử trực tiếp ở {{width}}px · thay đổi chưa lưu cũng hiện ra',
+  'media.slot.banner': 'Ảnh banner',
+  'media.slot.banner.hint':
+    'Dải riêng ở đầu bố cục Banner. Nó không còn lấy ảnh đại diện thay thế và được đổi riêng.',
+  'media.slot.background': 'Ảnh nền',
+  'media.slot.background.hint':
+    'Kéo vào đây hoặc nhấp để chọn. Nó phủ lên dải màu nền của chủ đề; màu mục và màu chữ vẫn theo chủ đề.',
+  'media.cropping': 'Đang chỉnh khung hình…',
+  'media.video.silent':
+    'Video này không có tiếng, nên bấm nút tắt tiếng trên trang cũng không có gì xảy ra.',
+  'media.poster.failed': 'Không lấy được khung hình đầu tiên của video này',
+  'media.poster.why':
+    'Trang công khai hiện ảnh bìa trước rồi mới phát khi video tải xong, nên cần một ảnh bìa. Hãy tự chọn một tấm.',
+  'media.poster.pick': 'Chọn ảnh bìa',
+  'media.overlay.hint':
+    'Độ tối của lớp phủ. Lớp phủ chỉ làm ảnh tối đi, nên chủ đề chữ sáng càng tối càng dễ đọc, còn chủ đề chữ tối thì ngược lại.',
+  'media.overlay.label': 'Độ tối của lớp phủ',
+  'media.uploaded': 'Đã tải lên',
+  'media.replace': 'Đổi cái khác',
+  'media.pickFile': 'Chọn tệp',
+  'media.recrop': 'Cắt lại',
+  'media.clear': 'Xoá trống',
 };

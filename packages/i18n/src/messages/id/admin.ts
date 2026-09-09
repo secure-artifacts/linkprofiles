@@ -350,17 +350,15 @@ export const adminId: AdminMessages = {
   'insights.leadsChange.body':
     '{{current}} pada periode ini berbanding {{previous}} pada periode lalu.',
   'insights.topSource.title': '{{source}} menyumbang klik kontak terbanyak',
-  'insights.topSource.body':
-    '{{views}} kunjungan dan {{leads}} kontak, dengan rasio kontak {{rate}}.',
+  'insights.topSource.body': '{{visits}} dan {{contacts}}, dengan rasio kontak {{rate}}.',
   'insights.untagged.title': '{{percent}} kunjungan datang tanpa tanda sumber',
   'insights.untagged.body':
     'Pakai tautan promosi yang membawa parameter sumber; tanpa itu tidak ketahuan platform mana yang berkontribusi.',
   'insights.opportunity.title': '{{name}} layak dioptimalkan lebih dulu',
   'insights.opportunity.body':
-    '{{views}} kunjungan tapi rasio kontaknya cuma {{rate}}, di bawah {{overall}} keseluruhan.',
+    '{{visits}} tapi rasio kontaknya cuma {{rate}}, di bawah {{overall}} keseluruhan.',
   'insights.topCountry.title': '{{country}} adalah wilayah kunjungan teratas',
-  'insights.topCountry.body':
-    '{{views}} kunjungan dan {{leads}} kontak, dengan rasio kontak {{rate}}.',
+  'insights.topCountry.body': '{{visits}} dan {{contacts}}, dengan rasio kontak {{rate}}.',
   'analytics.pageViews': 'Kunjungan',
   'analytics.leads': 'Klik kontak',
   'analytics.clicks': 'Semua klik',
@@ -548,9 +546,30 @@ export const adminId: AdminMessages = {
   'settings.passthrough.explainTail': 'membawa sumber yang sama sampai ke alamat tujuan.',
   'users.delete.pagesCount': 'Seluruh {{count}} alamat halaman di akun ini masuk daftar nisan dan',
   'users.pagesCount': '{{count}} halaman',
-  'users.pagination': '{{total}} pengguna, {{size}} per halaman',
+  'users.pagination': '{{count}} pengguna, {{size}} per halaman',
   'users.shownOn': 'Ditampilkan di halaman profil /{{shortName}}.',
   'users.bulk.line': 'Baris {{line}}',
   'preview.livePreview':
     'Pratinjau langsung {{width}}px · perubahan yang belum disimpan juga terlihat',
+  'media.slot.banner': 'Gambar banner',
+  'media.slot.banner.hint':
+    'Pita mandiri di bagian atas tata letak Banner. Ia tidak lagi memakai avatar dan diganti secara terpisah.',
+  'media.slot.background': 'Gambar latar',
+  'media.slot.background.hint':
+    'Seret ke sini atau klik untuk memilih. Ia menutup gradien latar tema; warna entri dan teks tetap mengikuti tema.',
+  'media.cropping': 'Menyesuaikan komposisi…',
+  'media.video.silent':
+    'Video ini tidak bersuara, jadi menekan tombol senyap di halaman tidak berpengaruh.',
+  'media.poster.failed': 'Gagal mengambil bingkai pertama dari video ini',
+  'media.poster.why':
+    'Halaman publik menampilkan sampul lebih dulu dan baru memutar setelah video dimuat, jadi sampul diperlukan. Pilih satu secara manual.',
+  'media.poster.pick': 'Pilih sampul',
+  'media.overlay.hint':
+    'Kepekatan lapisan gelap. Lapisan ini hanya menggelapkan gambar, jadi tema berteks terang makin mudah dibaca saat makin gelap, dan tema berteks gelap sebaliknya.',
+  'media.overlay.label': 'Kepekatan lapisan',
+  'media.uploaded': 'Terunggah',
+  'media.replace': 'Ganti',
+  'media.pickFile': 'Pilih berkas',
+  'media.recrop': 'Pangkas ulang',
+  'media.clear': 'Kosongkan',
 };

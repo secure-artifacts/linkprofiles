@@ -364,15 +364,15 @@ export const adminFil: AdminMessages = {
   'insights.leadsChange.body':
     '{{current}} ngayong panahon kumpara sa {{previous}} noong nakaraan.',
   'insights.topSource.title': '{{source}} ang may pinakamaraming contact click',
-  'insights.topSource.body': '{{views}} bisita at {{leads}} contact, {{rate}} ang contact rate.',
+  'insights.topSource.body': '{{visits}} at {{contacts}}, {{rate}} ang contact rate.',
   'insights.untagged.title': '{{percent}} ng mga bisita ay walang source tag',
   'insights.untagged.body':
     'Gumamit ng promotion link na may source parameter, kung hindi ay hindi malalaman kung aling platform ang nag-ambag.',
   'insights.opportunity.title': 'Si {{name}} ang dapat unahing ayusin',
   'insights.opportunity.body':
-    '{{views}} bisita pero {{rate}} lang ang contact rate, mas mababa sa pangkalahatang {{overall}}.',
+    '{{visits}} pero {{rate}} lang ang contact rate, mas mababa sa pangkalahatang {{overall}}.',
   'insights.topCountry.title': 'Ang {{country}} ang pangunahing rehiyon ng mga bisita',
-  'insights.topCountry.body': '{{views}} bisita at {{leads}} contact, {{rate}} ang contact rate.',
+  'insights.topCountry.body': '{{visits}} at {{contacts}}, {{rate}} ang contact rate.',
 
   'analytics.pageViews': 'Mga pagbisita',
   'analytics.leads': 'Mga contact click',
@@ -569,8 +569,30 @@ export const adminFil: AdminMessages = {
   'users.delete.pagesCount':
     'Lahat ng {{count}} address ng page sa ilalim ng account na ito ay mapupunta sa tombstone at',
   'users.pagesCount': '{{count}} page',
-  'users.pagination': '{{total}} user, {{size}} kada page',
+  'users.pagination': '{{count}} user, {{size}} kada page',
   'users.shownOn': 'Ipinapakita sa profile page na /{{shortName}}.',
   'users.bulk.line': 'Linya {{line}}',
   'preview.livePreview': '{{width}}px live preview · lumalabas din ang mga hindi pa nase-save',
+
+  'media.slot.banner': 'Banner na larawan',
+  'media.slot.banner.hint':
+    'Ang hiwalay na strip sa itaas ng Banner layout. Hindi na ito bumabalik sa avatar at hiwalay itong pinapalitan.',
+  'media.slot.background': 'Larawan sa background',
+  'media.slot.background.hint':
+    'Mag-drag o mag-click para pumili. Tinatakpan nito ang gradient ng tema; sumusunod pa rin sa tema ang kulay ng entry at teksto.',
+  'media.cropping': 'Inaayos ang pagkakakuwadro…',
+  'media.video.silent':
+    'Walang tunog ang clip na ito, kaya walang mangyayari kapag pinindot ang mute button sa page.',
+  'media.poster.failed': 'Hindi makuha ang unang frame ng video na ito',
+  'media.poster.why':
+    'Ipinapakita muna ng public page ang poster at saka lang nagpe-play kapag na-load na ang video, kaya kailangan ng poster. Pumili nang manu-mano.',
+  'media.poster.pick': 'Pumili ng poster',
+  'media.overlay.hint':
+    'Dilim ng overlay. Pinapadilim lang nito ang larawan, kaya mas madaling basahin ang temang may maputing teksto habang dumidilim, at kabaligtaran naman sa temang may maitim na teksto.',
+  'media.overlay.label': 'Dilim ng overlay',
+  'media.uploaded': 'Na-upload',
+  'media.replace': 'Palitan',
+  'media.pickFile': 'Pumili ng file',
+  'media.recrop': 'I-crop muli',
+  'media.clear': 'Alisin',
 };

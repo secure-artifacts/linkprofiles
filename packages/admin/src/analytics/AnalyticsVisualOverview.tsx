@@ -27,6 +27,7 @@ export function AnalyticsVisualOverview({ data }: { data: CrossBreakdowns }) {
 }
 
 function SourceRanking({ rows }: { rows: CrossBreakdowns['sources'] }) {
+  const locale = useLocale();
   const t = useAdminT();
   const topRows = rows.slice(0, 8);
   const maxViews = Math.max(1, ...topRows.map((row) => row.pageViews));
@@ -53,7 +54,7 @@ function SourceRanking({ rows }: { rows: CrossBreakdowns['sources'] }) {
             />
           </div>
           <p className="mt-1 text-right text-[11px] text-muted">
-            {t('analytics.leadPerVisit', { percent: percent(row.leadRate) })}
+            {t('analytics.leadPerVisit', { percent: percent(locale, row.leadRate) })}
           </p>
         </div>
       ))}
@@ -66,6 +67,7 @@ function SourceRanking({ rows }: { rows: CrossBreakdowns['sources'] }) {
 }
 
 function ContactRanking({ rows }: { rows: CrossBreakdowns['targets'] }) {
+  const locale = useLocale();
   const t = useAdminT();
   const contacts = rows.filter((row) => row.isLead).slice(0, 8);
   const totalClicks = contacts.reduce((sum, row) => sum + row.clicks, 0);
@@ -101,7 +103,7 @@ function ContactRanking({ rows }: { rows: CrossBreakdowns['targets'] }) {
             <div className="min-w-16 text-right">
               <p className="font-mono text-[13px] font-medium text-fg">{row.clicks}</p>
               <p className="text-[11px] text-muted">
-                {totalClicks ? percent(row.clicks / totalClicks) : '0.0%'}
+                {totalClicks ? percent(locale, row.clicks / totalClicks) : '0.0%'}
               </p>
             </div>
           </div>

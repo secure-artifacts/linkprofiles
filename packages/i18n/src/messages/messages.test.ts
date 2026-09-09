@@ -6,7 +6,7 @@ import { loadAdminBundle } from '../admin.js';
 import { adminEn } from './en/admin.js';
 import { errorsEn } from './en/errors.js';
 import { publicEn } from './en/public.js';
-import type { Catalog } from '../create.js';
+import { createI18n, type Catalog } from '../create.js';
 
 /** 七种语言全部产出译文，对齐检查逐一覆盖。 */
 const TRANSLATED: Locale[] = [...SUPPORTED_LOCALES];
@@ -37,16 +37,38 @@ describe('译文对齐', () => {
     expectAligned('errors', errorsCatalog, errorsEn);
   });
 
-  test('后台命名空间与英文源文完全相等', async () => {
+  test('后台命名空间覆盖英文源文的每一个基础 key', async () => {
     for (const locale of TRANSLATED) {
       const bundle = await loadAdminBundle(locale);
-      expect(Object.keys(bundle.admin).sort(), `admin / ${locale}`).toEqual(
-        Object.keys(adminEn).sort(),
+      const stems = new Set(
+        Object.keys(bundle.admin).map((key) => key.replace(/_(zero|one|two|few|many|other)$/, '')),
       );
+      expect([...stems].sort(), `admin / ${locale}`).toEqual(Object.keys(adminEn).sort());
       for (const [key, value] of Object.entries(bundle.admin)) {
         expect(value.trim(), `admin / ${locale} 的 ${key} 是空串`).not.toBe('');
       }
     }
+  });
+
+  test('单数形态都挂在存在的基础 key 上', async () => {
+    const base = new Set(Object.keys(adminEn));
+    for (const locale of SUPPORTED_LOCALES) {
+      const bundle = await loadAdminBundle(locale);
+      for (const key of Object.keys(bundle.admin)) {
+        const stem = key.replace(/_(zero|one|two|few|many|other)$/, '');
+        expect(base.has(stem), `${locale} 的 ${key} 没有对应的基础 key`).toBe(true);
+      }
+    }
+  });
+
+  test('有数的屈折的语言在 count 为 1 时用单数', async () => {
+    const single = createI18n('admin', {
+      en: (await loadAdminBundle('en')).admin,
+      es: (await loadAdminBundle('es')).admin,
+    });
+    expect(single.getFixedT('en', 'admin')('users.pagesCount', { count: 1 })).toBe('1 page');
+    expect(single.getFixedT('en', 'admin')('users.pagesCount', { count: 3 })).toBe('3 pages');
+    expect(single.getFixedT('es', 'admin')('users.pagesCount', { count: 1 })).toBe('1 página');
   });
 
   test('每一种受支持的语言都真的换了一套文案', async () => {

@@ -215,7 +215,7 @@ export function UsersPage() {
 
         {users.length > PAGE_SIZE ? (
           <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-[13px] text-muted">
-            <span>{t('users.pagination', { total: users.length, size: PAGE_SIZE })}</span>
+            <span>{t('users.pagination', { count: users.length, size: PAGE_SIZE })}</span>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"

@@ -18,7 +18,7 @@ import { Button } from '../../ui/Button.js';
 import { Slider } from '../../ui/Slider.js';
 import { useToast } from '../../ui/Toast.js';
 import type { Draft, LiveMedia, PendingMedia } from './draft.js';
-import { useAdminT } from '../../i18n/runtime.js';
+import { useAdminT, useLocale } from '../../i18n/runtime.js';
 
 interface MediaEditorProps {
   draft: Draft;
@@ -232,7 +232,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
           previewUrl={avatarPreview}
           previewIsVideo={avatarIsVideo}
           shape="circle"
-          fileName={croppingAvatar ? '正在调整构图…' : (draft.pendingAvatar?.file.name ?? null)}
+          fileName={croppingAvatar ? t('media.cropping') : (draft.pendingAvatar?.file.name ?? null)}
           error={slotErrors.avatar ?? null}
           loading={extracting}
           onPick={pickAvatar}
@@ -240,9 +240,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
             ? { onRecrop: () => recrop('avatar') }
             : {})}
           specs={avatarSpecs(t)}
-          {...(silentVideo
-            ? { notice: '这段视频没有声音，页面右上角那个静音按钮点了也不会有动静。' }
-            : {})}
+          {...(silentVideo ? { notice: t('media.video.silent') } : {})}
           onClear={() => {
             clearSlot('avatar');
             setSilentVideo(false);
@@ -250,15 +248,17 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
           }}
         />
         <MediaSlot
-          label="Banner 图"
-          hint="Banner 布局顶部的独立横幅。不会再自动使用头像，可单独更换。"
+          label={t('media.slot.banner')}
+          hint={t('media.slot.banner.hint')}
           specs={bannerSpecs(t)}
           accept="image/*"
           previewUrl={bannerPreview}
           previewIsVideo={false}
           shape="banner"
           fileName={
-            cropping?.slot === 'banner' ? '正在调整构图…' : (draft.pendingBanner?.file.name ?? null)
+            cropping?.slot === 'banner'
+              ? t('media.cropping')
+              : (draft.pendingBanner?.file.name ?? null)
           }
           error={slotErrors.banner ?? null}
           onPick={pickBanner}
@@ -269,8 +269,8 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
           }}
         />
         <MediaSlot
-          label="背景图"
-          hint="拖进来或点选。上传后覆盖主题的背景渐变，条目色与文字色仍然跟着主题走。"
+          label={t('media.slot.background')}
+          hint={t('media.slot.background.hint')}
           specs={backgroundSpecs(t)}
           accept="image/*"
           previewUrl={backgroundPreview}
@@ -278,7 +278,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
           shape="portrait"
           fileName={
             cropping?.slot === 'background'
-              ? '正在调整构图…'
+              ? t('media.cropping')
               : (draft.pendingBackground?.file.name ?? null)
           }
           error={slotErrors.background ?? null}
@@ -296,10 +296,10 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
       {posterFailed ? (
         <Alert
           tone="warning"
-          message="没能从这段视频里抽出首帧"
+          message={t('media.poster.failed')}
           description={
             <div className="flex flex-col gap-2">
-              <span>公开页要先显示封面、视频加载完才播放，所以需要一张封面图。请手动选一张。</span>
+              <span>{t('media.poster.why')}</span>
               <label className="w-fit">
                 <input
                   type="file"
@@ -312,7 +312,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
                   }}
                 />
                 <span className="inline-flex h-8 cursor-pointer items-center rounded-[var(--radius-control)] border border-border bg-surface px-3 text-[13px] font-medium text-fg hover:bg-surface-hover">
-                  选择封面图
+                  {t('media.poster.pick')}
                 </span>
               </label>
             </div>
@@ -322,14 +322,12 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
 
       {hasBackground ? (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[12px] text-muted">
-            遮罩暗度。遮罩只会把图压暗，因此浅色文字的主题压得越深越清楚，深色文字的主题反过来。
-          </p>
+          <p className="text-[12px] text-muted">{t('media.overlay.hint')}</p>
           <div className="flex items-center gap-3">
             <Slider
               value={Number(draft.fields.backgroundOverlay)}
               onChange={(value) => onChangeFields({ backgroundOverlay: String(value) })}
-              aria-label="遮罩暗度"
+              aria-label={t('media.overlay.label')}
             />
             <span className="w-10 shrink-0 font-mono text-[13px] text-fg">
               {Math.round(Number(draft.fields.backgroundOverlay) * 100)}%
@@ -388,6 +386,7 @@ function MediaSlot({
   onRecrop?: () => void;
   onClear: () => void;
 }) {
+  const t = useAdminT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -464,7 +463,7 @@ function MediaSlot({
             )}
           </div>
           <span className="min-w-0 flex-1 truncate text-[12px] text-muted">
-            {fileName ?? '已上传'}
+            {fileName ?? t('media.uploaded')}
           </span>
         </div>
       ) : (
@@ -502,17 +501,17 @@ function MediaSlot({
           loading={loading}
           onClick={() => inputRef.current?.click()}
         >
-          {previewUrl ? '换一个' : '选择文件'}
+          {previewUrl ? t('media.replace') : t('media.pickFile')}
         </Button>
         {onRecrop ? (
           <Button variant="ghost" size="sm" onClick={onRecrop}>
             <Crop className="size-3.5" />
-            重新裁切
+            {t('media.recrop')}
           </Button>
         ) : null}
         {previewUrl ? (
           <Button variant="ghost" size="sm" onClick={onClear}>
-            清空
+            {t('media.clear')}
           </Button>
         ) : null}
       </div>

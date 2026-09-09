@@ -94,6 +94,8 @@ function Preview() {
   }, [hasVideo]);
 
   if (!profile) return null;
+  // 预览文档的语言声明跟着页面语言，与公开页直出保持一致。
+  document.documentElement.lang = profile.language;
   return <ProfilePage profile={profile} />;
 }
 

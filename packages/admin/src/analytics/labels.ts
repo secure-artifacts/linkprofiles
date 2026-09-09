@@ -51,4 +51,15 @@ export const countryLabel = (t: T, locale: Locale, key: string): string => {
   return names.of(key.toUpperCase()) ?? key;
 };
 
-export const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
+/**
+ * 百分比跟界面语言走。
+ *
+ * 与统计卡片里的数字共用一套格式：同一屏上出现 `0,0%` 与 `0.0%` 两种小数写法，
+ * 读者会以为是两个不同的量。
+ */
+export const percent = (locale: Locale, value: number) =>
+  new Intl.NumberFormat(locale, {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value);

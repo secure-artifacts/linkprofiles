@@ -30,7 +30,9 @@ export async function readMigrations(dir = migrationsDir()): Promise<Migration[]
   // 目录缺失若吞成空数组，会静默跳过全部建表，直到第一条查询才炸在无关的位置。
   const entries = await readdir(dir).catch((err: NodeJS.ErrnoException) => {
     if (err.code === 'ENOENT') {
-      throw new Error(`迁移目录不存在：${dir}（可用 MIGRATIONS_DIR 指定）`, { cause: err });
+      throw new Error(`Migration directory not found: ${dir} (set MIGRATIONS_DIR to point at it)`, {
+        cause: err,
+      });
     }
     throw err;
   });

@@ -350,17 +350,15 @@ export const adminEs: AdminMessages = {
   'insights.leadsDown.title': 'Los clics de contacto bajan {{percent}}',
   'insights.leadsChange.body': '{{current}} este periodo frente a {{previous}} en el anterior.',
   'insights.topSource.title': '{{source}} aporta más clics de contacto',
-  'insights.topSource.body':
-    '{{views}} visitas y {{leads}} contactos, con una tasa de contacto del {{rate}}.',
+  'insights.topSource.body': '{{visits}} y {{contacts}}, con una tasa de contacto del {{rate}}.',
   'insights.untagged.title': 'El {{percent}} de las visitas llega sin etiqueta de fuente',
   'insights.untagged.body':
     'Usa enlaces de promoción con parámetro de fuente; si no, no se puede saber qué plataforma aportó.',
   'insights.opportunity.title': '{{name}} merece optimizarse primero',
   'insights.opportunity.body':
-    '{{views}} visitas pero solo un {{rate}} de tasa de contacto, por debajo del {{overall}} general.',
+    '{{visits}} pero solo un {{rate}} de tasa de contacto, por debajo del {{overall}} general.',
   'insights.topCountry.title': '{{country}} es la principal región de visitas',
-  'insights.topCountry.body':
-    '{{views}} visitas y {{leads}} contactos, con una tasa de contacto del {{rate}}.',
+  'insights.topCountry.body': '{{visits}} y {{contacts}}, con una tasa de contacto del {{rate}}.',
   'analytics.pageViews': 'Visitas',
   'analytics.leads': 'Clics de contacto',
   'analytics.clicks': 'Todos los clics',
@@ -551,9 +549,30 @@ export const adminEs: AdminMessages = {
   'users.delete.pagesCount':
     'Las {{count}} direcciones de página de esta cuenta pasan a la lista de lápidas y',
   'users.pagesCount': '{{count}} páginas',
-  'users.pagination': '{{total}} usuarios, {{size}} por página',
+  'users.pagination': '{{count}} usuarios, {{size}} por página',
   'users.shownOn': 'Se muestra en la página de perfil /{{shortName}}.',
   'users.bulk.line': 'Fila {{line}}',
   'preview.livePreview':
     'Vista previa en vivo de {{width}}px · también se ven los cambios sin guardar',
+  'media.slot.banner': 'Imagen de banner',
+  'media.slot.banner.hint':
+    'La franja independiente de la parte superior del diseño Banner. Ya no recurre al avatar y se sustituye por su cuenta.',
+  'media.slot.background': 'Imagen de fondo',
+  'media.slot.background.hint':
+    'Arrástrala o haz clic para elegirla. Cubre el degradado de fondo del tema; los colores de las entradas y del texto siguen al tema.',
+  'media.cropping': 'Ajustando el encuadre…',
+  'media.video.silent':
+    'Este vídeo no tiene sonido, así que pulsar el botón de silencio de la página no hace nada.',
+  'media.poster.failed': 'No se pudo extraer el primer fotograma de este vídeo',
+  'media.poster.why':
+    'La página pública muestra primero la portada y solo reproduce cuando el vídeo ha cargado, así que hace falta una portada. Elige una a mano.',
+  'media.poster.pick': 'Elegir portada',
+  'media.overlay.hint':
+    'Oscuridad del velo. El velo solo oscurece la imagen, así que los temas de texto claro se leen mejor cuanto más oscuro, y los de texto oscuro al revés.',
+  'media.overlay.label': 'Oscuridad del velo',
+  'media.uploaded': 'Subido',
+  'media.replace': 'Cambiar',
+  'media.pickFile': 'Elegir archivo',
+  'media.recrop': 'Recortar de nuevo',
+  'media.clear': 'Vaciar',
 };

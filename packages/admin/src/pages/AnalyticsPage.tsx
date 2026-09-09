@@ -249,6 +249,7 @@ function PortfolioResults({
   onOpenProfile: (id: string) => void;
   onOpenAccount: (id: string) => void;
 }) {
+  const locale = useLocale();
   const t = useAdminT();
   const [rankBy, setRankBy] = useState<ProfileRankKey>('leads');
   const rankedProfiles = useMemo(
@@ -343,7 +344,7 @@ function PortfolioResults({
               <NumberCell value={row.clicks} />
               <NumberCell value={row.leads} />
               <td className="py-3 pl-4 text-right font-mono font-medium text-accent">
-                {percent(row.leadRate)}
+                {percent(locale, row.leadRate)}
               </td>
             </tr>
           ))}
@@ -407,7 +408,7 @@ function PortfolioProfileRow({
       <NumberCell value={row.pageViews} />
       <NumberCell value={row.leads} />
       <td className="py-3 pl-4 text-right font-mono font-medium text-accent">
-        {percent(row.leadRate)}
+        {percent(locale, row.leadRate)}
       </td>
       <td className="py-3 pl-4 text-right">
         <ChangeBadge value={leadChange} />
@@ -460,6 +461,7 @@ function ProfilePerformanceRow({
   row: ProfilePerformance;
   onOpen: (id: string) => void;
 }) {
+  const locale = useLocale();
   return (
     <tr
       className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-hover"
@@ -472,9 +474,9 @@ function ProfilePerformanceRow({
       <NumberCell value={row.pageViews} />
       <NumberCell value={row.clicks} />
       <NumberCell value={row.leads} />
-      <td className="py-3 text-right font-mono text-fg">{percent(row.ctr)}</td>
+      <td className="py-3 text-right font-mono text-fg">{percent(locale, row.ctr)}</td>
       <td className="py-3 pl-4 text-right font-mono font-medium text-accent">
-        {percent(row.leadRate)}
+        {percent(locale, row.leadRate)}
       </td>
     </tr>
   );
@@ -704,6 +706,7 @@ function AnalyticsInsights({ insights }: { insights: ReturnType<typeof buildDash
 }
 
 function FunnelSummary({ data }: { data: AnalyticsResponse }) {
+  const locale = useLocale();
   const t = useAdminT();
   const pageViews = data.totals.pageViews;
   const clickRate = pageViews ? data.totals.clicks / pageViews : 0;
@@ -741,7 +744,7 @@ function FunnelSummary({ data }: { data: AnalyticsResponse }) {
                 <span className="font-mono text-[12px] text-muted">
                   {index === 0
                     ? t('analytics.funnel.base')
-                    : t('analytics.funnel.share', { percent: percent(stage.rate) })}
+                    : t('analytics.funnel.share', { percent: percent(locale, stage.rate) })}
                 </span>
               </div>
             </div>
@@ -838,6 +841,7 @@ function AggregateAnalysis({
 }
 
 function ChangeBadge({ value, asPoints = false }: { value: number | null; asPoints?: boolean }) {
+  const locale = useLocale();
   const t = useAdminT();
   if (value === null) {
     return (
@@ -849,10 +853,16 @@ function ChangeBadge({ value, asPoints = false }: { value: number | null; asPoin
   const positive = value > 0;
   const negative = value < 0;
   const label = asPoints
-    ? t('analytics.points', { value: `${positive ? '+' : ''}${(value * 100).toFixed(1)}` })
+    ? t('analytics.points', {
+        value: formatNumber(value * 100, locale, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+          signDisplay: positive ? 'always' : 'auto',
+        }),
+      })
     : value === 0
       ? t('analytics.flat')
-      : `${positive ? '+' : ''}${percent(value)}`;
+      : `${positive ? '+' : ''}${percent(locale, value)}`;
   return (
     <span
       className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -1018,6 +1028,7 @@ function filteredTargets(
 }
 
 function SourceTable({ rows }: { rows: SourceBreakdown[] }) {
+  const locale = useLocale();
   const t = useAdminT();
   return (
     <ResponsiveTable
@@ -1036,7 +1047,7 @@ function SourceTable({ rows }: { rows: SourceBreakdown[] }) {
           <NumberCell value={row.pageViews} />
           <NumberCell value={row.clicks} />
           <NumberCell value={row.leads} />
-          <td className="py-3 text-right font-mono text-fg">{percent(row.leadRate)}</td>
+          <td className="py-3 text-right font-mono text-fg">{percent(locale, row.leadRate)}</td>
           <td className="min-w-52 py-3 pl-4">
             <TargetPills targets={row.targets} />
           </td>
@@ -1095,7 +1106,7 @@ function CountryTable({ rows }: { rows: CountryBreakdown[] }) {
                     <NumberCell value={source.clicks} />
                     <NumberCell value={source.leads} />
                     <td className="py-2 text-right font-mono text-fg">
-                      {percent(source.leadRate)}
+                      {percent(locale, source.leadRate)}
                     </td>
                     <td className="min-w-52 py-2 pl-4">
                       <TargetPills targets={source.targets} />
@@ -1272,11 +1283,14 @@ function MetricCard({
       <p className="text-[13px] text-muted">{label}</p>
       <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
         <p className="font-mono text-2xl font-semibold text-fg">
-          {formatNumber(value, locale, {
-            minimumFractionDigits: precision,
-            maximumFractionDigits: precision,
-          })}
-          {suffix}
+          {/* 百分比走同一个格式化出口，否则同一屏上会出现两种小数与千分位写法。 */}
+          {suffix === '%'
+            ? percent(locale, value / 100)
+            : formatNumber(value, locale, {
+                minimumFractionDigits: precision,
+                maximumFractionDigits: precision,
+              })}
+          {suffix === '%' ? '' : suffix}
         </p>
         {change !== undefined ? <ChangeBadge value={change} asPoints={changeAsPoints} /> : null}
       </div>

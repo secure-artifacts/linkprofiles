@@ -3,5 +3,6 @@
  * 一遍原始 key。其余语言按需动态加载，见 admin.ts。
  */
 export { adminEn } from './messages/en/admin.js';
+export { adminPluralsEn } from './messages/en/admin.plurals.js';
 export { errorsEn } from './messages/en/errors.js';
 export { publicEn } from './messages/en/public.js';

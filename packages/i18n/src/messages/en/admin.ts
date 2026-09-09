@@ -359,15 +359,15 @@ export const adminEn = {
   'insights.leadsDown.title': 'Contact clicks down {{percent}}',
   'insights.leadsChange.body': '{{current}} this period against {{previous}} last period.',
   'insights.topSource.title': '{{source}} brings the most contact clicks',
-  'insights.topSource.body': '{{views}} visits and {{leads}} contacts, a {{rate}} contact rate.',
+  'insights.topSource.body': '{{visits}} and {{contacts}}, a {{rate}} contact rate.',
   'insights.untagged.title': '{{percent}} of visits carry no source tag',
   'insights.untagged.body':
     'Use promotion links that carry a source parameter, otherwise you cannot tell which platform contributed.',
   'insights.opportunity.title': '{{name}} is worth optimising first',
   'insights.opportunity.body':
-    '{{views}} visits but only a {{rate}} contact rate, below the overall {{overall}}.',
+    '{{visits}} but only a {{rate}} contact rate, below the overall {{overall}}.',
   'insights.topCountry.title': '{{country}} is the top visiting region',
-  'insights.topCountry.body': '{{views}} visits and {{leads}} contacts, a {{rate}} contact rate.',
+  'insights.topCountry.body': '{{visits}} and {{contacts}}, a {{rate}} contact rate.',
 
   'analytics.pageViews': 'Page views',
   'analytics.leads': 'Contact clicks',
@@ -559,8 +559,30 @@ export const adminEn = {
   'users.delete.pagesCount':
     'All {{count}} page addresses under this account go into the tombstone list and are',
   'users.pagesCount': '{{count}} pages',
-  'users.pagination': '{{total}} users, {{size}} per page',
+  'users.pagination': '{{count}} users, {{size}} per page',
   'users.shownOn': 'Shown on the /{{shortName}} profile page.',
   'users.bulk.line': 'Line {{line}}',
   'preview.livePreview': '{{width}}px live preview · unsaved changes show up too',
+
+  'media.slot.banner': 'Banner image',
+  'media.slot.banner.hint':
+    'The standalone strip at the top of the Banner layout. It no longer falls back to the avatar and is replaced on its own.',
+  'media.slot.background': 'Background image',
+  'media.slot.background.hint':
+    'Drag one in or click to pick. It covers the theme background gradient; entry and text colours still follow the theme.',
+  'media.cropping': 'Adjusting the framing…',
+  'media.video.silent':
+    'This clip has no sound, so tapping the mute button on the page does nothing.',
+  'media.poster.failed': 'Could not grab the first frame of this video',
+  'media.poster.why':
+    'The public page shows the poster first and only plays once the video has loaded, so a poster is required. Pick one by hand.',
+  'media.poster.pick': 'Pick a poster',
+  'media.overlay.hint':
+    'Overlay darkness. The overlay only darkens the image, so themes with light text read better the darker it gets, and themes with dark text the other way round.',
+  'media.overlay.label': 'Overlay darkness',
+  'media.uploaded': 'Uploaded',
+  'media.replace': 'Replace',
+  'media.pickFile': 'Pick a file',
+  'media.recrop': 'Crop again',
+  'media.clear': 'Clear',
 } as const;
