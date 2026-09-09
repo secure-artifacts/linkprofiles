@@ -22,6 +22,7 @@ import { settingsRoutes } from './routes/settings.js';
 import { trackRoutes } from './routes/track.js';
 import { userRoutes } from './routes/users.js';
 import { regionRoutes } from './routes/regions.js';
+import { verifyWithGoogle, type RecaptchaVerifier } from './register/recaptcha.js';
 import { registerRoutes } from './routes/register.js';
 import { apiKeyRoutes } from './routes/api-keys.js';
 import { externalApiRoutes } from './routes/external-api.js';
@@ -31,6 +32,8 @@ export interface AppDeps {
   sql: Sql;
   /** 地域解析。测试注入一个假的，生产用 GeoLite2 离线库。 */
   geo?: GeoLookup;
+  /** 人机验证。测试注入一个假的，生产打 Google 的 siteverify。 */
+  recaptcha?: RecaptchaVerifier;
 }
 
 declare module 'fastify' {
@@ -38,6 +41,7 @@ declare module 'fastify' {
     db: Db;
     sql: Sql;
     geo: GeoLookup;
+    recaptcha: RecaptchaVerifier;
   }
 }
 
@@ -62,6 +66,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.decorate('db', deps.db);
   app.decorate('sql', deps.sql);
   app.decorate('geo', deps.geo ?? createGeoLookup());
+  app.decorate('recaptcha', deps.recaptcha ?? verifyWithGoogle);
 
   await app.register(multipart, {
     // 图片上限最宽松，视频的 10 MB 由 shared 里的规则单独卡，好给出说明原因的错误。

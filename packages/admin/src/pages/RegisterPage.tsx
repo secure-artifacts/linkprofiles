@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { validateAccountName, validateInviteCode, validateShortName } from '@link-profile/shared';
 import { request } from '../api/client.js';
-import { useAdminT } from '../i18n/runtime.js';
+import { useAdminT, useLocale } from '../i18n/runtime.js';
 import { Alert } from '../ui/Alert.js';
 import { Button } from '../ui/Button.js';
 import { Input, PasswordInput } from '../ui/Input.js';
 import { useToast } from '../ui/Toast.js';
+import { useRecaptcha } from './useRecaptcha.js';
 
 interface PreviewResponse {
   regionName: string;
@@ -22,6 +23,7 @@ interface PreviewResponse {
  */
 export function RegisterPage({ onBackToLogin }: { onBackToLogin: () => void }) {
   const t = useAdminT();
+  const locale = useLocale();
   const toast = useToast();
   const [code, setCode] = useState('');
   const [account, setAccount] = useState('');
@@ -34,12 +36,19 @@ export function RegisterPage({ onBackToLogin }: { onBackToLogin: () => void }) {
   const [done, setDone] = useState(false);
   const [closed, setClosed] = useState(false);
 
-  // 总闸关着时不该让人填完一整张表才被拒。用一个必然失败的探测码问一句：
-  // 关着回 registration_closed，开着回「码无效」，两者区分得开。
+  const [siteKey, setSiteKey] = useState<string | null>(null);
+  const {
+    container: captchaBox,
+    token: captchaToken,
+    reset: resetCaptcha,
+  } = useRecaptcha(siteKey, locale);
+
+  // 开局问一次配置：拿得到站点密钥就说明注册开着且配齐了，拿不到就直接告诉
+  // 来人别填了，而不是让他填完一整张表才被拒。
   useEffect(() => {
-    request('/register/preview?code=AAAAAAAA').catch((err) => {
-      setClosed((err as { payload?: { error?: string } }).payload?.error === 'registration_closed');
-    });
+    request<{ recaptchaSiteKey: string }>('/register/config')
+      .then((config) => setSiteKey(config.recaptchaSiteKey))
+      .catch(() => setClosed(true));
   }, []);
 
   /** 码填完就去换区域名，顺带问一句地址占没占。 */
@@ -76,6 +85,7 @@ export function RegisterPage({ onBackToLogin }: { onBackToLogin: () => void }) {
     const parsedShortName = validateShortName(shortName);
     if (!parsedShortName.ok) return toast.error(parsedShortName.error);
     if (password.length < 8) return toast.error(t('common.validation.passwordMin'));
+    if (!captchaToken) return toast.error(t('register.captcha.required'));
 
     setSubmitting(true);
     try {
@@ -86,10 +96,13 @@ export function RegisterPage({ onBackToLogin }: { onBackToLogin: () => void }) {
           account: parsedAccount.value,
           shortName: parsedShortName.value,
           password,
+          recaptchaToken: captchaToken,
         },
       });
       setDone(true);
     } catch (err) {
+      // 一枚令牌只能用一次，失败之后必须重勾
+      resetCaptcha();
       toast.error((err as Error).message);
     } finally {
       setSubmitting(false);
@@ -203,7 +216,16 @@ export function RegisterPage({ onBackToLogin }: { onBackToLogin: () => void }) {
               />
             </div>
 
-            <Button type="submit" variant="primary" loading={submitting} className="mt-6 w-full">
+            {/* reCAPTCHA v2 复选框：必须由本人勾选，见 ADR-0022 */}
+            <div ref={captchaBox} className="mt-5 flex justify-center" />
+
+            <Button
+              type="submit"
+              variant="primary"
+              loading={submitting}
+              disabled={!captchaToken}
+              className="mt-4 w-full"
+            >
               {t('register.submit')}
             </Button>
 

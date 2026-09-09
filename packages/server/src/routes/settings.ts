@@ -8,7 +8,18 @@ import { fail, unauthorized } from '../http/errors.js';
 const settingsBody = z.object({
   sourcePassthroughDefault: z.boolean().optional(),
   registrationEnabled: z.boolean().optional(),
+  recaptchaSiteKey: z.string().trim().max(200).optional(),
+  recaptchaSecretKey: z.string().trim().max(200).optional(),
 });
+
+/** 私钥只进不出：任何接口都不回传它，前端只知道配没配。 */
+function withoutSecret(row: Awaited<ReturnType<typeof readSettings>>) {
+  const { recaptchaSecretKey, ...rest } = row;
+  return {
+    ...rest,
+    recaptchaConfigured: recaptchaSecretKey !== '' && rest.recaptchaSiteKey !== '',
+  };
+}
 
 export async function settingsRoutes(app: FastifyInstance) {
   /**
@@ -18,7 +29,10 @@ export async function settingsRoutes(app: FastifyInstance) {
   app.get('/settings', async (req, reply) => {
     if (!req.currentUser) return unauthorized(reply);
 
-    return { ...(await readSettings(app.db)), sourcePassthroughCaveat: PASSTHROUGH_CAVEAT };
+    return {
+      ...withoutSecret(await readSettings(app.db)),
+      sourcePassthroughCaveat: PASSTHROUGH_CAVEAT,
+    };
   });
 
   app.patch(
@@ -31,7 +45,10 @@ export async function settingsRoutes(app: FastifyInstance) {
       }
 
       await writeSettings(app.db, parsed.data);
-      return { ...(await readSettings(app.db)), sourcePassthroughCaveat: PASSTHROUGH_CAVEAT };
+      return {
+        ...withoutSecret(await readSettings(app.db)),
+        sourcePassthroughCaveat: PASSTHROUGH_CAVEAT,
+      };
     },
   );
 }

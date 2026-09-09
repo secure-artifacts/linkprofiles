@@ -15,6 +15,9 @@ export const errorsEn = {
   'code.region_unowned': 'This region has no owning admin yet; assign one first',
   'code.registration_closed': 'Sign-up is closed right now',
   'code.invite_code_invalid': 'That invite code is not valid',
+  'code.recaptcha_failed': 'The robot check failed, please tick the box again',
+  'code.recaptcha_not_configured':
+    'Sign-up is not ready yet, the administrator has not finished setting it up',
   'code.region_name_taken': 'That region name is already taken',
   'code.region_not_empty': 'This region still has {{count}} users. Move them out first.',
   'code.region_is_default': 'A default region cannot be deleted',
@@ -27,6 +30,7 @@ export const errorsEn = {
   'field.inviteCode.required': 'Invite code is required',
   'field.inviteCode.length': 'Invite code must be 8 to 10 characters',
   'field.inviteCode.charset': 'Invite code may only use A-Z and 2-9, without O, 0, I or 1',
+  'field.recaptcha.required': 'Tick the "I am not a robot" box first',
   'field.region.name.required': 'Region name cannot be empty',
   'field.displayName.required': 'Display name cannot be empty',
   'field.title.required': 'Title cannot be empty',

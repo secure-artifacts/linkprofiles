@@ -84,6 +84,8 @@ const ERROR_CODE_KEYS: Record<string, ErrorKey> = {
   region_unowned: 'code.region_unowned',
   registration_closed: 'code.registration_closed',
   invite_code_invalid: 'code.invite_code_invalid',
+  recaptcha_failed: 'code.recaptcha_failed',
+  recaptcha_not_configured: 'code.recaptcha_not_configured',
   region_not_empty: 'code.region_not_empty',
   region_is_default: 'code.region_is_default',
   region_not_found: 'code.region_not_found',

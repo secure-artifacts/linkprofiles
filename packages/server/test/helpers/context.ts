@@ -25,7 +25,12 @@ function baseUrl(): string {
  * 每个测试文件一个独立 schema：建 schema、灌迁移、把连接钉在上面，
  * 跑完 drop。真连数据库，不 mock ORM —— 否则测不出 SQL 层面的真错。
  */
-export async function createTestContext(deps: { geo?: AppDeps['geo'] } = {}): Promise<TestContext> {
+/** 测试里认这一个令牌，别的都判失败。真打 Google 的接口不现实。 */
+export const VALID_RECAPTCHA_TOKEN = 'test-token-ok';
+
+export async function createTestContext(
+  deps: { geo?: AppDeps['geo']; recaptcha?: AppDeps['recaptcha'] } = {},
+): Promise<TestContext> {
   const url = baseUrl();
   const schema = `test_${randomBytes(6).toString('hex')}`;
 
@@ -39,7 +44,12 @@ export async function createTestContext(deps: { geo?: AppDeps['geo'] } = {}): Pr
   const { db, client } = createDb({ url, searchPath: schema, max: 5, onnotice: () => {} });
   await applyMigrations(client);
 
-  const app = await buildApp({ db, sql: client, ...deps });
+  const app = await buildApp({
+    db,
+    sql: client,
+    recaptcha: async (_secret, token) => token === VALID_RECAPTCHA_TOKEN,
+    ...deps,
+  });
   await app.ready();
 
   return {

@@ -27,6 +27,8 @@ const registerBody = z.object({
   password: passwordSchema,
   shortName: shortNameSchema,
   displayName: z.string().trim().optional(),
+  /** reCAPTCHA v2 复选框交上来的令牌，见 ADR-0022。 */
+  recaptchaToken: z.string().min(1, 'field.recaptcha.required'),
 });
 
 /**
@@ -36,14 +38,23 @@ const registerBody = z.object({
  * 只有全站注册总闸。
  */
 export async function registerRoutes(app: FastifyInstance) {
-  /** 关着的时候两个接口都拒，且不透露任何区域信息。 */
-  async function registrationOpen(reply: FastifyReply): Promise<boolean> {
-    const { registrationEnabled } = await readSettings(app.db);
-    if (!registrationEnabled) {
+  /**
+   * 关着的时候所有接口都拒，且不透露任何区域信息。
+   *
+   * 人机验证没配齐也一律当关着 —— 失败要往安全的一边倒：宁可注册不开，
+   * 也不能因为没填密钥就把匿名入口敞着。
+   */
+  async function openSettings(reply: FastifyReply) {
+    const current = await readSettings(app.db);
+    if (!current.registrationEnabled) {
       await fail(reply, 403, 'registration_closed');
-      return false;
+      return null;
     }
-    return true;
+    if (!current.recaptchaSiteKey || !current.recaptchaSecretKey) {
+      await fail(reply, 403, 'recaptcha_not_configured');
+      return null;
+    }
+    return current;
   }
 
   /**
@@ -51,8 +62,15 @@ export async function registerRoutes(app: FastifyInstance) {
    *
    * 无归属区域的码即便还在库里也当无效——没人管的区域不该继续进人。
    */
+  /** 注册页渲染人机验证控件要用的公开配置。 */
+  app.get('/register/config', async (_req, reply) => {
+    const current = await openSettings(reply);
+    if (!current) return reply;
+    return { recaptchaSiteKey: current.recaptchaSiteKey };
+  });
+
   app.get('/register/preview', async (req, reply) => {
-    if (!(await registrationOpen(reply))) return reply;
+    if (!(await openSettings(reply))) return reply;
 
     const parsed = previewQuery.safeParse(req.query);
     if (!parsed.success) return fail(reply, 400, 'invite_code_invalid');
@@ -76,13 +94,27 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.post('/register', async (req, reply) => {
-    if (!(await registrationOpen(reply))) return reply;
+    const current = await openSettings(reply);
+    if (!current) return reply;
 
     const parsed = registerBody.safeParse(req.body);
     if (!parsed.success) {
       return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
     }
     const { code, account, password, shortName, displayName } = parsed.data;
+
+    // 先验人机再干别的：后面每一步都比它贵，尤其是 argon2 那次哈希。
+    //
+    // 验不通和验失败一律当没通过：Google 不可达时宁可把人挡在门外，也不能
+    // 因为一次网络抖动就把匿名入口敞开。异常吞在这里而不是让它变成 500，
+    // 注册者才知道该重勾一次而不是以为站崩了。
+    const human = await app
+      .recaptcha(current.recaptchaSecretKey, parsed.data.recaptchaToken, req.ip)
+      .catch((err: unknown) => {
+        req.log.warn({ err }, 'reCAPTCHA 校验没能完成，本次注册按未通过处理');
+        return false;
+      });
+    if (!human) return fail(reply, 400, 'recaptcha_failed');
 
     const region = await regionOfCode(app, code);
     if (!region) return fail(reply, 400, 'invite_code_invalid');

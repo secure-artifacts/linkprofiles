@@ -640,4 +640,13 @@ export const adminPtBR: AdminMessages = {
   'analytics.regions.title': 'Por região · {{count}} regiões',
   'analytics.regions.hint':
     'Cada linha é a soma das contas daquela região. Clique numa região para filtrar por ela.',
+  'register.captcha.required': 'Marque a caixa anti-robô antes de criar a conta',
+  'settings.recaptcha.title': 'Verificação anti-robô (reCAPTCHA v2)',
+  'settings.recaptcha.hint':
+    'Pegue as duas chaves no console de administração do Google reCAPTCHA, escolhendo o tipo caixa "Não sou um robô". O cadastro fica fechado até as duas serem preenchidas.',
+  'settings.recaptcha.siteKey': 'Chave do site',
+  'settings.recaptcha.secretKey': 'Chave secreta',
+  'settings.recaptcha.configured': 'Configurado',
+  'settings.recaptcha.missing': 'Não configurado',
+  'settings.recaptcha.keepSecret': 'Deixe vazio para manter a chave secreta atual',
 };

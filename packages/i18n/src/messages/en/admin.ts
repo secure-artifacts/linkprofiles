@@ -653,4 +653,13 @@ export const adminEn = {
   'analytics.regions.title': 'By region · {{count}} regions',
   'analytics.regions.hint':
     'Each row is the sum of the accounts in that region. Click a region to filter down to it.',
+  'register.captcha.required': 'Tick the robot check before creating your account',
+  'settings.recaptcha.title': 'Robot check (reCAPTCHA v2)',
+  'settings.recaptcha.hint':
+    'Get both keys from the Google reCAPTCHA admin console, choosing the "I am not a robot" checkbox type. Sign-up stays closed until both are filled in.',
+  'settings.recaptcha.siteKey': 'Site key',
+  'settings.recaptcha.secretKey': 'Secret key',
+  'settings.recaptcha.configured': 'Configured',
+  'settings.recaptcha.missing': 'Not configured',
+  'settings.recaptcha.keepSecret': 'Leave empty to keep the current secret key',
 } as const;

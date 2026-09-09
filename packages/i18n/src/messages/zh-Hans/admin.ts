@@ -599,4 +599,13 @@ export const adminZhHans: AdminMessages = {
     '区域分析按用户当前所属区域计算，把人移走之后历史报表的区域数字会跟着变。',
   'analytics.regions.title': '按区域 · {{count}} 个区域',
   'analytics.regions.hint': '每一行都是该区域内全部账号之和。点击某个区域即筛到它。',
+  'register.captcha.required': '先勾选「我不是机器人」再创建账号',
+  'settings.recaptcha.title': '人机验证（reCAPTCHA v2）',
+  'settings.recaptcha.hint':
+    '到 Google reCAPTCHA 管理后台申请这两把密钥，类型选「我不是机器人」复选框。两把都填齐之前，注册一律当关着。',
+  'settings.recaptcha.siteKey': '站点密钥',
+  'settings.recaptcha.secretKey': '私钥',
+  'settings.recaptcha.configured': '已配置',
+  'settings.recaptcha.missing': '未配置',
+  'settings.recaptcha.keepSecret': '留空则保留当前私钥',
 };

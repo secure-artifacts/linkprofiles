@@ -1,7 +1,7 @@
 import { profiles, settings, users } from '@link-profile/shared/schema';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
-import { createTestContext, type TestContext } from './helpers/context.js';
+import { createTestContext, VALID_RECAPTCHA_TOKEN, type TestContext } from './helpers/context.js';
 import { createLoginableUser } from './helpers/factories.js';
 import { login, withSession } from './helpers/http.js';
 
@@ -25,7 +25,12 @@ async function setRegistration(enabled: boolean) {
     method: 'PATCH',
     url: '/_api/settings',
     ...withSession(superToken),
-    payload: { registrationEnabled: enabled },
+    // 人机验证的密钥没配齐时注册一律当关着，所以开的时候得一并配上
+    payload: {
+      registrationEnabled: enabled,
+      recaptchaSiteKey: 'site-key',
+      recaptchaSecretKey: 'secret-key',
+    },
   });
   expect(res.statusCode).toBe(200);
 }
@@ -57,8 +62,13 @@ beforeEach(async () => {
   await setRegistration(true);
 });
 
+/** 默认带一枚测试底座认得的令牌；要测验证失败就自己传 recaptchaToken。 */
 function register(payload: Record<string, unknown>) {
-  return ctx.app.inject({ method: 'POST', url: '/_api/register', payload });
+  return ctx.app.inject({
+    method: 'POST',
+    url: '/_api/register',
+    payload: { recaptchaToken: VALID_RECAPTCHA_TOKEN, ...payload },
+  });
 }
 
 function preview(value: string) {

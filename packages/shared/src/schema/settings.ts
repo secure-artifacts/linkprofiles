@@ -20,6 +20,16 @@ export const settings = pgTable('settings', {
    */
   registrationEnabled: boolean().notNull().default(false),
 
+  /**
+   * reCAPTCHA v2 的站点密钥。公开值，注册页要拿它渲染控件。
+   *
+   * 与私钥一起放在设置表而不是环境变量：换密钥不必重新部署，而且开注册的
+   * 那个人和去 Google 后台申请密钥的是同一个人，在同一个页面填完最顺。
+   */
+  recaptchaSiteKey: text().notNull().default(''),
+  /** reCAPTCHA v2 的私钥。只用于服务端校验，任何接口都不回传它。 */
+  recaptchaSecretKey: text().notNull().default(''),
+
   updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 

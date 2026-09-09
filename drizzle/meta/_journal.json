@@ -169,6 +169,13 @@
       "when": 1788925119745,
       "tag": "0023_modern_drax",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788930654536,
+      "tag": "0024_equal_surge",
+      "breakpoints": true
     }
   ]
 }

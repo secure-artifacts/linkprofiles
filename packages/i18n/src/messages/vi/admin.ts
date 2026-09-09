@@ -634,4 +634,13 @@ export const adminVi: AdminMessages = {
   'analytics.regions.title': 'Theo khu vực · {{count}} khu vực',
   'analytics.regions.hint':
     'Mỗi hàng là tổng của các tài khoản trong khu vực đó. Bấm vào một khu vực để lọc theo nó.',
+  'register.captcha.required': 'Hãy tick ô chống robot trước khi tạo tài khoản',
+  'settings.recaptcha.title': 'Xác minh chống robot (reCAPTCHA v2)',
+  'settings.recaptcha.hint':
+    'Lấy hai khóa trong bảng quản trị Google reCAPTCHA, chọn loại ô đánh dấu «Tôi không phải là robot». Đăng ký vẫn đóng cho tới khi điền đủ cả hai.',
+  'settings.recaptcha.siteKey': 'Khóa site',
+  'settings.recaptcha.secretKey': 'Khóa bí mật',
+  'settings.recaptcha.configured': 'Đã cấu hình',
+  'settings.recaptcha.missing': 'Chưa cấu hình',
+  'settings.recaptcha.keepSecret': 'Để trống để giữ khóa bí mật hiện tại',
 };

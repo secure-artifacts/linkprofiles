@@ -13,6 +13,9 @@ export const errorsPtBR: ErrorMessages = {
   'code.region_unowned': 'Esta região ainda não tem administrador responsável; designe um antes',
   'code.registration_closed': 'O cadastro está fechado no momento',
   'code.invite_code_invalid': 'Esse código de convite não é válido',
+  'code.recaptcha_failed': 'A verificação anti-robô falhou, marque a caixa de novo',
+  'code.recaptcha_not_configured':
+    'O cadastro ainda não está pronto, o administrador não terminou de configurar',
   'code.region_name_taken': 'Esse nome de região já está em uso',
   'code.region_not_empty': 'Esta região ainda tem {{count}} usuários. Mova-os primeiro.',
   'code.region_is_default': 'Não é possível excluir uma região padrão',
@@ -24,6 +27,7 @@ export const errorsPtBR: ErrorMessages = {
   'field.inviteCode.required': 'O código de convite é obrigatório',
   'field.inviteCode.length': 'O código de convite deve ter de 8 a 10 caracteres',
   'field.inviteCode.charset': 'O código só aceita A-Z e 2-9, sem O, 0, I ou 1',
+  'field.recaptcha.required': 'Marque antes a caixa "Não sou um robô"',
   'field.region.name.required': 'O nome da região não pode ficar vazio',
   'field.displayName.required': 'O nome de exibição não pode ficar vazio',
   'field.title.required': 'O título não pode ficar vazio',

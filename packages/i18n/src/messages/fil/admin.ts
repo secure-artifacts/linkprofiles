@@ -664,4 +664,13 @@ export const adminFil: AdminMessages = {
   'analytics.regions.title': 'Ayon sa rehiyon · {{count}} rehiyon',
   'analytics.regions.hint':
     'Ang bawat hilera ay ang kabuuan ng mga account sa rehiyong iyon. I-click ang rehiyon para i-filter dito.',
+  'register.captcha.required': 'Lagyan ng tsek ang robot check bago gumawa ng account',
+  'settings.recaptcha.title': 'Robot check (reCAPTCHA v2)',
+  'settings.recaptcha.hint':
+    'Kunin ang dalawang key sa Google reCAPTCHA admin console, piliin ang checkbox na uri na "I am not a robot". Mananatiling sarado ang pag-sign up hangga’t hindi pa napupuno ang dalawa.',
+  'settings.recaptcha.siteKey': 'Site key',
+  'settings.recaptcha.secretKey': 'Secret key',
+  'settings.recaptcha.configured': 'Nakaayos na',
+  'settings.recaptcha.missing': 'Hindi pa nakaayos',
+  'settings.recaptcha.keepSecret': 'Iwang blangko para panatilihin ang kasalukuyang secret key',
 };

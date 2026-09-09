@@ -282,6 +282,10 @@ export interface DimensionRow {
 export interface AppSettings {
   /** 自助注册总闸。关掉只挡新注册，不影响已有用户。 */
   registrationEnabled: boolean;
+  /** reCAPTCHA 站点密钥。公开值，注册页要拿它渲染控件。 */
+  recaptchaSiteKey: string;
+  /** 站点密钥与私钥都填齐了没有。私钥本身任何接口都不回传。 */
+  recaptchaConfigured: boolean;
   sourcePassthroughDefault: boolean;
   sourcePassthroughCaveat: string;
 }

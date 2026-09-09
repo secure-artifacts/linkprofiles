@@ -14,6 +14,9 @@ export const errorsEs: ErrorMessages = {
     'Esta región todavía no tiene administrador responsable; asigna uno primero',
   'code.registration_closed': 'El registro está cerrado por ahora',
   'code.invite_code_invalid': 'Ese código de invitación no es válido',
+  'code.recaptcha_failed': 'La verificación anti-robots falló, marca la casilla de nuevo',
+  'code.recaptcha_not_configured':
+    'El registro aún no está listo, el administrador no terminó de configurarlo',
   'code.region_name_taken': 'Ese nombre de región ya está en uso',
   'code.region_not_empty': 'Esta región todavía tiene {{count}} usuarios. Muévelos primero.',
   'code.region_is_default': 'No se puede eliminar una región predeterminada',
@@ -25,6 +28,7 @@ export const errorsEs: ErrorMessages = {
   'field.inviteCode.required': 'El código de invitación es obligatorio',
   'field.inviteCode.length': 'El código de invitación debe tener entre 8 y 10 caracteres',
   'field.inviteCode.charset': 'El código solo admite A-Z y 2-9, sin O, 0, I ni 1',
+  'field.recaptcha.required': 'Marca antes la casilla «No soy un robot»',
   'field.region.name.required': 'El nombre de la región no puede estar vacío',
   'field.displayName.required': 'El nombre visible no puede estar vacío',
   'field.title.required': 'El título no puede estar vacío',

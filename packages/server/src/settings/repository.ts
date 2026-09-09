@@ -3,25 +3,42 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 
 /** 单行表，取不到就用 schema 上的默认值，不强迫部署时先插一行。 */
-export async function readSettings(
-  db: Db,
-): Promise<Pick<SettingsRow, 'sourcePassthroughDefault' | 'registrationEnabled'>> {
+type ReadableSettings = Pick<
+  SettingsRow,
+  'sourcePassthroughDefault' | 'registrationEnabled' | 'recaptchaSiteKey' | 'recaptchaSecretKey'
+>;
+
+export async function readSettings(db: Db): Promise<ReadableSettings> {
   const [row] = await db
     .select({
       sourcePassthroughDefault: settings.sourcePassthroughDefault,
       registrationEnabled: settings.registrationEnabled,
+      recaptchaSiteKey: settings.recaptchaSiteKey,
+      recaptchaSecretKey: settings.recaptchaSecretKey,
     })
     .from(settings)
     .where(eq(settings.id, SETTINGS_ID))
     .limit(1);
 
   // 取不到就是默认值：注册默认关着，开放是一次显式的决定。
-  return row ?? { sourcePassthroughDefault: false, registrationEnabled: false };
+  return (
+    row ?? {
+      sourcePassthroughDefault: false,
+      registrationEnabled: false,
+      recaptchaSiteKey: '',
+      recaptchaSecretKey: '',
+    }
+  );
 }
 
 export async function writeSettings(
   db: Db,
-  patch: { sourcePassthroughDefault?: boolean; registrationEnabled?: boolean },
+  patch: {
+    sourcePassthroughDefault?: boolean;
+    registrationEnabled?: boolean;
+    recaptchaSiteKey?: string;
+    recaptchaSecretKey?: string;
+  },
 ): Promise<void> {
   await db
     .insert(settings)

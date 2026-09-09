@@ -13,6 +13,9 @@ export const errorsId: ErrorMessages = {
   'code.region_unowned': 'Wilayah ini belum punya admin penanggung jawab; tugaskan dulu',
   'code.registration_closed': 'Pendaftaran sedang ditutup',
   'code.invite_code_invalid': 'Kode undangan itu tidak berlaku',
+  'code.recaptcha_failed': 'Verifikasi anti-robot gagal, centang lagi kotaknya',
+  'code.recaptcha_not_configured':
+    'Pendaftaran belum siap, administrator belum selesai mengaturnya',
   'code.region_name_taken': 'Nama wilayah itu sudah dipakai',
   'code.region_not_empty': 'Wilayah ini masih punya {{count}} pengguna. Pindahkan mereka dulu.',
   'code.region_is_default': 'Wilayah bawaan tidak bisa dihapus',
@@ -24,6 +27,7 @@ export const errorsId: ErrorMessages = {
   'field.inviteCode.required': 'Kode undangan wajib diisi',
   'field.inviteCode.length': 'Kode undangan harus 8 sampai 10 karakter',
   'field.inviteCode.charset': 'Kode hanya boleh A-Z dan 2-9, tanpa O, 0, I atau 1',
+  'field.recaptcha.required': 'Centang dulu kotak "I am not a robot"',
   'field.region.name.required': 'Nama wilayah tidak boleh kosong',
   'field.displayName.required': 'Nama tampilan tidak boleh kosong',
   'field.title.required': 'Judul tidak boleh kosong',

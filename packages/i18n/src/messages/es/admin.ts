@@ -643,4 +643,13 @@ export const adminEs: AdminMessages = {
   'analytics.regions.title': 'Por región · {{count}} regiones',
   'analytics.regions.hint':
     'Cada fila es la suma de las cuentas de esa región. Haz clic en una región para filtrar por ella.',
+  'register.captcha.required': 'Marca la casilla anti-robot antes de crear la cuenta',
+  'settings.recaptcha.title': 'Verificación anti-robots (reCAPTCHA v2)',
+  'settings.recaptcha.hint':
+    'Consigue ambas claves en la consola de administración de Google reCAPTCHA, eligiendo el tipo casilla «No soy un robot». El registro sigue cerrado hasta que las dos estén puestas.',
+  'settings.recaptcha.siteKey': 'Clave del sitio',
+  'settings.recaptcha.secretKey': 'Clave secreta',
+  'settings.recaptcha.configured': 'Configurado',
+  'settings.recaptcha.missing': 'Sin configurar',
+  'settings.recaptcha.keepSecret': 'Déjalo vacío para conservar la clave secreta actual',
 };

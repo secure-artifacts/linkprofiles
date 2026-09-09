@@ -640,4 +640,13 @@ export const adminId: AdminMessages = {
   'analytics.regions.title': 'Per wilayah · {{count}} wilayah',
   'analytics.regions.hint':
     'Setiap baris adalah jumlah akun di wilayah itu. Klik satu wilayah untuk menyaringnya.',
+  'register.captcha.required': 'Centang kotak anti-robot sebelum membuat akun',
+  'settings.recaptcha.title': 'Verifikasi anti-robot (reCAPTCHA v2)',
+  'settings.recaptcha.hint':
+    'Ambil kedua kunci di konsol admin Google reCAPTCHA, pilih tipe kotak centang "I am not a robot". Pendaftaran tetap tertutup sampai keduanya diisi.',
+  'settings.recaptcha.siteKey': 'Site key',
+  'settings.recaptcha.secretKey': 'Secret key',
+  'settings.recaptcha.configured': 'Sudah diatur',
+  'settings.recaptcha.missing': 'Belum diatur',
+  'settings.recaptcha.keepSecret': 'Kosongkan untuk mempertahankan secret key saat ini',
 };

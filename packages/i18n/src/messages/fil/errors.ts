@@ -13,6 +13,9 @@ export const errorsFil: ErrorMessages = {
   'code.region_unowned': 'Wala pang owning admin ang rehiyong ito; magtalaga muna',
   'code.registration_closed': 'Sarado muna ang pag-sign up',
   'code.invite_code_invalid': 'Hindi valid ang invite code na iyon',
+  'code.recaptcha_failed': 'Hindi pumasa ang robot check, lagyan ulit ng tsek ang kahon',
+  'code.recaptcha_not_configured':
+    'Hindi pa handa ang pag-sign up, hindi pa tapos i-setup ng administrator',
   'code.region_name_taken': 'Ginagamit na ang pangalang ito ng rehiyon',
   'code.region_not_empty': 'May {{count}} user pa ang rehiyong ito. Ilipat muna sila.',
   'code.region_is_default': 'Hindi puwedeng burahin ang default na rehiyon',
@@ -25,6 +28,7 @@ export const errorsFil: ErrorMessages = {
   'field.inviteCode.required': 'Kailangan ang invite code',
   'field.inviteCode.length': 'Dapat 8 hanggang 10 karakter ang invite code',
   'field.inviteCode.charset': 'A-Z at 2-9 lang ang puwede, walang O, 0, I o 1',
+  'field.recaptcha.required': 'Lagyan muna ng tsek ang "I am not a robot"',
   'field.region.name.required': 'Hindi puwedeng walang laman ang pangalan ng rehiyon',
   'field.displayName.required': 'Hindi puwedeng walang laman ang display name',
   'field.title.required': 'Hindi puwedeng walang laman ang pamagat',
