@@ -1,5 +1,10 @@
 import { DEFAULT_LOCALE } from '@link-profile/i18n';
-import { accountNameSchema, inviteCodeSchema, shortNameSchema } from '@link-profile/shared';
+import {
+  accountNameSchema,
+  inviteCodeSchema,
+  passwordSchema,
+  shortNameSchema,
+} from '@link-profile/shared';
 import { inviteCodes, profiles, regions, users } from '@link-profile/shared/schema';
 import { and, eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -19,7 +24,7 @@ const previewQuery = z.object({
 const registerBody = z.object({
   code: inviteCodeSchema,
   account: accountNameSchema,
-  password: z.string().min(8, 'field.password.min'),
+  password: passwordSchema,
   shortName: shortNameSchema,
   displayName: z.string().trim().optional(),
 });
@@ -113,14 +118,35 @@ export async function registerRoutes(app: FastifyInstance) {
           pageLanguage: region.ownerUiLanguage,
         });
       });
-    } catch {
-      // 并发抢注会撞唯一索引。整单回滚，让注册者换一个再来。
-      return fail(reply, 409, 'short_name_taken');
+    } catch (err) {
+      // 只把并发抢注（唯一索引冲突）翻成冲突响应。其余的原样抛出去 ——
+      // 把数据库故障也吞成「地址被占用」，用户会一直换名字，而真正的故障
+      // 因为响应是 409 不会惊动任何人。
+      const conflicted = uniqueViolationOf(err);
+      if (!conflicted) throw err;
+      return fail(reply, 409, conflicted);
     }
 
     // 不自动发会话：注册完回登录页自己登一次。
     return reply.code(201).send({ shortName });
   });
+}
+
+/**
+ * 唯一索引冲突翻成对应的错误码，其余返回 null 表示「这不是冲突」。
+ *
+ * 冲突检查已经在事务前做过一遍，走到这里只可能是两个人同时注册撞在了一起。
+ */
+function uniqueViolationOf(err: unknown): 'account_taken' | 'short_name_taken' | null {
+  // drizzle 把驱动的错误包一层再抛，真正带 SQLSTATE 的是 cause 链上的那个。
+  for (let cur: unknown = err, depth = 0; cur && depth < 5; depth += 1) {
+    const pg = cur as { code?: string; constraint_name?: string; cause?: unknown };
+    if (pg.code === '23505') {
+      return pg.constraint_name === 'users_account_unique' ? 'account_taken' : 'short_name_taken';
+    }
+    cur = pg.cause;
+  }
+  return null;
 }
 
 /** 码 → 区域。码要有效，区域还要有人管。 */

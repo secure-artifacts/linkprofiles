@@ -29,6 +29,7 @@ export const errorsId: ErrorMessages = {
   'field.title.required': 'Judul tidak boleh kosong',
   'field.value.required': 'Isian tidak boleh kosong',
   'field.password.min': 'Kata sandi minimal {{min}} karakter',
+  'field.password.max': 'Kata sandi tidak boleh lebih dari {{max}} karakter',
   'field.newPassword.min': 'Kata sandi baru minimal {{min}} karakter',
   'query.exclusiveScope': 'userId dan profileId tidak boleh diberikan bersamaan',
   'apiKey.expiryInPast': 'Masa berlaku harus lebih baru dari sekarang',

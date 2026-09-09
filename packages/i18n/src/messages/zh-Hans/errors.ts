@@ -29,6 +29,7 @@ export const errorsZhHans: ErrorMessages = {
   'field.title.required': '标题不能为空',
   'field.value.required': '内容不能为空',
   'field.password.min': '密码至少 {{min}} 位',
+  'field.password.max': '密码不能超过 {{max}} 位',
   'field.newPassword.min': '新密码至少 {{min}} 位',
 
   'query.exclusiveScope': 'userId 与 profileId 不能同时指定',

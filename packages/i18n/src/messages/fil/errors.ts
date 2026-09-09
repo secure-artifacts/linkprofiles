@@ -30,6 +30,7 @@ export const errorsFil: ErrorMessages = {
   'field.title.required': 'Hindi puwedeng walang laman ang pamagat',
   'field.value.required': 'Hindi puwedeng walang laman ang nilalaman',
   'field.password.min': 'Kailangang hindi bababa sa {{min}} karakter ang password',
+  'field.password.max': 'Hindi puwedeng lumampas sa {{max}} karakter ang password',
   'field.newPassword.min': 'Kailangang hindi bababa sa {{min}} karakter ang bagong password',
 
   'query.exclusiveScope': 'Hindi puwedeng sabay na ibigay ang userId at profileId',

@@ -32,6 +32,7 @@ export const errorsEn = {
   'field.title.required': 'Title cannot be empty',
   'field.value.required': 'Value cannot be empty',
   'field.password.min': 'Password must be at least {{min}} characters',
+  'field.password.max': 'Password cannot exceed {{max}} characters',
   'field.newPassword.min': 'New password must be at least {{min}} characters',
 
   'query.exclusiveScope': 'userId and profileId cannot both be given',

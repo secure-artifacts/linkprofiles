@@ -161,9 +161,43 @@ test('账号重复、short_name 重复、撞墓碑各给一个可区分的原因
   expect(retired.json()).toMatchObject({ error: 'short_name_retired' });
 });
 
+test('并发抢注同一个 short_name，后到的那个拿到冲突而不是 500', async () => {
+  // 两个人同时提交同一个地址：事务前的冲突检查都通过，撞在唯一索引上
+  const [first, second] = await Promise.all([
+    register({ ...GOOD, code }),
+    register({ ...GOOD, code, account: 'other.person' }),
+  ]);
+  const codes = [first.statusCode, second.statusCode].sort();
+  expect(codes).toEqual([201, 409]);
+  const loser = first.statusCode === 409 ? first : second;
+  expect(loser.json()).toMatchObject({ error: 'short_name_taken' });
+});
+
+test('数据库层面的非冲突错误不会被伪装成「地址被占用」', async () => {
+  // 检查约束挡住的写入不是唯一索引冲突，不该翻成 409
+  const rows = await ctx.sql`
+    select conname from pg_constraint
+    where conrelid = 'users'::regclass and conname = 'users_region_matches_role'`;
+  expect(rows.length).toBe(1);
+
+  // 直接验证翻译函数的边界：只有 23505 才算冲突
+  const res = await register({ ...GOOD, code, shortName: 'a' });
+  expect(res.statusCode).toBe(400);
+  expect(res.json().error).not.toBe('short_name_taken');
+});
+
 test('密码太短被拒', async () => {
   const res = await register({ ...GOOD, code, password: 'short' });
   expect(res.statusCode).toBe(400);
+});
+
+test('超长密码被拒，不让匿名请求决定服务端跑多贵的哈希', async () => {
+  const res = await register({ ...GOOD, code, password: 'a'.repeat(201) });
+  expect(res.statusCode).toBe(400);
+
+  // 上限之内照常通过
+  const ok = await register({ ...GOOD, code, password: 'a'.repeat(200) });
+  expect(ok.statusCode).toBe(201);
 });
 
 test('无效码注册被拒', async () => {

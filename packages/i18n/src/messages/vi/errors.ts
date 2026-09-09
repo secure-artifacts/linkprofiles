@@ -29,6 +29,7 @@ export const errorsVi: ErrorMessages = {
   'field.title.required': 'Tiêu đề không được để trống',
   'field.value.required': 'Giá trị không được để trống',
   'field.password.min': 'Mật khẩu phải có ít nhất {{min}} ký tự',
+  'field.password.max': 'Mật khẩu không được quá {{max}} ký tự',
   'field.newPassword.min': 'Mật khẩu mới phải có ít nhất {{min}} ký tự',
   'query.exclusiveScope': 'Không thể đưa cả userId lẫn profileId',
   'apiKey.expiryInPast': 'Hạn dùng phải muộn hơn thời điểm hiện tại',

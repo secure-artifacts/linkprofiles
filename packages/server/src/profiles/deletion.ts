@@ -1,5 +1,12 @@
-import { media, profiles, shortNameTombstones, users } from '@link-profile/shared/schema';
-import { eq, inArray } from 'drizzle-orm';
+import {
+  inviteCodes,
+  media,
+  profiles,
+  regions,
+  shortNameTombstones,
+  users,
+} from '@link-profile/shared/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { removeMediaDirectory } from '../media/storage.js';
 
@@ -79,7 +86,25 @@ export async function deleteUserAccount(db: Db, userId: string): Promise<void> {
     .from(profiles)
     .where(eq(profiles.userId, userId));
 
-  await retireAndDelete(db, targets, (tx) => tx.delete(users).where(eq(users.id, userId)));
+  await retireAndDelete(db, targets, async (tx) => {
+    // 删的如果是管理员，他名下区域的邀请码一并停掉：没人管的区域不该继续
+    // 进人，见 ADR-0017。放在这里而不是 `/admins/:id` 路由里，是因为超级
+    // 管理员走通用的删用户路径也能删掉一个管理员，两条路径得一致。
+    await tx
+      .update(inviteCodes)
+      .set({ isActive: false, revokedAt: new Date() })
+      .where(
+        and(
+          eq(inviteCodes.isActive, true),
+          inArray(
+            inviteCodes.regionId,
+            tx.select({ id: regions.id }).from(regions).where(eq(regions.ownerAdminId, userId)),
+          ),
+        ),
+      );
+
+    return tx.delete(users).where(eq(users.id, userId));
+  });
 }
 
 /** 这个 short_name 是不是已经退休了。命中墓碑即永不再分配。 */

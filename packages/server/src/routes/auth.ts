@@ -1,4 +1,4 @@
-import { accountNameSchema } from '@link-profile/shared';
+import { accountNameSchema, newPasswordSchema } from '@link-profile/shared';
 import { users } from '@link-profile/shared/schema';
 import { eq, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
@@ -22,7 +22,7 @@ const loginBody = z.object({
 
 const passwordBody = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(8, 'field.newPassword.min'),
+  newPassword: newPasswordSchema,
 });
 
 const languageBody = z.object({

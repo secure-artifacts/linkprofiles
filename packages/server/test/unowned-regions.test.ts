@@ -96,6 +96,26 @@ test('无归属区域的邀请码立即失效', async () => {
   expect(await activeCodesOf(region.id)).toEqual([]);
 });
 
+test('超管走通用的删用户路径删掉管理员，邀请码同样立刻失效', async () => {
+  const region = await newRegion(aliceToken, '华东一批');
+  expect(await activeCodesOf(region.id)).toHaveLength(1);
+
+  // 不走 /admins/:id，走 /users/:id —— 两条路径的行为必须一致
+  const removed = await ctx.app.inject({
+    method: 'DELETE',
+    url: `/_api/users/${aliceId}`,
+    ...withSession(superToken),
+  });
+  expect(removed.statusCode).toBe(204);
+
+  expect(await activeCodesOf(region.id)).toEqual([]);
+  const [row] = await ctx.db
+    .select({ ownerAdminId: regions.ownerAdminId })
+    .from(regions)
+    .where(eq(regions.id, region.id));
+  expect(row).toMatchObject({ ownerAdminId: null });
+});
+
 test('无归属区域只有超级管理员看得见', async () => {
   const region = await newRegion(aliceToken, '华东一批');
   await deleteAdmin(aliceId);

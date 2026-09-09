@@ -29,6 +29,7 @@ export const errorsPtBR: ErrorMessages = {
   'field.title.required': 'O título não pode ficar vazio',
   'field.value.required': 'O valor não pode ficar vazio',
   'field.password.min': 'A senha precisa ter pelo menos {{min}} caracteres',
+  'field.password.max': 'A senha não pode passar de {{max}} caracteres',
   'field.newPassword.min': 'A nova senha precisa ter pelo menos {{min}} caracteres',
   'query.exclusiveScope': 'Não dá para informar userId e profileId ao mesmo tempo',
   'apiKey.expiryInPast': 'A validade precisa ser posterior a agora',

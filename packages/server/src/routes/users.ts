@@ -1,5 +1,5 @@
 import { profiles, regions, users } from '@link-profile/shared/schema';
-import { accountNameSchema, shortNameSchema } from '@link-profile/shared';
+import { accountNameSchema, passwordSchema, shortNameSchema } from '@link-profile/shared';
 import { and, count, eq, inArray, isNull } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
@@ -20,7 +20,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const createUserBody = z.object({
   account: accountNameSchema,
-  password: z.string().min(8, 'field.password.min'),
+  password: passwordSchema,
   /** 用户名称：后台中文备注，可重复，不做唯一约束 */
   label: z.string().trim().default(''),
   shortName: shortNameSchema,
@@ -31,7 +31,7 @@ const createUserBody = z.object({
 });
 
 const resetPasswordBody = z.object({
-  newPassword: z.string().min(8, 'field.password.min'),
+  newPassword: passwordSchema,
 });
 
 const moveRegionBody = z.object({

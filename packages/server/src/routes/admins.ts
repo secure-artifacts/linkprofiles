@@ -1,11 +1,12 @@
-import { accountNameSchema } from '@link-profile/shared';
-import { inviteCodes, regions, users } from '@link-profile/shared/schema';
-import { and, count, eq, inArray } from 'drizzle-orm';
+import { accountNameSchema, passwordSchema } from '@link-profile/shared';
+import { regions, users } from '@link-profile/shared/schema';
+import { and, count, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireCapability } from '../auth/guards.js';
 import { hashPassword } from '../auth/passwords.js';
 import { deleteSessionsForUser } from '../auth/sessions.js';
+import { deleteUserAccount } from '../profiles/deletion.js';
 import { renameAccount } from '../users/rename-account.js';
 import { findUserConflict } from '../users/conflicts.js';
 import { fail, forbidden } from '../http/errors.js';
@@ -13,7 +14,7 @@ import { createDefaultRegion } from '../regions/default-region.js';
 
 const createAdminBody = z.object({
   account: accountNameSchema,
-  password: z.string().min(8, 'field.password.min'),
+  password: passwordSchema,
   label: z.string().trim().default(''),
 });
 
@@ -134,28 +135,9 @@ export async function adminRoutes(app: FastifyInstance) {
 
       await deleteSessionsForUser(app.db, target.id);
 
-      await app.db.transaction(async (tx) => {
-        // 名下区域的邀请码立刻停掉：没人管的区域不该继续进人，见 ADR-0017。
-        // 外键的 set null 只管归属，动不到邀请码，所以在这里显式作废。
-        await tx
-          .update(inviteCodes)
-          .set({ isActive: false, revokedAt: new Date() })
-          .where(
-            and(
-              eq(inviteCodes.isActive, true),
-              inArray(
-                inviteCodes.regionId,
-                tx
-                  .select({ id: regions.id })
-                  .from(regions)
-                  .where(eq(regions.ownerAdminId, target.id)),
-              ),
-            ),
-          );
-
-        // 管理员没有 short_name，走普通删除即可；名下区域由外键置空转为无归属
-        await tx.delete(users).where(eq(users.id, target.id));
-      });
+      // 管理员没有 short_name，与删用户共用同一条删除路径；名下区域由外键置空
+      // 转为无归属，其邀请码在 deleteUserAccount 里一并作废。
+      await deleteUserAccount(app.db, target.id);
 
       return reply.code(204).send();
     },

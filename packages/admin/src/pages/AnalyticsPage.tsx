@@ -349,7 +349,7 @@ function PortfolioResults({
       <AggregateAnalysis data={data} timeZone={timeZone} showGlobalCountry={false} />
 
       {/* 区域行由账号行折叠而来，因此这张表的每一列都恒等于下面那张表的分组和 */}
-      {data.regions.length > 1 ? (
+      {data.performance.regions.length > 1 ? (
         <Panel title={t('analytics.regions.title', { count: data.performance.regions.length })}>
           <p className="mb-3 text-[12px] text-muted">{t('analytics.regions.hint')}</p>
           <ResponsiveTable

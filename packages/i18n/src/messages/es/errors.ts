@@ -30,6 +30,7 @@ export const errorsEs: ErrorMessages = {
   'field.title.required': 'El título no puede estar vacío',
   'field.value.required': 'El valor no puede estar vacío',
   'field.password.min': 'La contraseña debe tener al menos {{min}} caracteres',
+  'field.password.max': 'La contraseña no puede superar los {{max}} caracteres',
   'field.newPassword.min': 'La nueva contraseña debe tener al menos {{min}} caracteres',
   'query.exclusiveScope': 'No se pueden indicar userId y profileId a la vez',
   'apiKey.expiryInPast': 'La caducidad debe ser posterior a ahora',
