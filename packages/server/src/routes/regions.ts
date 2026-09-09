@@ -3,7 +3,7 @@ import { and, count, eq, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { requireCapability } from '../auth/guards.js';
+import { loadTargetRegion, requireCapability } from '../auth/guards.js';
 import { can, visibleRegionsFilter } from '../auth/policy.js';
 import { fail, forbidden } from '../http/errors.js';
 import { issueInviteCode } from '../regions/invite-code.js';
@@ -117,12 +117,7 @@ export async function regionRoutes(app: FastifyInstance) {
         return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
       }
 
-      const scope = visibleRegionsFilter(req.currentUser!);
-      const [target] = await app.db
-        .select({ id: regions.id })
-        .from(regions)
-        .where(scope ? and(eq(regions.id, req.params.id), scope) : eq(regions.id, req.params.id))
-        .limit(1);
+      const target = await loadTargetRegion(app.db, req.currentUser!, req.params.id);
       if (!target) return forbidden(reply);
 
       if (parsed.data.name !== undefined) {
@@ -186,12 +181,7 @@ export async function regionRoutes(app: FastifyInstance) {
         return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
       }
 
-      const scope = visibleRegionsFilter(req.currentUser!);
-      const [target] = await app.db
-        .select({ id: regions.id, ownerAdminId: regions.ownerAdminId })
-        .from(regions)
-        .where(scope ? and(eq(regions.id, req.params.id), scope) : eq(regions.id, req.params.id))
-        .limit(1);
+      const target = await loadTargetRegion(app.db, req.currentUser!, req.params.id);
       if (!target) return forbidden(reply);
 
       // 没人管的区域不该招人，见 ADR-0017。先指派归属，再发码。
@@ -216,12 +206,7 @@ export async function regionRoutes(app: FastifyInstance) {
     async (req, reply) => {
       if (!UUID.test(req.params.id)) return forbidden(reply);
 
-      const scope = visibleRegionsFilter(req.currentUser!);
-      const [target] = await app.db
-        .select({ id: regions.id, isDefault: regions.isDefault })
-        .from(regions)
-        .where(scope ? and(eq(regions.id, req.params.id), scope) : eq(regions.id, req.params.id))
-        .limit(1);
+      const target = await loadTargetRegion(app.db, req.currentUser!, req.params.id);
       if (!target) return forbidden(reply);
 
       if (target.isDefault) return fail(reply, 409, 'region_is_default');

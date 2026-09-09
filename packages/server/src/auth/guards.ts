@@ -6,6 +6,7 @@ import type { Db } from '../db/client.js';
 import {
   can,
   canTouchUser,
+  visibleRegionsFilter,
   visibleUsersFilter,
   type Capability,
   type UserAction,
@@ -70,4 +71,35 @@ export async function loadTargetUser(
 
   if (!row) return null;
   return canTouchUser(actor, row, action) ? row : null;
+}
+
+export interface TargetRegionRow {
+  id: string;
+  ownerAdminId: string | null;
+  isDefault: boolean;
+}
+
+/**
+ * 取出要操作的区域，可见范围过滤就带在查询里。
+ *
+ * 与 `loadTargetUser` 同一个形状：碰不到的区域在 SQL 层面就取不到，与「区域
+ * 不存在」在响应上完全一致，不泄露别人名下有哪些区域。
+ */
+export async function loadTargetRegion(
+  db: Db,
+  actor: CurrentUser,
+  regionId: string,
+): Promise<TargetRegionRow | null> {
+  const scope = visibleRegionsFilter(actor);
+  const [row] = await db
+    .select({
+      id: regions.id,
+      ownerAdminId: regions.ownerAdminId,
+      isDefault: regions.isDefault,
+    })
+    .from(regions)
+    .where(scope ? and(eq(regions.id, regionId), scope) : eq(regions.id, regionId))
+    .limit(1);
+
+  return row ?? null;
 }
