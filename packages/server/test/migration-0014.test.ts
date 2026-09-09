@@ -68,12 +68,7 @@ test('下线 Cutout 时把旧页面平稳迁到 Classic', async () => {
     join pg_namespace on pg_namespace.oid = pg_type.typnamespace
     where pg_type.typname = 'layout' and pg_namespace.nspname = current_schema()
     order by enumsortorder`;
-  expect(enumRows.map((item) => item['enumlabel'])).toEqual([
-    'classic',
-    'hero',
-    'banner',
-    'shape',
-  ]);
+  expect(enumRows.map((item) => item['enumlabel'])).toEqual(['classic', 'hero', 'banner', 'shape']);
 });
 
 test('旧 Banner 页面把原头像引用复制到独立 Banner 图槽', async () => {

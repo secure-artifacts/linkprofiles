@@ -264,8 +264,16 @@
     pointer-events: none;
     background:
       radial-gradient(circle at 14% 24%, rgb(255 255 255 / 0.2) 0 7%, transparent 28%),
-      radial-gradient(circle at 86% 42%, color-mix(in srgb, var(--surface) 78%, #fff) 0 8%, transparent 32%),
-      radial-gradient(circle at 28% 82%, color-mix(in srgb, var(--bgend) 70%, #8fffdc) 0 6%, transparent 30%);
+      radial-gradient(
+        circle at 86% 42%,
+        color-mix(in srgb, var(--surface) 78%, #fff) 0 8%,
+        transparent 32%
+      ),
+      radial-gradient(
+        circle at 28% 82%,
+        color-mix(in srgb, var(--bgend) 70%, #8fffdc) 0 6%,
+        transparent 30%
+      );
     filter: blur(14px) saturate(135%);
     opacity: 0.72;
   }
@@ -281,7 +289,12 @@
     overflow: hidden;
     color: var(--on-surface);
     background:
-      linear-gradient(145deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.07) 48%, rgb(255 255 255 / 0.13)),
+      linear-gradient(
+        145deg,
+        rgb(255 255 255 / 0.2),
+        rgb(255 255 255 / 0.07) 48%,
+        rgb(255 255 255 / 0.13)
+      ),
       color-mix(in srgb, var(--surface) 24%, transparent);
     border: 1px solid rgb(255 255 255 / 0.34);
     box-shadow:
@@ -301,7 +314,11 @@
     pointer-events: none;
     background:
       radial-gradient(90% 75% at 12% 0%, rgb(255 255 255 / 0.28), transparent 54%),
-      radial-gradient(70% 90% at 100% 100%, color-mix(in srgb, var(--surface) 36%, transparent), transparent 68%);
+      radial-gradient(
+        70% 90% at 100% 100%,
+        color-mix(in srgb, var(--surface) 36%, transparent),
+        transparent 68%
+      );
   }
   .pp[data-effect='liquid-glass'] .pp-lead::after,
   .pp[data-effect='liquid-glass'] .pp-link::after {

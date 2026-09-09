@@ -18,12 +18,7 @@ interface MediaImageProps {
 }
 
 /** 不带头像占位图语义的普通图片槽，供独立 Banner 图复用 picture/source 管线。 */
-export function MediaImage({
-  media,
-  priority = false,
-  className,
-  alt = '',
-}: MediaImageProps) {
+export function MediaImage({ media, priority = false, className, alt = '' }: MediaImageProps) {
   const img = (
     <img
       src={media.src}
