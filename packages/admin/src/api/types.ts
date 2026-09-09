@@ -289,7 +289,6 @@ export interface AppSettings {
   /** 两把密钥里有没有 Google 的公开测试密钥。私钥那把只有服务端判得了。 */
   recaptchaUsesTestKey: boolean;
   sourcePassthroughDefault: boolean;
-  sourcePassthroughCaveat: string;
 }
 
 /** 区域列表里的一行。归属管理员由区域推导，见 ADR-0017。 */

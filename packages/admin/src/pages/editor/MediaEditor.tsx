@@ -18,7 +18,7 @@ import { Button } from '../../ui/Button.js';
 import { Slider } from '../../ui/Slider.js';
 import { useToast } from '../../ui/Toast.js';
 import type { Draft, LiveMedia, PendingMedia } from './draft.js';
-import { useAdminT, useLocale } from '../../i18n/runtime.js';
+import { useAdminT, useErrorT, useLocale } from '../../i18n/runtime.js';
 
 interface MediaEditorProps {
   draft: Draft;
@@ -73,6 +73,7 @@ interface CropTask {
  */
 export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: MediaEditorProps) {
   const t = useAdminT();
+  const errorT = useErrorT();
   const toast = useToast();
   const [extracting, setExtracting] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
@@ -146,7 +147,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
 
     const problem = rejectImage({ mimeType: file.type, bytes: file.size });
     if (problem) {
-      failSlot('avatar', problem);
+      failSlot('avatar', errorT(problem.messageKey, problem.vars));
       return;
     }
     setPosterFailed(false);
@@ -158,7 +159,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
     clearSlot('background');
     const problem = rejectImage({ mimeType: file.type, bytes: file.size });
     if (problem) {
-      failSlot('background', problem);
+      failSlot('background', errorT(problem.messageKey, problem.vars));
       return;
     }
     setSources((prev) => ({ ...prev, background: file }));
@@ -169,7 +170,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
     clearSlot('banner');
     const problem = rejectImage({ mimeType: file.type, bytes: file.size });
     if (problem) {
-      failSlot('banner', problem);
+      failSlot('banner', errorT(problem.messageKey, problem.vars));
       return;
     }
     setSources((prev) => ({ ...prev, banner: file }));
@@ -179,7 +180,7 @@ export function MediaEditor({ draft, onChange, onChangeFields, onLiveMedia }: Me
   const pickPoster = (file: File) => {
     const problem = rejectImage({ mimeType: file.type, bytes: file.size });
     if (problem) {
-      toast.error(problem);
+      toast.error(errorT(problem.messageKey, problem.vars));
       return;
     }
     setPosterFailed(false);

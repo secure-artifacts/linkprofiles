@@ -139,6 +139,9 @@ export const adminPtBR: AdminMessages = {
   'entries.field.titleSocial': 'Título, por exemplo “Me chame no {{platform}}”',
   'entries.field.passSource.hint':
     'Leva o parâmetro src do endereço do visitante até o site de destino, para a atribuição continuar do lado de lá.',
+  'regions.unassigned': 'Sem atribuição',
+  'common.passthrough.caveat':
+    'Este projeto usa o parâmetro src em vez de utm_source, então ferramentas de analytics em sites de terceiros (como o Google Analytics) não vão reconhecê-lo como origem sozinhas. Repassar só ajuda quando o destino é uma página sua.',
   'common.cancel': 'Cancelar',
   'common.save': 'Salvar',
   'common.delete': 'Excluir',

@@ -30,6 +30,7 @@ import { GlobalCountryAnalytics } from '../analytics/GlobalCountryAnalytics.js';
 import { buildDashboardInsights, periodChange } from '../analytics/dashboard-insights.js';
 import { countryLabel, percent, sourceLabel } from '../analytics/labels.js';
 import { rankProfiles, type ProfileRankKey } from '../analytics/profile-ranking.js';
+import { regionLabel } from '../regions/label.js';
 import { useSession } from '../session.js';
 import { Alert } from '../ui/Alert.js';
 import { Button } from '../ui/Button.js';
@@ -83,7 +84,7 @@ export function AnalyticsPage() {
       : scope?.kind === 'account'
         ? scope.label || scope.account
         : scope?.kind === 'region'
-          ? scope.regionName
+          ? regionLabel(scope.regionId, scope.regionName)
           : t('analytics.title.overview');
   useBreadcrumb(
     scope?.kind === 'profile'
@@ -217,7 +218,7 @@ export function AnalyticsPage() {
               }
               options={[
                 { value: ALL_REGIONS, label: t('analytics.allRegions') },
-                ...data.regions.map((r) => ({ value: r.id, label: r.name })),
+                ...data.regions.map((r) => ({ value: r.id, label: regionLabel(r.id, r.name) })),
               ]}
               aria-label={t('users.region')}
             />
@@ -371,7 +372,9 @@ function PortfolioResults({
                 onClick={() => row.id && onOpenRegion(row.id)}
               >
                 <td className="py-3 pr-4">
-                  <div className="font-medium text-fg">{row.name ?? t('regions.unowned')}</div>
+                  <div className="font-medium text-fg">
+                    {row.name === null ? t('regions.unowned') : regionLabel(row.id ?? '', row.name)}
+                  </div>
                 </td>
                 <NumberCell value={row.accountCount} />
                 <NumberCell value={row.pageViews} />

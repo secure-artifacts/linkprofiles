@@ -33,9 +33,9 @@ export const errorsEs: ErrorMessages = {
   'field.displayName.required': 'El nombre visible no puede estar vacío',
   'field.title.required': 'El título no puede estar vacío',
   'field.value.required': 'El valor no puede estar vacío',
-  'field.password.min': 'La contraseña debe tener al menos {{min}} caracteres',
-  'field.password.max': 'La contraseña no puede superar los {{max}} caracteres',
-  'field.newPassword.min': 'La nueva contraseña debe tener al menos {{min}} caracteres',
+  'field.password.min': 'La contraseña debe tener al menos {{passwordMin}} caracteres',
+  'field.password.max': 'La contraseña no puede superar los {{passwordMax}} caracteres',
+  'field.newPassword.min': 'La nueva contraseña debe tener al menos {{passwordMin}} caracteres',
   'query.exclusiveScope': 'No se pueden indicar userId y profileId a la vez',
   'apiKey.expiryInPast': 'La caducidad debe ser posterior a ahora',
   'entry.limitReached': 'Una página admite como máximo {{max}} enlaces personalizados',
@@ -58,4 +58,36 @@ export const errorsEs: ErrorMessages = {
   'conflict.shortNameRetired':
     'El short_name {{shortName}} pertenece a una página de perfil eliminada y nunca se reasigna',
   'field.atLeastOne': 'Envía al menos un campo para actualizar',
+
+  'field.account.min': 'La cuenta debe tener al menos {{accountMin}} caracteres',
+  'field.account.max': 'La cuenta puede tener como máximo {{accountMax}} caracteres',
+  'field.account.charset':
+    'Solo minúsculas, dígitos, puntos, guiones bajos y guiones, empezando y terminando por letra o dígito',
+  'field.account.consecutive': 'Los puntos, guiones bajos y guiones no pueden ir seguidos',
+  'field.account.invalid': 'Esa cuenta no tiene un formato válido',
+  'field.shortName.required': 'El short_name no puede estar vacío',
+  'field.shortName.length':
+    'El short_name debe tener entre {{shortNameMin}} y {{shortNameMax}} caracteres',
+  'field.shortName.charset':
+    'El short_name solo admite minúsculas, dígitos y guiones, y no puede empezar ni terminar por guion',
+  'field.social.phone': 'Escribe un número de 7 a 15 dígitos, opcionalmente con el prefijo +',
+  'field.social.instagram':
+    'El usuario de Instagram no es válido (de 1 a 30 letras, dígitos, puntos o guiones bajos)',
+  'field.social.messenger':
+    'El usuario de Messenger no es válido (de 5 a 50 letras, dígitos o puntos)',
+  'field.social.unbuildable': 'Con ese valor no se puede formar un enlace que funcione',
+  'media.video.format': 'El vídeo debe ser mp4, se recibió {{mimeType}}',
+  'media.video.unreadable': 'Este archivo no es un mp4 válido; no se puede leer su duración',
+  'media.video.sizeLimit': 'El vídeo no puede superar {{max}}, este archivo ocupa {{size}}',
+  'media.video.durationLimit':
+    'El vídeo no puede superar {{max}} segundos, este clip dura {{seconds}}',
+  'media.image.format': 'Las imágenes deben ser JPEG, PNG, WebP o AVIF, se recibió {{mimeType}}',
+  'media.image.sizeLimit': 'Las imágenes no pueden superar {{max}}, este archivo ocupa {{size}}',
+  'field.url.required': 'El enlace de destino no puede estar vacío',
+  'field.url.invalid': 'El enlace de destino no es una dirección válida',
+  'field.url.protocol': 'Ese protocolo de enlace no está permitido',
+  'field.account.required': 'La cuenta no puede estar vacía',
+  'field.password.required': 'La contraseña no puede estar vacía',
+  'bulk.columns':
+    'Cada fila necesita cuatro columnas separadas por tabulador: nombre, cuenta, short_name, contraseña',
 };

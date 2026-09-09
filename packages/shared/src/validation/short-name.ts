@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ErrorKey } from '@link-profile/i18n';
 
 export const SHORT_NAME_MIN = 3;
 export const SHORT_NAME_MAX = 30;
@@ -12,10 +13,8 @@ export const SHORT_NAME_MAX = 30;
  */
 const PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
-export type ShortNameError =
-  | 'short_name 不能为空'
-  | 'short_name 长度需在 3–30 位之间'
-  | 'short_name 只能包含小写字母、数字与连字符，且不能以连字符开头或结尾';
+/** 校验失败返回译文 key，文案在 i18n 包的 errors 命名空间里。 */
+export type ShortNameError = Extract<ErrorKey, `field.shortName.${string}`>;
 
 /** 大小写不敏感，因此统一压小写后再校验与入库。 */
 export function normalizeShortName(raw: string): string {
@@ -27,16 +26,11 @@ export function validateShortName(
 ): { ok: true; value: string } | { ok: false; error: ShortNameError } {
   const value = normalizeShortName(raw);
 
-  if (value.length === 0) return { ok: false, error: 'short_name 不能为空' };
+  if (value.length === 0) return { ok: false, error: 'field.shortName.required' };
   if (value.length < SHORT_NAME_MIN || value.length > SHORT_NAME_MAX) {
-    return { ok: false, error: 'short_name 长度需在 3–30 位之间' };
+    return { ok: false, error: 'field.shortName.length' };
   }
-  if (!PATTERN.test(value)) {
-    return {
-      ok: false,
-      error: 'short_name 只能包含小写字母、数字与连字符，且不能以连字符开头或结尾',
-    };
-  }
+  if (!PATTERN.test(value)) return { ok: false, error: 'field.shortName.charset' };
 
   return { ok: true, value };
 }

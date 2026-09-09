@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ErrorKey } from '@link-profile/i18n';
 
 export const INVITE_CODE_MIN = 8;
 export const INVITE_CODE_MAX = 10;
@@ -20,7 +21,7 @@ export function normalizeInviteCode(raw: string): string {
 
 export function validateInviteCode(
   raw: string,
-): { ok: true; value: string } | { ok: false; error: string } {
+): { ok: true; value: string } | { ok: false; error: ErrorKey } {
   const value = normalizeInviteCode(raw);
 
   if (value.length === 0) return { ok: false, error: 'field.inviteCode.required' };

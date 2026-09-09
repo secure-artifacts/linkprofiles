@@ -35,9 +35,9 @@ export const errorsEn = {
   'field.displayName.required': 'Display name cannot be empty',
   'field.title.required': 'Title cannot be empty',
   'field.value.required': 'Value cannot be empty',
-  'field.password.min': 'Password must be at least {{min}} characters',
-  'field.password.max': 'Password cannot exceed {{max}} characters',
-  'field.newPassword.min': 'New password must be at least {{min}} characters',
+  'field.password.min': 'Password must be at least {{passwordMin}} characters',
+  'field.password.max': 'Password cannot exceed {{passwordMax}} characters',
+  'field.newPassword.min': 'New password must be at least {{passwordMin}} characters',
 
   'query.exclusiveScope': 'userId and profileId cannot both be given',
   'apiKey.expiryInPast': 'The expiry must be later than now',
@@ -64,4 +64,33 @@ export const errorsEn = {
   'conflict.shortNameRetired':
     'The short_name {{shortName}} belongs to a deleted profile page and is never reassigned',
   'field.atLeastOne': 'Submit at least one field to update',
+
+  'field.account.min': 'Account must be at least {{accountMin}} characters',
+  'field.account.max': 'Account can be at most {{accountMax}} characters',
+  'field.account.charset':
+    'Only lowercase letters, digits, dots, underscores and hyphens, starting and ending with a letter or digit',
+  'field.account.consecutive': 'Dots, underscores and hyphens cannot appear back to back',
+  'field.account.invalid': 'That account is not in a valid format',
+  'field.shortName.required': 'short_name cannot be empty',
+  'field.shortName.length': 'short_name must be {{shortNameMin}} to {{shortNameMax}} characters',
+  'field.shortName.charset':
+    'short_name may only use lowercase letters, digits and hyphens, and cannot start or end with a hyphen',
+  'field.social.phone': 'Enter a 7 to 15 digit phone number, optionally with a + country code',
+  'field.social.instagram':
+    'Instagram username is not valid (1 to 30 letters, digits, dots or underscores)',
+  'field.social.messenger': 'Messenger username is not valid (5 to 50 letters, digits or dots)',
+  'field.social.unbuildable': 'That value cannot be turned into a working link',
+  'media.video.format': 'Video must be mp4, got {{mimeType}}',
+  'media.video.unreadable': 'This file is not a valid mp4; its duration cannot be read',
+  'media.video.sizeLimit': 'Video cannot exceed {{max}}, this file is {{size}}',
+  'media.video.durationLimit':
+    'Video cannot exceed {{max}} seconds, this clip is {{seconds}} seconds',
+  'media.image.format': 'Images must be JPEG, PNG, WebP or AVIF, got {{mimeType}}',
+  'media.image.sizeLimit': 'Images cannot exceed {{max}}, this file is {{size}}',
+  'field.url.required': 'Target link cannot be empty',
+  'field.url.invalid': 'Target link is not a valid address',
+  'field.url.protocol': 'That link protocol is not allowed',
+  'field.account.required': 'Account cannot be empty',
+  'field.password.required': 'Password cannot be empty',
+  'bulk.columns': 'Each row needs four tab-separated columns: name, account, short_name, password',
 } as const;

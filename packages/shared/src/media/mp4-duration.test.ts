@@ -131,17 +131,18 @@ describe('rejectVideo', () => {
   test('拒绝时说清楚是哪一项超了、超了多少', () => {
     const tooLong = rejectVideo({ ...ok, durationMs: 21_400 });
     expect(tooLong?.reason).toBe('duration');
-    expect(tooLong?.message).toContain('15');
-    expect(tooLong?.message).toContain('21.4');
+    expect(tooLong?.messageKey).toBe('media.video.durationLimit');
+    expect(tooLong?.vars).toMatchObject({ max: 15, seconds: '21.4' });
 
     const tooBig = rejectVideo({ ...ok, bytes: VIDEO_MAX_BYTES + 5 * 1024 * 1024 });
     expect(tooBig?.reason).toBe('size');
-    expect(tooBig?.message).toContain('10 MB');
-    expect(tooBig?.message).toContain('15 MB');
+    expect(tooBig?.messageKey).toBe('media.video.sizeLimit');
+    expect(tooBig?.vars).toMatchObject({ max: '10 MB', size: '15 MB' });
 
     const wrongFormat = rejectVideo({ ...ok, mimeType: 'video/quicktime' });
     expect(wrongFormat?.reason).toBe('format');
-    expect(wrongFormat?.message).toContain('video/quicktime');
+    expect(wrongFormat?.messageKey).toBe('media.video.format');
+    expect(wrongFormat?.vars).toMatchObject({ mimeType: 'video/quicktime' });
   });
 
   test('读不出时长当作格式错误', () => {

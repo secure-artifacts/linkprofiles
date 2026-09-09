@@ -1,4 +1,4 @@
-import { parseBulkUserRows } from '@link-profile/shared';
+import { FIELD_LIMIT_VARS, parseBulkUserRows } from '@link-profile/shared';
 import { profiles, regions, users } from '@link-profile/shared/schema';
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
@@ -62,7 +62,7 @@ export async function bulkUserRoutes(app: FastifyInstance) {
     // 同一批里的重复也要挡住，否则第二行会撞上第一行刚建的账号。
     for (const row of parseBulkUserRows(parsed.data.text)) {
       if (!row.ok) {
-        failed.push({ line: row.line, error: row.error });
+        failed.push({ line: row.line, error: translate(row.error, FIELD_LIMIT_VARS) });
         continue;
       }
 

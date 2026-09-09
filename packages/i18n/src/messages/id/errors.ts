@@ -32,9 +32,9 @@ export const errorsId: ErrorMessages = {
   'field.displayName.required': 'Nama tampilan tidak boleh kosong',
   'field.title.required': 'Judul tidak boleh kosong',
   'field.value.required': 'Isian tidak boleh kosong',
-  'field.password.min': 'Kata sandi minimal {{min}} karakter',
-  'field.password.max': 'Kata sandi tidak boleh lebih dari {{max}} karakter',
-  'field.newPassword.min': 'Kata sandi baru minimal {{min}} karakter',
+  'field.password.min': 'Kata sandi minimal {{passwordMin}} karakter',
+  'field.password.max': 'Kata sandi tidak boleh lebih dari {{passwordMax}} karakter',
+  'field.newPassword.min': 'Kata sandi baru minimal {{passwordMin}} karakter',
   'query.exclusiveScope': 'userId dan profileId tidak boleh diberikan bersamaan',
   'apiKey.expiryInPast': 'Masa berlaku harus lebih baru dari sekarang',
   'entry.limitReached': 'Satu halaman menampung maksimal {{max}} tautan khusus',
@@ -57,4 +57,34 @@ export const errorsId: ErrorMessages = {
   'conflict.shortNameRetired':
     'short_name {{shortName}} milik halaman profil yang sudah dihapus dan tidak pernah dipakai lagi',
   'field.atLeastOne': 'Kirim setidaknya satu kolom untuk diperbarui',
+
+  'field.account.min': 'Akun minimal {{accountMin}} karakter',
+  'field.account.max': 'Akun maksimal {{accountMax}} karakter',
+  'field.account.charset':
+    'Hanya huruf kecil, angka, titik, garis bawah, dan tanda hubung, serta harus diawali dan diakhiri huruf atau angka',
+  'field.account.consecutive': 'Titik, garis bawah, dan tanda hubung tidak boleh berurutan',
+  'field.account.invalid': 'Format akun itu tidak valid',
+  'field.shortName.required': 'short_name tidak boleh kosong',
+  'field.shortName.length': 'short_name harus {{shortNameMin}} sampai {{shortNameMax}} karakter',
+  'field.shortName.charset':
+    'short_name hanya boleh huruf kecil, angka, dan tanda hubung, serta tidak boleh diawali atau diakhiri tanda hubung',
+  'field.social.phone': 'Masukkan nomor 7 sampai 15 digit, boleh dengan kode negara +',
+  'field.social.instagram':
+    'Username Instagram tidak valid (1 sampai 30 huruf, angka, titik, atau garis bawah)',
+  'field.social.messenger': 'Username Messenger tidak valid (5 sampai 50 huruf, angka, atau titik)',
+  'field.social.unbuildable': 'Nilai itu tidak bisa dijadikan tautan yang berfungsi',
+  'media.video.format': 'Video harus mp4, yang diterima {{mimeType}}',
+  'media.video.unreadable': 'Berkas ini bukan mp4 yang sah; durasinya tidak terbaca',
+  'media.video.sizeLimit': 'Video tidak boleh lebih dari {{max}}, berkas ini {{size}}',
+  'media.video.durationLimit':
+    'Video tidak boleh lebih dari {{max}} detik, klip ini {{seconds}} detik',
+  'media.image.format': 'Gambar harus JPEG, PNG, WebP, atau AVIF, yang diterima {{mimeType}}',
+  'media.image.sizeLimit': 'Gambar tidak boleh lebih dari {{max}}, berkas ini {{size}}',
+  'field.url.required': 'Tautan tujuan tidak boleh kosong',
+  'field.url.invalid': 'Tautan tujuan bukan alamat yang sah',
+  'field.url.protocol': 'Protokol tautan itu tidak diizinkan',
+  'field.account.required': 'Akun tidak boleh kosong',
+  'field.password.required': 'Kata sandi tidak boleh kosong',
+  'bulk.columns':
+    'Setiap baris memerlukan empat kolom yang dipisahkan tab: nama, akun, short_name, kata sandi',
 };

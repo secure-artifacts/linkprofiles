@@ -6,7 +6,7 @@ import { Button } from '../ui/Button.js';
 import { Dialog } from '../ui/Dialog.js';
 import { Input, PasswordInput } from '../ui/Input.js';
 import { useToast } from '../ui/Toast.js';
-import { useAdminT } from '../i18n/runtime.js';
+import { useAdminT, useErrorT } from '../i18n/runtime.js';
 
 export function ChangeAccountModal({
   open,
@@ -20,6 +20,7 @@ export function ChangeAccountModal({
   onSignedOut: () => void;
 }) {
   const t = useAdminT();
+  const errorT = useErrorT();
   const toast = useToast();
   const [account, setAccount] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -36,7 +37,7 @@ export function ChangeAccountModal({
 
   const submit = async () => {
     const parsed = validateAccountName(account);
-    if (!parsed.ok) return setError(parsed.error);
+    if (!parsed.ok) return setError(errorT(parsed.error));
     const next = parsed.value;
     if (!currentPassword) return setError(t('common.validation.currentPasswordRequired'));
     if (next === currentAccount) return setError(t('account.change.same'));

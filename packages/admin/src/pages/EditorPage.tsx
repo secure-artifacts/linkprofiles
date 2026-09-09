@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { request } from '../api/client.js';
-import type { AppSettings, EditableProfile, EntryDraft, SocialPlatformInfo } from '../api/types.js';
+import type { EditableProfile, EntryDraft, SocialPlatformInfo } from '../api/types.js';
 import { useBreadcrumb } from '../nav/breadcrumb.js';
 import { PreviewFrame } from '../preview/PreviewFrame.js';
 import { useSession } from '../session.js';
@@ -48,21 +48,18 @@ export function EditorPage() {
   const toast = useToast();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [platforms, setPlatforms] = useState<SocialPlatformInfo[]>([]);
-  const [caveat, setCaveat] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 裁切弹窗开着时的临时构图。不进 draft，取消即消失。
   const [liveMedia, setLiveMedia] = useState<LiveMedia>({});
 
   const load = useCallback(async () => {
-    const [loaded, platformList, settings] = await Promise.all([
+    const [loaded, platformList] = await Promise.all([
       request<EditableProfile>(`/profiles/${profileId}`),
       request<{ platforms: SocialPlatformInfo[] }>('/social-platforms'),
-      request<AppSettings>('/settings'),
     ]);
 
     setPlatforms(platformList.platforms);
-    setCaveat(settings.sourcePassthroughCaveat);
     setDraft(
       draftFromServer(loaded, {
         avatar: loaded.profile.avatarUrl,
@@ -290,7 +287,6 @@ export function EditorPage() {
             platforms={platforms}
             entries={draft.entries}
             onChange={(entries) => patch({ entries })}
-            passthroughCaveat={caveat}
             solidBackground={draft.fields.solidBackground}
             iconPlate={draft.fields.iconPlate}
             onChangeStyle={patchFields}

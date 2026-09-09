@@ -141,6 +141,9 @@ export const adminId: AdminMessages = {
   'entries.field.titleSocial': 'Judul, misalnya “Kirim pesan lewat {{platform}}”',
   'entries.field.passSource.hint':
     'Membawa parameter src dari alamat pengunjung sampai ke situs tujuan, supaya atribusi bisa dilanjutkan di sana.',
+  'regions.unassigned': 'Belum ditetapkan',
+  'common.passthrough.caveat':
+    'Proyek ini memakai parameter src alih-alih utm_source, sehingga alat analitik di situs pihak ketiga (seperti Google Analytics) tidak otomatis mengenalinya sebagai sumber. Meneruskannya hanya berguna bila tujuannya adalah halaman milik Anda sendiri.',
   'common.cancel': 'Batal',
   'common.save': 'Simpan',
   'common.delete': 'Hapus',

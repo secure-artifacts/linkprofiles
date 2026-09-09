@@ -36,7 +36,6 @@ interface ContentEditorProps {
   platforms: SocialPlatformInfo[];
   entries: EntryDraft[];
   onChange: (entries: EntryDraft[]) => void;
-  passthroughCaveat: string;
   /** 下面两个是整页统一的视觉开关，不属于任何一条条目 */
   solidBackground: boolean;
   iconPlate: boolean;
@@ -73,7 +72,6 @@ export function ContentEditor({
   platforms,
   entries,
   onChange,
-  passthroughCaveat,
   solidBackground,
   iconPlate,
   onChangeStyle,
@@ -230,7 +228,6 @@ export function ContentEditor({
                   {...(entry.kind === 'social' && platformOf(entry.platform)
                     ? { platform: platformOf(entry.platform)! }
                     : {})}
-                  passthroughCaveat={passthroughCaveat}
                   onChange={(patch) => update(entry.id, patch)}
                 />
               </SortableCard>
@@ -563,12 +560,10 @@ function PaletteItem({
 function EntryFields({
   entry,
   platform,
-  passthroughCaveat,
   onChange,
 }: {
   entry: EntryDraft;
   platform?: SocialPlatformInfo;
-  passthroughCaveat: string;
   onChange: (patch: Partial<EntryDraft>) => void;
 }) {
   const t = useAdminT();
@@ -640,7 +635,7 @@ function EntryFields({
           checked={entry.passSource}
           onChange={(checked) => onChange({ passSource: checked })}
           label={t('entries.field.passSource')}
-          help={`${t('entries.field.passSource.hint')}\n\n${passthroughCaveat}`}
+          help={`${t('entries.field.passSource.hint')}\n\n${t('common.passthrough.caveat')}`}
         />
       </div>
     </div>

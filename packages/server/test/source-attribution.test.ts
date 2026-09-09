@@ -1,4 +1,3 @@
-import { PASSTHROUGH_CAVEAT } from '@link-profile/shared';
 import { clicks, pageViews } from '@link-profile/shared/schema';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from './helpers/context.js';
@@ -204,19 +203,6 @@ test('全局默认只有超级管理员改得了', async () => {
   });
 
   expect(res.statusCode).toBe(403);
-});
-
-test('后台读得到已知取舍的文案，说明用的是 src 而不是 utm_source', async () => {
-  const res = await ctx.app.inject({
-    method: 'GET',
-    url: '/_api/settings',
-    ...withSession(token),
-  });
-
-  expect(res.statusCode).toBe(200);
-  expect(res.json().sourcePassthroughCaveat).toBe(PASSTHROUGH_CAVEAT);
-  expect(res.json().sourcePassthroughCaveat).toContain('utm_source');
-  expect(res.json().sourcePassthroughCaveat).toContain('第三方');
 });
 
 test('社媒图标同样支持逐条透传', async () => {

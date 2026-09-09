@@ -6,14 +6,10 @@
  *
  * **已知取舍**：本项目统一用 `src` 而不是 `utm_source`，因此第三方网站的
  * 分析工具（GA 之类）不会自动把它认成来源，透传只在目标是自家页面时有效。
- * 这句话要在后台的开关旁边写清楚，见 `PASSTHROUGH_CAVEAT`。
+ * 这句话要在后台的开关旁边写清楚，见译文 key `common.passthrough.caveat`。
  */
 
 export const SOURCE_PARAM = 'src';
-
-export const PASSTHROUGH_CAVEAT =
-  '本项目统一使用 src 参数而不是 utm_source，因此第三方网站的分析工具（如 Google Analytics）' +
-  '不会自动把它识别为来源。透传仅在目标是自家页面时有效。';
 
 /**
  * 把来源挂到目标地址上。

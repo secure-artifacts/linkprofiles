@@ -32,9 +32,9 @@ export const errorsPtBR: ErrorMessages = {
   'field.displayName.required': 'O nome de exibição não pode ficar vazio',
   'field.title.required': 'O título não pode ficar vazio',
   'field.value.required': 'O valor não pode ficar vazio',
-  'field.password.min': 'A senha precisa ter pelo menos {{min}} caracteres',
-  'field.password.max': 'A senha não pode passar de {{max}} caracteres',
-  'field.newPassword.min': 'A nova senha precisa ter pelo menos {{min}} caracteres',
+  'field.password.min': 'A senha precisa ter pelo menos {{passwordMin}} caracteres',
+  'field.password.max': 'A senha não pode passar de {{passwordMax}} caracteres',
+  'field.newPassword.min': 'A nova senha precisa ter pelo menos {{passwordMin}} caracteres',
   'query.exclusiveScope': 'Não dá para informar userId e profileId ao mesmo tempo',
   'apiKey.expiryInPast': 'A validade precisa ser posterior a agora',
   'entry.limitReached': 'Uma página comporta no máximo {{max}} links personalizados',
@@ -57,4 +57,36 @@ export const errorsPtBR: ErrorMessages = {
   'conflict.shortNameRetired':
     'O short_name {{shortName}} pertence a uma página de perfil excluída e nunca é reatribuído',
   'field.atLeastOne': 'Envie pelo menos um campo para atualizar',
+
+  'field.account.min': 'A conta precisa ter pelo menos {{accountMin}} caracteres',
+  'field.account.max': 'A conta pode ter no máximo {{accountMax}} caracteres',
+  'field.account.charset':
+    'Só minúsculas, dígitos, pontos, sublinhados e hífens, começando e terminando com letra ou dígito',
+  'field.account.consecutive': 'Pontos, sublinhados e hífens não podem vir seguidos',
+  'field.account.invalid': 'Essa conta não está num formato válido',
+  'field.shortName.required': 'O short_name não pode ficar vazio',
+  'field.shortName.length':
+    'O short_name precisa ter de {{shortNameMin}} a {{shortNameMax}} caracteres',
+  'field.shortName.charset':
+    'O short_name só aceita minúsculas, dígitos e hífens, e não pode começar nem terminar com hífen',
+  'field.social.phone': 'Digite um número de 7 a 15 dígitos, opcionalmente com o código + do país',
+  'field.social.instagram':
+    'O usuário do Instagram não é válido (de 1 a 30 letras, dígitos, pontos ou sublinhados)',
+  'field.social.messenger':
+    'O usuário do Messenger não é válido (de 5 a 50 letras, dígitos ou pontos)',
+  'field.social.unbuildable': 'Esse valor não vira um link que funcione',
+  'media.video.format': 'O vídeo precisa ser mp4, chegou {{mimeType}}',
+  'media.video.unreadable': 'Este arquivo não é um mp4 válido; não dá para ler a duração',
+  'media.video.sizeLimit': 'O vídeo não pode passar de {{max}}, este arquivo tem {{size}}',
+  'media.video.durationLimit':
+    'O vídeo não pode passar de {{max}} segundos, este clipe tem {{seconds}}',
+  'media.image.format': 'As imagens precisam ser JPEG, PNG, WebP ou AVIF, chegou {{mimeType}}',
+  'media.image.sizeLimit': 'As imagens não podem passar de {{max}}, este arquivo tem {{size}}',
+  'field.url.required': 'O link de destino não pode ficar vazio',
+  'field.url.invalid': 'O link de destino não é um endereço válido',
+  'field.url.protocol': 'Esse protocolo de link não é permitido',
+  'field.account.required': 'A conta não pode ficar vazia',
+  'field.password.required': 'A senha não pode ficar vazia',
+  'bulk.columns':
+    'Cada linha precisa de quatro colunas separadas por tabulação: nome, conta, short_name, senha',
 };

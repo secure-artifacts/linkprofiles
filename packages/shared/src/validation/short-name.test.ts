@@ -50,7 +50,7 @@ describe('validateShortName', () => {
   });
 
   test('空串给出专门的提示', () => {
-    expect(ok('')).toEqual({ ok: false, error: 'short_name 不能为空' });
-    expect(ok('   ')).toEqual({ ok: false, error: 'short_name 不能为空' });
+    expect(ok('')).toEqual({ ok: false, error: 'field.shortName.required' });
+    expect(ok('   ')).toEqual({ ok: false, error: 'field.shortName.required' });
   });
 });

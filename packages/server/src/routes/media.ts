@@ -77,7 +77,10 @@ export async function mediaRoutes(app: FastifyInstance) {
         durationMs,
       });
       if (rejection) {
-        return fail(reply, 400, `video_${rejection.reason}`, { message: rejection.message });
+        return fail(reply, 400, `video_${rejection.reason}`, {
+          messageKey: rejection.messageKey,
+          messageVars: rejection.vars,
+        });
       }
 
       // 封面必须一起交上来：公开页要先渲染封面，视频不得成为 LCP 元素。
@@ -90,7 +93,10 @@ export async function mediaRoutes(app: FastifyInstance) {
         bytes: poster.data.byteLength,
       });
       if (posterProblem) {
-        return fail(reply, 400, 'invalid_poster', { message: posterProblem });
+        return fail(reply, 400, 'invalid_poster', {
+          messageKey: posterProblem.messageKey,
+          messageVars: posterProblem.vars,
+        });
       }
 
       const videoId = randomUUID();
@@ -119,7 +125,12 @@ export async function mediaRoutes(app: FastifyInstance) {
     }
 
     const problem = rejectImage({ mimeType: main.mimeType, bytes: main.data.byteLength });
-    if (problem) return fail(reply, 400, 'invalid_image', { message: problem });
+    if (problem) {
+      return fail(reply, 400, 'invalid_image', {
+        messageKey: problem.messageKey,
+        messageVars: problem.vars,
+      });
+    }
 
     const mediaId = randomUUID();
     const stored = await storeImage(Buffer.from(main.data), {

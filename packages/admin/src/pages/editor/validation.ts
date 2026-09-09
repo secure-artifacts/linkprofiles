@@ -1,6 +1,6 @@
 import { validateSocialValue, validateTargetUrl } from '@link-profile/shared';
 import type { EntryDraft } from '../../api/types.js';
-import { translateAdmin } from '../../i18n/runtime.js';
+import { translateAdmin, translateError } from '../../i18n/runtime.js';
 
 /**
  * 编辑器里的「这一项现在有问题吗」。
@@ -14,9 +14,13 @@ export function entryProblem(entry: EntryDraft): string | null {
 
   if (entry.kind === 'social') {
     const result = validateSocialValue(entry.platform, entry.value);
-    return result.ok ? null : (result.error ?? translateAdmin('entries.validation.badFormat'));
+    return result.ok
+      ? null
+      : result.error
+        ? translateError(result.error)
+        : translateAdmin('entries.validation.badFormat');
   }
 
   const url = validateTargetUrl(entry.url);
-  return url.ok ? null : url.error;
+  return url.ok ? null : translateError(url.error);
 }

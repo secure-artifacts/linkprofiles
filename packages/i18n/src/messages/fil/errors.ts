@@ -33,9 +33,10 @@ export const errorsFil: ErrorMessages = {
   'field.displayName.required': 'Hindi puwedeng walang laman ang display name',
   'field.title.required': 'Hindi puwedeng walang laman ang pamagat',
   'field.value.required': 'Hindi puwedeng walang laman ang nilalaman',
-  'field.password.min': 'Kailangang hindi bababa sa {{min}} karakter ang password',
-  'field.password.max': 'Hindi puwedeng lumampas sa {{max}} karakter ang password',
-  'field.newPassword.min': 'Kailangang hindi bababa sa {{min}} karakter ang bagong password',
+  'field.password.min': 'Kailangang hindi bababa sa {{passwordMin}} karakter ang password',
+  'field.password.max': 'Hindi puwedeng lumampas sa {{passwordMax}} karakter ang password',
+  'field.newPassword.min':
+    'Kailangang hindi bababa sa {{passwordMin}} karakter ang bagong password',
 
   'query.exclusiveScope': 'Hindi puwedeng sabay na ibigay ang userId at profileId',
   'apiKey.expiryInPast': 'Kailangang mas huli sa kasalukuyang oras ang expiry',
@@ -62,4 +63,37 @@ export const errorsFil: ErrorMessages = {
   'conflict.shortNameRetired':
     'Ang short_name na {{shortName}} ay pag-aari ng binurang profile page at hindi na muling ibibigay',
   'field.atLeastOne': 'Magsumite ng kahit isang field na ia-update',
+
+  'field.account.min': 'Kailangang hindi bababa sa {{accountMin}} karakter ang account',
+  'field.account.max': 'Hanggang {{accountMax}} karakter lang ang account',
+  'field.account.charset':
+    'Maliliit na titik, numero, tuldok, underscore at gitling lang, at kailangang titik o numero ang simula at dulo',
+  'field.account.consecutive': 'Hindi puwedeng magkasunod ang tuldok, underscore at gitling',
+  'field.account.invalid': 'Hindi tama ang format ng account na iyan',
+  'field.shortName.required': 'Hindi puwedeng walang laman ang short_name',
+  'field.shortName.length':
+    'Kailangang {{shortNameMin}} hanggang {{shortNameMax}} karakter ang short_name',
+  'field.shortName.charset':
+    'Maliliit na titik, numero at gitling lang ang puwede sa short_name, at hindi ito puwedeng magsimula o magtapos sa gitling',
+  'field.social.phone': 'Maglagay ng 7 hanggang 15 digit na numero, puwedeng may + country code',
+  'field.social.instagram':
+    'Hindi tama ang Instagram username (1 hanggang 30 titik, numero, tuldok o underscore)',
+  'field.social.messenger':
+    'Hindi tama ang Messenger username (5 hanggang 50 titik, numero o tuldok)',
+  'field.social.unbuildable': 'Hindi magagawang gumaganang link ang halagang iyan',
+  'media.video.format': 'Kailangang mp4 ang video, {{mimeType}} ang natanggap',
+  'media.video.unreadable': 'Hindi wastong mp4 ang file na ito; hindi mabasa ang haba nito',
+  'media.video.sizeLimit': 'Hindi puwedeng lumampas sa {{max}} ang video, {{size}} ang file na ito',
+  'media.video.durationLimit':
+    'Hindi puwedeng lumampas sa {{max}} segundo ang video, {{seconds}} segundo ang clip na ito',
+  'media.image.format': 'Kailangang JPEG, PNG, WebP o AVIF ang larawan, {{mimeType}} ang natanggap',
+  'media.image.sizeLimit':
+    'Hindi puwedeng lumampas sa {{max}} ang larawan, {{size}} ang file na ito',
+  'field.url.required': 'Hindi puwedeng walang laman ang target na link',
+  'field.url.invalid': 'Hindi wastong address ang target na link',
+  'field.url.protocol': 'Hindi pinapayagan ang protocol ng link na iyan',
+  'field.account.required': 'Hindi puwedeng walang laman ang account',
+  'field.password.required': 'Hindi puwedeng walang laman ang password',
+  'bulk.columns':
+    'Kailangan ng bawat hilera ng apat na hanay na pinaghihiwalay ng tab: pangalan, account, short_name, password',
 };

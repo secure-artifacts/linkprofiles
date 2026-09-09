@@ -9,7 +9,7 @@ import { Spinner } from '../ui/Spinner.js';
 import { useToast } from '../ui/Toast.js';
 import { useConfirm } from '../ui/useConfirm.js';
 import { useBreadcrumb } from '../nav/breadcrumb.js';
-import { useAdminT } from '../i18n/runtime.js';
+import { useAdminT, useErrorT } from '../i18n/runtime.js';
 
 /** 管理员管理。只有超级管理员进得来。 */
 export function AdminsPage() {
@@ -131,6 +131,7 @@ function EditAdminDialog({
   onDone: () => Promise<void>;
 }) {
   const t = useAdminT();
+  const errorT = useErrorT();
   const toast = useToast();
   const [account, setAccount] = useState('');
   const [label, setLabel] = useState('');
@@ -146,7 +147,7 @@ function EditAdminDialog({
     setSaving(true);
     try {
       const parsedAccount = validateAccountName(account);
-      if (!parsedAccount.ok) throw new Error(parsedAccount.error);
+      if (!parsedAccount.ok) throw new Error(errorT(parsedAccount.error));
       await request(`/admins/${admin.id}`, {
         method: 'PATCH',
         body: { account: parsedAccount.value, label },
@@ -205,6 +206,7 @@ function CreateAdminDialog({
   onDone: () => Promise<void>;
 }) {
   const t = useAdminT();
+  const errorT = useErrorT();
   const toast = useToast();
   const [label, setLabel] = useState('');
   const [account, setAccount] = useState('');
@@ -216,7 +218,7 @@ function CreateAdminDialog({
     if (!account) return setError(t('common.validation.accountRequired'));
     if (!password || password.length < 8) return setError(t('common.validation.passwordMin'));
     const parsedAccount = validateAccountName(account);
-    if (!parsedAccount.ok) return setError(parsedAccount.error);
+    if (!parsedAccount.ok) return setError(errorT(parsedAccount.error));
     setError(null);
     setSubmitting(true);
     try {

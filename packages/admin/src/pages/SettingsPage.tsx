@@ -96,7 +96,7 @@ export function SettingsPage() {
           <Alert
             tone="warning"
             message={t('settings.knownTradeoffs')}
-            description={settings.sourcePassthroughCaveat}
+            description={t('common.passthrough.caveat')}
           />
         </div>
       </div>

@@ -138,6 +138,9 @@ export const adminVi: AdminMessages = {
   'entries.field.titleSocial': 'Tiêu đề, ví dụ “Nhắn cho tôi qua {{platform}}”',
   'entries.field.passSource.hint':
     'Mang tham số src trên địa chỉ của khách sang tận trang đích, để bên đó tiếp tục quy nguồn được.',
+  'regions.unassigned': 'Chưa phân bổ',
+  'common.passthrough.caveat':
+    'Dự án này dùng tham số src thay cho utm_source, nên các công cụ phân tích trên trang của bên thứ ba (như Google Analytics) sẽ không tự nhận ra nó là nguồn. Việc truyền tiếp chỉ có tác dụng khi đích đến là trang của chính bạn.',
   'common.cancel': 'Huỷ',
   'common.save': 'Lưu',
   'common.delete': 'Xoá',

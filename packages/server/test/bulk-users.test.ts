@@ -87,9 +87,12 @@ test('个别行出错不影响其余行，结果带行号与原因', async () =>
 
   expect(body.failed).toEqual([
     { line: 2, error: 'The account mimnz already exists' },
-    { line: 3, error: 'short_name 长度需在 3–30 位之间' },
-    { line: 4, error: '密码为空' },
-    { line: 5, error: '列数不对，应为四列：用户名称、账号、short_name、密码' },
+    { line: 3, error: 'short_name must be 3 to 30 characters' },
+    { line: 4, error: 'Password cannot be empty' },
+    {
+      line: 5,
+      error: 'Each row needs four tab-separated columns: name, account, short_name, password',
+    },
   ]);
 });
 

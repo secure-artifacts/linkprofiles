@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { validateAccountName, validateInviteCode, validateShortName } from '@link-profile/shared';
 import { request } from '../api/client.js';
-import { useAdminT, useLocale } from '../i18n/runtime.js';
+import { useAdminT, useErrorT, useLocale } from '../i18n/runtime.js';
 import { Alert } from '../ui/Alert.js';
 import { Button } from '../ui/Button.js';
 import { Input, PasswordInput } from '../ui/Input.js';
@@ -23,6 +23,7 @@ interface PreviewResponse {
  */
 export function RegisterPage({ onBackToLogin }: { onBackToLogin: () => void }) {
   const t = useAdminT();
+  const errorT = useErrorT();
   const locale = useLocale();
   const toast = useToast();
   const [code, setCode] = useState('');
@@ -79,11 +80,11 @@ export function RegisterPage({ onBackToLogin }: { onBackToLogin: () => void }) {
     event.preventDefault();
 
     const parsedCode = validateInviteCode(code);
-    if (!parsedCode.ok) return setCodeError(t(parsedCode.error as never));
+    if (!parsedCode.ok) return setCodeError(errorT(parsedCode.error));
     const parsedAccount = validateAccountName(account);
-    if (!parsedAccount.ok) return toast.error(parsedAccount.error);
+    if (!parsedAccount.ok) return toast.error(errorT(parsedAccount.error));
     const parsedShortName = validateShortName(shortName);
-    if (!parsedShortName.ok) return toast.error(parsedShortName.error);
+    if (!parsedShortName.ok) return toast.error(errorT(parsedShortName.error));
     if (password.length < 8) return toast.error(t('common.validation.passwordMin'));
     if (!captchaToken) return toast.error(t('register.captcha.required'));
 

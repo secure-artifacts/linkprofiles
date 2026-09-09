@@ -15,7 +15,8 @@ import { Select } from '../ui/Select.js';
 import { Tag } from '../ui/Tag.js';
 import { useToast } from '../ui/Toast.js';
 import { useConfirm } from '../ui/useConfirm.js';
-import { useAdminT } from '../i18n/runtime.js';
+import { useAdminT, useErrorT } from '../i18n/runtime.js';
+import { regionLabel } from '../regions/label.js';
 
 const PAGE_SIZE = 20;
 
@@ -122,7 +123,7 @@ export function UsersPage() {
               value={regionFilter ?? ALL_REGIONS}
               options={[
                 { value: ALL_REGIONS, label: t('users.filter.region') },
-                ...regions.map((r) => ({ value: r.id, label: r.name })),
+                ...regions.map((r) => ({ value: r.id, label: regionLabel(r.id, r.name) })),
               ]}
               onChange={(value) => {
                 setRegionFilter(value === ALL_REGIONS ? undefined : value);
@@ -224,13 +225,18 @@ export function UsersPage() {
                             size="sm"
                             placeholder={t('users.assignTo')}
                             value={undefined}
-                            options={ownedRegions.map((r) => ({ value: r.id, label: r.name }))}
+                            options={ownedRegions.map((r) => ({
+                              value: r.id,
+                              label: regionLabel(r.id, r.name),
+                            }))}
                             onChange={(value) => void moveToRegion([user.id], value)}
                           />
                         </div>
                       </div>
+                    ) : user.regionId && user.regionName ? (
+                      regionLabel(user.regionId, user.regionName)
                     ) : (
-                      (user.regionName ?? '—')
+                      '—'
                     )}
                   </td>
                   <td className="px-4 py-2">
@@ -382,7 +388,7 @@ function MoveRegionDialog({
           <label className="text-[13px] font-medium text-fg">{t('users.move.target')}</label>
           <Select
             value={regionId}
-            options={regions.map((r) => ({ value: r.id, label: r.name }))}
+            options={regions.map((r) => ({ value: r.id, label: regionLabel(r.id, r.name) }))}
             onChange={(value) => setRegionId(value)}
           />
         </div>
@@ -409,6 +415,7 @@ function AccountSettingsModal({
   onDone: () => Promise<void> | void;
 }) {
   const t = useAdminT();
+  const errorT = useErrorT();
   const [label, setLabel] = useState('');
   const [account, setAccount] = useState('');
   const [profileOptions, setProfileOptions] = useState<ProfileSummary[]>([]);
@@ -458,7 +465,7 @@ function AccountSettingsModal({
     setSaving(true);
     try {
       const parsedAccount = validateAccountName(account);
-      if (!parsedAccount.ok) throw new Error(parsedAccount.error);
+      if (!parsedAccount.ok) throw new Error(errorT(parsedAccount.error));
       const nextAccount = parsedAccount.value;
       if (nextAccount !== user.account) {
         await request(`/users/${user.id}/account`, {
@@ -598,6 +605,7 @@ function CreateUserModal({
   regions,
 }: ModalProps & { regions: RegionSummary[] }) {
   const t = useAdminT();
+  const errorT = useErrorT();
   const [label, setLabel] = useState('');
   const [account, setAccount] = useState('');
   const [shortName, setShortName] = useState('');
@@ -632,7 +640,7 @@ function CreateUserModal({
       );
       return;
     }
-    if (!parsedAccount.ok) return setError(parsedAccount.error);
+    if (!parsedAccount.ok) return setError(errorT(parsedAccount.error));
     setError(null);
     setSubmitting(true);
     try {
@@ -687,7 +695,7 @@ function CreateUserModal({
             <Select
               value={regionId}
               placeholder={t('users.create.region.hint')}
-              options={regions.map((r) => ({ value: r.id, label: r.name }))}
+              options={regions.map((r) => ({ value: r.id, label: regionLabel(r.id, r.name) }))}
               onChange={(value) => setRegionId(value)}
             />
           </Field>
@@ -850,7 +858,7 @@ function BulkCreateModal({
               <Select
                 value={regionId}
                 placeholder={t('users.create.region.hint')}
-                options={regions.map((r) => ({ value: r.id, label: r.name }))}
+                options={regions.map((r) => ({ value: r.id, label: regionLabel(r.id, r.name) }))}
                 onChange={(value) => setRegionId(value)}
               />
             </Field>

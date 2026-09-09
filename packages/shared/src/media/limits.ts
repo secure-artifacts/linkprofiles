@@ -1,4 +1,5 @@
 /** 媒体上传的限制，server 校验与后台提示共用同一组常量。 */
+import type { ErrorKey } from '@link-profile/i18n';
 
 export const IMAGE_MAX_BYTES = 12 * 1024 * 1024;
 export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'] as const;
@@ -18,10 +19,13 @@ export const IMAGE_MAX_EDGE = { avatar: 640, banner: 1440, background: 1440 } as
 /** 裁切框的宽高比，按用途给。Banner 取公开页横幅比例，背景图按最窄手机竖屏取。 */
 export const CROP_ASPECT = { avatar: 1, banner: 3, background: 375 / 812 } as const;
 
-export type VideoRejection =
-  | { reason: 'format'; message: string }
-  | { reason: 'size'; message: string }
-  | { reason: 'duration'; message: string };
+/** 拒绝理由带译文 key 与插值参数，文案在 i18n 包的 errors 命名空间里。 */
+export interface MediaProblem {
+  messageKey: ErrorKey;
+  vars: Record<string, string | number>;
+}
+
+export type VideoRejection = MediaProblem & { reason: 'format' | 'size' | 'duration' };
 
 export function mb(bytes: number): string {
   return `${Math.round(bytes / 1024 / 1024)} MB`;
@@ -37,34 +41,41 @@ export function rejectVideo(input: {
   durationMs: number | null;
 }): VideoRejection | null {
   if (!(VIDEO_MIME_TYPES as readonly string[]).includes(input.mimeType)) {
-    return { reason: 'format', message: `视频只支持 mp4，收到的是 ${input.mimeType}` };
+    return {
+      reason: 'format',
+      messageKey: 'media.video.format',
+      vars: { mimeType: input.mimeType },
+    };
   }
   if (input.durationMs === null) {
-    return { reason: 'format', message: '这个文件不是有效的 mp4，读不出时长' };
+    return { reason: 'format', messageKey: 'media.video.unreadable', vars: {} };
   }
   if (input.bytes > VIDEO_MAX_BYTES) {
     return {
       reason: 'size',
-      message: `视频不能超过 ${mb(VIDEO_MAX_BYTES)}，这个文件有 ${mb(input.bytes)}`,
+      messageKey: 'media.video.sizeLimit',
+      vars: { max: mb(VIDEO_MAX_BYTES), size: mb(input.bytes) },
     };
   }
   if (input.durationMs > VIDEO_MAX_DURATION_MS) {
     return {
       reason: 'duration',
-      message: `视频不能超过 ${VIDEO_MAX_DURATION_MS / 1000} 秒，这段有 ${(
-        input.durationMs / 1000
-      ).toFixed(1)} 秒`,
+      messageKey: 'media.video.durationLimit',
+      vars: { max: VIDEO_MAX_DURATION_MS / 1000, seconds: (input.durationMs / 1000).toFixed(1) },
     };
   }
   return null;
 }
 
-export function rejectImage(input: { mimeType: string; bytes: number }): string | null {
+export function rejectImage(input: { mimeType: string; bytes: number }): MediaProblem | null {
   if (!(IMAGE_MIME_TYPES as readonly string[]).includes(input.mimeType)) {
-    return `图片只支持 JPEG、PNG、WebP、AVIF，收到的是 ${input.mimeType}`;
+    return { messageKey: 'media.image.format', vars: { mimeType: input.mimeType } };
   }
   if (input.bytes > IMAGE_MAX_BYTES) {
-    return `图片不能超过 ${mb(IMAGE_MAX_BYTES)}，这个文件有 ${mb(input.bytes)}`;
+    return {
+      messageKey: 'media.image.sizeLimit',
+      vars: { max: mb(IMAGE_MAX_BYTES), size: mb(input.bytes) },
+    };
   }
   return null;
 }

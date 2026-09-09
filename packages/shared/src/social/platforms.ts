@@ -8,6 +8,7 @@
  * Messenger 是独立条目，指向 `m.me` 直接开对话；Facebook 只是主页。
  * 两者品牌色同为 #0866FF，是 Meta 统一蓝色后的现状，不是笔误，靠图形区分。
  */
+import type { ErrorKey } from '@link-profile/i18n';
 
 export type SocialPlatformId =
   | 'whatsapp'
@@ -47,7 +48,8 @@ export interface SocialPlatform {
 
 export interface SocialValueValidation {
   ok: boolean;
-  error?: string;
+  /** 失败时给译文 key，文案在 i18n 包的 errors 命名空间里。 */
+  error?: ErrorKey;
 }
 
 /** 号码只留数字：用户可能填 `+1 (555) 010-9999`，wa.me 只认数字。 */
@@ -315,16 +317,12 @@ export function buildSocialTargetUrl(
 }
 
 export function validateSocialValue(platformId: string, value: string): SocialValueValidation {
-  if (value.trim() === '') return { ok: false, error: '内容不能为空' };
+  if (value.trim() === '') return { ok: false, error: 'field.value.required' };
   if (buildSocialUrl(platformId, value)) return { ok: true };
   if (['whatsapp', 'sms', 'phone', 'signal'].includes(platformId)) {
-    return { ok: false, error: '请输入 7–15 位有效手机号，可带 + 国际区号' };
+    return { ok: false, error: 'field.social.phone' };
   }
-  if (platformId === 'instagram') {
-    return { ok: false, error: 'Instagram 用户名格式不正确（1–30 位字母、数字、点或下划线）' };
-  }
-  if (platformId === 'messenger') {
-    return { ok: false, error: 'Messenger 用户名格式不正确（5–50 位字母、数字或点）' };
-  }
-  return { ok: false, error: '这个格式拼不出可用的链接' };
+  if (platformId === 'instagram') return { ok: false, error: 'field.social.instagram' };
+  if (platformId === 'messenger') return { ok: false, error: 'field.social.messenger' };
+  return { ok: false, error: 'field.social.unbuildable' };
 }

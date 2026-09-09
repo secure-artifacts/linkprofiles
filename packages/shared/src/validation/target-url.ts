@@ -1,3 +1,5 @@
+import type { ErrorKey } from '@link-profile/i18n';
+
 /**
  * 按钮目标地址的校验。
  *
@@ -7,12 +9,11 @@
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:', 'sms:']);
 
 export type TargetUrlResult =
-  | { ok: true; value: string }
-  | { ok: false; error: '目标链接不能为空' | '目标链接格式不正确' | '目标链接的协议不被允许' };
+  { ok: true; value: string } | { ok: false; error: Extract<ErrorKey, `field.url.${string}`> };
 
 export function validateTargetUrl(raw: string): TargetUrlResult {
   const value = raw.trim();
-  if (value === '') return { ok: false, error: '目标链接不能为空' };
+  if (value === '') return { ok: false, error: 'field.url.required' };
 
   let parsed: URL;
   try {
@@ -22,13 +23,13 @@ export function validateTargetUrl(raw: string): TargetUrlResult {
     try {
       parsed = new URL(`https://${value}`);
     } catch {
-      return { ok: false, error: '目标链接格式不正确' };
+      return { ok: false, error: 'field.url.invalid' };
     }
     return { ok: true, value: parsed.toString() };
   }
 
   if (!ALLOWED_PROTOCOLS.has(parsed.protocol)) {
-    return { ok: false, error: '目标链接的协议不被允许' };
+    return { ok: false, error: 'field.url.protocol' };
   }
 
   return { ok: true, value };

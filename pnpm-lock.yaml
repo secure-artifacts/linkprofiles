@@ -222,6 +222,9 @@ importers:
 
   packages/shared:
     dependencies:
+      '@link-profile/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(postgres@3.4.9)

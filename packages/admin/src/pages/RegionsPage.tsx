@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { validateInviteCode } from '@link-profile/shared';
 import { request } from '../api/client.js';
 import type { AdminSummary, RegionSummary } from '../api/types.js';
-import { useAdminT } from '../i18n/runtime.js';
+import { useAdminT, useErrorT } from '../i18n/runtime.js';
+import { regionLabel } from '../regions/label.js';
 import { useBreadcrumb } from '../nav/breadcrumb.js';
 import { useSession } from '../session.js';
 import { Alert } from '../ui/Alert.js';
@@ -58,7 +59,7 @@ export function RegionsPage() {
 
   const remove = async (region: RegionSummary) => {
     const ok = await confirm({
-      title: t('regions.delete.confirm', { name: region.name }),
+      title: t('regions.delete.confirm', { name: regionLabel(region.id, region.name) }),
       description: t('regions.delete.note'),
       confirmText: t('common.delete'),
       danger: true,
@@ -143,7 +144,7 @@ export function RegionsPage() {
                 >
                   <td className="px-4 py-3 text-fg">
                     <div className="flex items-center gap-2">
-                      <span>{region.name}</span>
+                      <span>{regionLabel(region.id, region.name)}</span>
                       {region.isDefault ? <Tag tone="neutral">{t('regions.default')}</Tag> : null}
                     </div>
                   </td>
@@ -349,6 +350,7 @@ function ResetInviteCodeDialog({
   onDone: () => Promise<void>;
 }) {
   const t = useAdminT();
+  const errorT = useErrorT();
   const toast = useToast();
   const [code, setCode] = useState('');
   const [saving, setSaving] = useState(false);
@@ -364,7 +366,7 @@ function ResetInviteCodeDialog({
     try {
       const trimmed = code.trim();
       const parsed = trimmed === '' ? null : validateInviteCode(trimmed);
-      if (parsed && !parsed.ok) throw new Error(t(parsed.error as never));
+      if (parsed && !parsed.ok) throw new Error(errorT(parsed.error));
 
       await request(`/regions/${region.id}/invite-code`, {
         method: 'POST',

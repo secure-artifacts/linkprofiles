@@ -147,6 +147,9 @@ export const adminEn = {
   'entries.field.passSource.hint':
     'Carries the src parameter from the visitor’s address through to the target site, so attribution can continue on their side.',
 
+  'regions.unassigned': 'Unassigned',
+  'common.passthrough.caveat':
+    'This project uses the src parameter instead of utm_source, so analytics tools on third-party sites (Google Analytics and the like) will not recognise it as a source on their own. Passing it through only helps when the target is a page you own.',
   'common.cancel': 'Cancel',
   'common.save': 'Save',
   'common.delete': 'Delete',

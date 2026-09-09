@@ -150,6 +150,9 @@ export const adminFil: AdminMessages = {
   'entries.field.passSource.hint':
     'Dinadala ang src parameter mula sa address ng bisita papunta sa target na site, para maituloy doon ang attribution.',
 
+  'regions.unassigned': 'Hindi nakatalaga',
+  'common.passthrough.caveat':
+    'Ang proyektong ito ay gumagamit ng src na parameter sa halip na utm_source, kaya hindi ito kusang makikilala bilang source ng mga analytics tool sa mga third-party na site (tulad ng Google Analytics). Nakakatulong lang ang pagpapasa nito kapag pag-aari mo ang target na pahina.',
   'common.cancel': 'Kanselahin',
   'common.save': 'I-save',
   'common.delete': 'Burahin',

@@ -31,9 +31,9 @@ export const errorsVi: ErrorMessages = {
   'field.displayName.required': 'Tên hiển thị không được để trống',
   'field.title.required': 'Tiêu đề không được để trống',
   'field.value.required': 'Giá trị không được để trống',
-  'field.password.min': 'Mật khẩu phải có ít nhất {{min}} ký tự',
-  'field.password.max': 'Mật khẩu không được quá {{max}} ký tự',
-  'field.newPassword.min': 'Mật khẩu mới phải có ít nhất {{min}} ký tự',
+  'field.password.min': 'Mật khẩu phải có ít nhất {{passwordMin}} ký tự',
+  'field.password.max': 'Mật khẩu không được quá {{passwordMax}} ký tự',
+  'field.newPassword.min': 'Mật khẩu mới phải có ít nhất {{passwordMin}} ký tự',
   'query.exclusiveScope': 'Không thể đưa cả userId lẫn profileId',
   'apiKey.expiryInPast': 'Hạn dùng phải muộn hơn thời điểm hiện tại',
   'entry.limitReached': 'Một trang chứa tối đa {{max}} liên kết tự đặt',
@@ -54,4 +54,33 @@ export const errorsVi: ErrorMessages = {
   'conflict.shortNameRetired':
     'short_name {{shortName}} thuộc về một trang hồ sơ đã xoá và không bao giờ được cấp lại',
   'field.atLeastOne': 'Hãy gửi ít nhất một trường cần cập nhật',
+
+  'field.account.min': 'Tài khoản phải có ít nhất {{accountMin}} ký tự',
+  'field.account.max': 'Tài khoản tối đa {{accountMax}} ký tự',
+  'field.account.charset':
+    'Chỉ dùng chữ thường, chữ số, dấu chấm, gạch dưới và gạch nối, đầu và cuối phải là chữ hoặc số',
+  'field.account.consecutive': 'Dấu chấm, gạch dưới và gạch nối không được đứng liền nhau',
+  'field.account.invalid': 'Tài khoản đó sai định dạng',
+  'field.shortName.required': 'short_name không được để trống',
+  'field.shortName.length': 'short_name phải có từ {{shortNameMin}} đến {{shortNameMax}} ký tự',
+  'field.shortName.charset':
+    'short_name chỉ dùng chữ thường, chữ số và gạch nối, không được bắt đầu hay kết thúc bằng gạch nối',
+  'field.social.phone': 'Nhập số điện thoại 7 đến 15 chữ số, có thể kèm mã quốc gia +',
+  'field.social.instagram':
+    'Tên người dùng Instagram không hợp lệ (1 đến 30 chữ cái, chữ số, dấu chấm hoặc gạch dưới)',
+  'field.social.messenger':
+    'Tên người dùng Messenger không hợp lệ (5 đến 50 chữ cái, chữ số hoặc dấu chấm)',
+  'field.social.unbuildable': 'Giá trị đó không tạo được liên kết dùng được',
+  'media.video.format': 'Video phải là mp4, nhận được {{mimeType}}',
+  'media.video.unreadable': 'Tệp này không phải mp4 hợp lệ; không đọc được thời lượng',
+  'media.video.sizeLimit': 'Video không được vượt quá {{max}}, tệp này nặng {{size}}',
+  'media.video.durationLimit': 'Video không được dài quá {{max}} giây, đoạn này {{seconds}} giây',
+  'media.image.format': 'Ảnh phải là JPEG, PNG, WebP hoặc AVIF, nhận được {{mimeType}}',
+  'media.image.sizeLimit': 'Ảnh không được vượt quá {{max}}, tệp này nặng {{size}}',
+  'field.url.required': 'Liên kết đích không được để trống',
+  'field.url.invalid': 'Liên kết đích không phải địa chỉ hợp lệ',
+  'field.url.protocol': 'Giao thức của liên kết đó không được phép',
+  'field.account.required': 'Tài khoản không được để trống',
+  'field.password.required': 'Mật khẩu không được để trống',
+  'bulk.columns': 'Mỗi dòng cần bốn cột phân tách bằng tab: tên, tài khoản, short_name, mật khẩu',
 };

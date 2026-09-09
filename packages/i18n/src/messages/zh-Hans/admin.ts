@@ -137,6 +137,9 @@ export const adminZhHans: AdminMessages = {
   'entries.field.passSource.hint':
     '把访客进页面时地址上的 src 参数原样带到目标网站，方便在对方那边继续归因。',
 
+  'regions.unassigned': '未分配',
+  'common.passthrough.caveat':
+    '本项目统一使用 src 参数而不是 utm_source，因此第三方网站的分析工具（如 Google Analytics）不会自动把它识别为来源。透传仅在目标是自家页面时有效。',
   'common.cancel': '取消',
   'common.save': '保存',
   'common.delete': '删除',

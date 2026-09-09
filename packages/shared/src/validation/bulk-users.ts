@@ -1,3 +1,4 @@
+import type { ErrorKey } from '@link-profile/i18n';
 import { validateShortName } from './short-name.js';
 import { validateAccountName } from './account-name.js';
 
@@ -20,8 +21,7 @@ export interface BulkUserInput {
   password: string;
 }
 
-export type BulkRowError =
-  '列数不对，应为四列：用户名称、账号、short_name、密码' | '账号为空' | '密码为空' | string;
+export type BulkRowError = ErrorKey;
 
 export type BulkParsedRow =
   | { line: number; ok: true; value: BulkUserInput }
@@ -46,7 +46,7 @@ export function parseBulkUserRows(raw: string): BulkParsedRow[] {
       rows.push({
         line: lineNumber,
         ok: false,
-        error: '列数不对，应为四列：用户名称、账号、short_name、密码',
+        error: 'bulk.columns',
       });
       return;
     }
@@ -54,11 +54,11 @@ export function parseBulkUserRows(raw: string): BulkParsedRow[] {
     const [label = '', account = '', shortNameRaw = '', password = ''] = columns;
 
     if (account === '') {
-      rows.push({ line: lineNumber, ok: false, error: '登录用户名为空' });
+      rows.push({ line: lineNumber, ok: false, error: 'field.account.required' });
       return;
     }
     if (password === '') {
-      rows.push({ line: lineNumber, ok: false, error: '密码为空' });
+      rows.push({ line: lineNumber, ok: false, error: 'field.password.required' });
       return;
     }
 

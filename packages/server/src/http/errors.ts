@@ -1,4 +1,5 @@
 import { DEFAULT_LOCALE, negotiateLocale, type ErrorKey, type Locale } from '@link-profile/i18n';
+import { FIELD_LIMIT_VARS } from '@link-profile/shared';
 import { errorT } from '@link-profile/i18n/server';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
@@ -31,11 +32,14 @@ interface ZodLikeIssue {
   [key: string]: unknown;
 }
 
-function translateIssues(issues: unknown, translate: (key: ErrorKey) => string): unknown {
+function translateIssues(
+  issues: unknown,
+  translate: (key: ErrorKey, vars?: Record<string, unknown>) => string,
+): unknown {
   if (!Array.isArray(issues)) return issues;
   return issues.map((issue: ZodLikeIssue) =>
     typeof issue?.message === 'string'
-      ? { ...issue, message: translate(issue.message as ErrorKey) }
+      ? { ...issue, message: translate(issue.message as ErrorKey, FIELD_LIMIT_VARS) }
       : issue,
   );
 }
@@ -52,7 +56,9 @@ export function fail(
   return reply.code(status).send({
     error,
     ...rest,
-    ...(messageKey ? { message: translate(messageKey, messageVars) } : {}),
+    ...(messageKey
+      ? { message: translate(messageKey, { ...FIELD_LIMIT_VARS, ...messageVars }) }
+      : {}),
     ...(issues === undefined ? {} : { issues: translateIssues(issues, translate) }),
   });
 }

@@ -8,9 +8,11 @@ import {
   type Translate,
 } from '@link-profile/i18n';
 import { loadAdminBundle } from '@link-profile/i18n/admin';
+import { FIELD_LIMIT_VARS } from '@link-profile/shared';
 import { adminEn, adminPluralsEn, errorsEn } from '@link-profile/i18n/source';
 import i18next from 'i18next';
 import { initReactI18next, useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
 
 /**
  * 后台的翻译运行时。
@@ -68,9 +70,17 @@ export function useLocale(): Locale {
   return normalizeLocale(i18n.language) ?? DEFAULT_LOCALE;
 }
 
+/**
+ * 长度类错误文案的上下限没有调用点会记得传，统一在这里兜底；已给的同名参数优先。
+ */
 export function useErrorT(): Translate<ErrorKey> {
   const { t } = useTranslation('errors', { i18n: instance });
-  return t as unknown as Translate<ErrorKey>;
+  return useMemo(
+    () =>
+      ((key: ErrorKey, vars?: Record<string, unknown>) =>
+        t(key as never, { ...FIELD_LIMIT_VARS, ...vars })) as unknown as Translate<ErrorKey>,
+    [t],
+  );
 }
 
 /** 给非组件代码用，例如在纯函数里抛一个带文案的错误。 */
@@ -80,5 +90,8 @@ export function translateAdmin(key: AdminKey, vars?: Record<string, unknown>): s
 
 /** 给非组件代码用，例如把服务端返回的错误码翻成人话。 */
 export function translateError(key: ErrorKey, vars?: Record<string, unknown>): string {
-  return instance.getFixedT(instance.language, 'errors')(key, vars) as unknown as string;
+  return instance.getFixedT(instance.language, 'errors')(key, {
+    ...FIELD_LIMIT_VARS,
+    ...vars,
+  }) as unknown as string;
 }

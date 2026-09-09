@@ -42,8 +42,8 @@ describe('parseBulkUserRows', () => {
     const parsed = parseBulkUserRows(['张三\tzhangsan\tzhangsan', '多\t了\t一\t列\t哦'].join('\n'));
 
     expect(parsed).toEqual([
-      { line: 1, ok: false, error: '列数不对，应为四列：用户名称、账号、short_name、密码' },
-      { line: 2, ok: false, error: '列数不对，应为四列：用户名称、账号、short_name、密码' },
+      { line: 1, ok: false, error: 'bulk.columns' },
+      { line: 2, ok: false, error: 'bulk.columns' },
     ]);
   });
 
@@ -53,16 +53,15 @@ describe('parseBulkUserRows', () => {
     );
 
     expect(parsed).toEqual([
-      { line: 1, ok: false, error: '登录用户名为空' },
-      { line: 2, ok: false, error: '密码为空' },
+      { line: 1, ok: false, error: 'field.account.required' },
+      { line: 2, ok: false, error: 'field.password.required' },
     ]);
   });
 
   test('非法 short_name 带出具体原因', () => {
     const parsed = parseBulkUserRows(row('张三', 'zhangsan', 'ab', 'pass-1234'));
 
-    expect(parsed[0]).toMatchObject({ line: 1, ok: false });
-    expect((parsed[0] as { error: string }).error).toContain('3–30');
+    expect(parsed[0]).toMatchObject({ line: 1, ok: false, error: 'field.shortName.length' });
   });
 
   test('用户名称可以为空，它只是后台备注', () => {
