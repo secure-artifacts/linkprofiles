@@ -121,7 +121,7 @@ export function AnalyticsPage() {
   if (error) return <Alert tone="danger" message={t('analytics.loadFailed')} description={error} />;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pb-16">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
           {scope?.kind === 'region' ||
@@ -177,59 +177,6 @@ export function AnalyticsPage() {
             ) : null}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Segmented
-            value={preset}
-            onChange={(value) => setPreset(value as Preset)}
-            options={[
-              { value: 'today', label: t('analytics.range.today') },
-              { value: '7d', label: t('analytics.range.7d') },
-              { value: '30d', label: t('analytics.range.30d') },
-              { value: 'custom', label: t('analytics.range.custom') },
-            ]}
-          />
-          {preset === 'custom' ? (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date"
-                className="h-9 rounded-[var(--radius-control)] border border-border bg-surface px-2.5 text-[13px] text-fg outline-none focus:outline-2 focus:outline-accent"
-                onChange={(e) => {
-                  const from = e.target.value ? new Date(`${e.target.value}T00:00:00`) : null;
-                  setCustomRange((prev) => (from ? [from, prev?.[1] ?? from] : null));
-                }}
-              />
-              <span className="text-muted">—</span>
-              <input
-                type="date"
-                className="h-9 rounded-[var(--radius-control)] border border-border bg-surface px-2.5 text-[13px] text-fg outline-none focus:outline-2 focus:outline-accent"
-                onChange={(e) => {
-                  const to = e.target.value ? new Date(`${e.target.value}T23:59:59.999`) : null;
-                  setCustomRange((prev) => (to && prev ? [prev[0], to] : prev));
-                }}
-              />
-            </div>
-          ) : null}
-          {data && data.regions.length > 0 ? (
-            <Select
-              value={regionId ?? ALL_REGIONS}
-              placeholder={t('analytics.allRegions')}
-              onChange={(value) =>
-                navigate(value === ALL_REGIONS ? '/analytics' : `/analytics?regionId=${value}`)
-              }
-              options={[
-                { value: ALL_REGIONS, label: t('analytics.allRegions') },
-                ...data.regions.map((r) => ({ value: r.id, label: regionLabel(r.id, r.name) })),
-              ]}
-              aria-label={t('users.region')}
-            />
-          ) : null}
-          <Select
-            value={timeZone}
-            onChange={setTimeZone}
-            options={TIME_ZONES.map((tz) => ({ value: tz, label: tz }))}
-            aria-label={t('analytics.timeZone')}
-          />
-        </div>
       </div>
 
       <Alert
@@ -264,6 +211,74 @@ export function AnalyticsPage() {
       ) : (
         <p className="text-[13px] text-muted">{t('analytics.pickRange')}</p>
       )}
+
+      {/* 筛选条悬浮在底部：它在每一段结果里都用得上，跟着页头滚出视野的话
+          翻到下面再想换时间范围就得滚回去。 */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-6 pb-4">
+        <div
+          className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-2
+            overflow-x-auto rounded-[var(--radius-panel)] border border-border bg-surface/95 px-3 py-2
+            shadow-[var(--shadow-float)] backdrop-blur"
+        >
+          <Segmented
+            value={preset}
+            onChange={(value) => setPreset(value as Preset)}
+            options={[
+              { value: 'today', label: t('analytics.range.today') },
+              { value: '7d', label: t('analytics.range.7d') },
+              { value: '30d', label: t('analytics.range.30d') },
+              { value: 'custom', label: t('analytics.range.custom') },
+            ]}
+          />
+          {preset === 'custom' ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                className="h-8 rounded-[var(--radius-control)] border border-border bg-surface px-2.5 text-[13px] text-fg outline-none focus:outline-2 focus:outline-accent"
+                onChange={(e) => {
+                  const from = e.target.value ? new Date(`${e.target.value}T00:00:00`) : null;
+                  setCustomRange((prev) => (from ? [from, prev?.[1] ?? from] : null));
+                }}
+              />
+              <span className="text-muted">—</span>
+              <input
+                type="date"
+                className="h-8 rounded-[var(--radius-control)] border border-border bg-surface px-2.5 text-[13px] text-fg outline-none focus:outline-2 focus:outline-accent"
+                onChange={(e) => {
+                  const to = e.target.value ? new Date(`${e.target.value}T23:59:59.999`) : null;
+                  setCustomRange((prev) => (to && prev ? [prev[0], to] : prev));
+                }}
+              />
+            </div>
+          ) : null}
+          {data && data.regions.length > 0 ? (
+            <div className="w-40">
+              <Select
+                size="sm"
+                value={regionId ?? ALL_REGIONS}
+                placeholder={t('analytics.allRegions')}
+                onChange={(value) =>
+                  navigate(value === ALL_REGIONS ? '/analytics' : `/analytics?regionId=${value}`)
+                }
+                options={[
+                  { value: ALL_REGIONS, label: t('analytics.allRegions') },
+                  ...data.regions.map((r) => ({ value: r.id, label: regionLabel(r.id, r.name) })),
+                ]}
+                aria-label={t('users.region')}
+              />
+            </div>
+          ) : null}
+          <div className="w-44">
+            <Select
+              size="sm"
+              value={timeZone}
+              onChange={setTimeZone}
+              options={TIME_ZONES.map((tz) => ({ value: tz, label: tz }))}
+              aria-label={t('analytics.timeZone')}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

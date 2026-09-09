@@ -13,6 +13,7 @@ import { Input } from '../ui/Input.js';
 import { Select } from '../ui/Select.js';
 import { Spinner } from '../ui/Spinner.js';
 import { Tag } from '../ui/Tag.js';
+import { Tooltip } from '../ui/Tooltip.js';
 import { useToast } from '../ui/Toast.js';
 import { useConfirm } from '../ui/useConfirm.js';
 
@@ -202,16 +203,7 @@ export function RegionsPage() {
                       <Button variant="default" size="sm" onClick={() => setRenaming(region)}>
                         {t('common.edit')}
                       </Button>
-                      {/* 默认区域与还有人的区域删不掉，按钮直接不给，不必等服务端回一个 409 */}
-                      {region.isDefault || region.memberCount > 0 ? null : (
-                        <Button
-                          variant="danger-ghost"
-                          size="sm"
-                          onClick={() => void remove(region)}
-                        >
-                          {t('common.delete')}
-                        </Button>
-                      )}
+                      <DeleteRegionButton region={region} onDelete={() => void remove(region)} />
                     </div>
                   </td>
                 </tr>
@@ -251,6 +243,41 @@ export function RegionsPage() {
       />
       {confirmDialog}
     </div>
+  );
+}
+
+/**
+ * 删除区域。
+ *
+ * 删不掉的时候按钮照常显示，只是禁用并说明原因 —— 直接把按钮藏掉的话，
+ * 管理员看到的是一个「有些行有删除、有些行没有」的表格，得自己猜规律。
+ *
+ * 禁用的 button 收不到指针事件，tooltip 因此挂在外面那层 span 上。
+ */
+function DeleteRegionButton({ region, onDelete }: { region: RegionSummary; onDelete: () => void }) {
+  const t = useAdminT();
+  const blocked = region.isDefault
+    ? t('regions.delete.blocked.default')
+    : region.memberCount > 0
+      ? t('regions.delete.blocked.members')
+      : null;
+
+  if (!blocked) {
+    return (
+      <Button variant="danger-ghost" size="sm" onClick={onDelete}>
+        {t('common.delete')}
+      </Button>
+    );
+  }
+
+  return (
+    <Tooltip content={blocked}>
+      <span className="inline-flex" tabIndex={0}>
+        <Button variant="danger-ghost" size="sm" disabled className="pointer-events-none">
+          {t('common.delete')}
+        </Button>
+      </span>
+    </Tooltip>
   );
 }
 

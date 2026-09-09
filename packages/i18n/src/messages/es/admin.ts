@@ -239,6 +239,9 @@ export const adminEs: AdminMessages = {
   'users.bulk.columns': 'Nota interna ⇥ cuenta ⇥ dirección de la página ⇥ contraseña',
   'users.bulk.partial':
     'Se crea todo lo que se pueda; las filas fallidas se listan aparte, así que nunca hay que repetir el lote entero.',
+  'users.search.placeholder': 'Buscar cuenta, nota o dirección de página',
+  'users.search.empty': 'Ningún usuario coincide con «{{term}}»',
+  'users.search.clear': 'Borrar búsqueda',
   'users.empty': 'Todavía no hay usuarios',
   'users.pages': 'Páginas',
   'users.managePages': 'Gestionar las páginas',
@@ -588,6 +591,10 @@ export const adminEs: AdminMessages = {
   'regions.members': 'Usuarios',
   'regions.default': 'Predeterminada',
   'regions.membersCount': '{{count}} usuarios',
+  'regions.delete.blocked.default':
+    'No se puede eliminar una región predeterminada. Cada administrador conserva una y los usuarios nuevos entran ahí.',
+  'regions.delete.blocked.members':
+    'Esta región todavía tiene usuarios. Muévelos a otra región primero.',
   'regions.delete.confirm': '¿Eliminar la región {{name}}?',
   'regions.delete.note': 'Solo se puede eliminar una región vacía. Mueve antes a sus usuarios.',
   'regions.rename.title': 'Renombrar la región',

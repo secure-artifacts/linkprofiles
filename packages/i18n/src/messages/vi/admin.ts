@@ -235,6 +235,9 @@ export const adminVi: AdminMessages = {
   'users.bulk.columns': 'Ghi chú nội bộ ⇥ tài khoản ⇥ địa chỉ trang ⇥ mật khẩu',
   'users.bulk.partial':
     'Tạo được đến đâu làm đến đó; các dòng lỗi được liệt kê riêng nên không phải làm lại cả lô.',
+  'users.search.placeholder': 'Tìm tài khoản, ghi chú hoặc địa chỉ trang',
+  'users.search.empty': 'Không có người dùng nào khớp với “{{term}}”',
+  'users.search.clear': 'Xoá tìm kiếm',
   'users.empty': 'Chưa có người dùng nào',
   'users.pages': 'Trang',
   'users.managePages': 'Quản lý các trang',
@@ -579,6 +582,10 @@ export const adminVi: AdminMessages = {
   'regions.members': 'Người dùng',
   'regions.default': 'Mặc định',
   'regions.membersCount': '{{count}} người dùng',
+  'regions.delete.blocked.default':
+    'Không thể xoá vùng mặc định. Mỗi quản trị viên giữ một vùng, và người dùng mới sẽ vào đó.',
+  'regions.delete.blocked.members':
+    'Vùng này vẫn còn người dùng. Hãy chuyển họ sang vùng khác trước.',
   'regions.delete.confirm': 'Xóa khu vực {{name}}?',
   'regions.delete.note': 'Chỉ xóa được khu vực rỗng. Hãy chuyển người dùng đi trước.',
   'regions.rename.title': 'Đổi tên khu vực',

@@ -237,6 +237,9 @@ export const adminPtBR: AdminMessages = {
   'users.bulk.columns': 'Nota interna ⇥ conta ⇥ endereço da página ⇥ senha',
   'users.bulk.partial':
     'Cria-se tudo o que der; as linhas que falharem são listadas à parte, então nunca é preciso refazer o lote inteiro.',
+  'users.search.placeholder': 'Buscar conta, nota ou endereço da página',
+  'users.search.empty': 'Nenhum usuário corresponde a “{{term}}”',
+  'users.search.clear': 'Limpar busca',
   'users.empty': 'Ainda não há usuários',
   'users.pages': 'Páginas',
   'users.managePages': 'Gerenciar as páginas',
@@ -585,6 +588,10 @@ export const adminPtBR: AdminMessages = {
   'regions.members': 'Usuários',
   'regions.default': 'Padrão',
   'regions.membersCount': '{{count}} usuários',
+  'regions.delete.blocked.default':
+    'Uma região padrão não pode ser excluída. Cada admin mantém uma, e os novos usuários caem nela.',
+  'regions.delete.blocked.members':
+    'Esta região ainda tem usuários. Mova-os para outra região primeiro.',
   'regions.delete.confirm': 'Excluir a região {{name}}?',
   'regions.delete.note': 'Só dá para excluir uma região vazia. Mova os usuários antes.',
   'regions.rename.title': 'Renomear a região',

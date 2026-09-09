@@ -246,6 +246,9 @@ export const adminEn = {
   'users.bulk.columns': 'Internal note ⇥ account ⇥ page address ⇥ password',
   'users.bulk.partial':
     'Whatever can be created is created; the failed rows are listed on their own, so the batch never has to be redone.',
+  'users.search.placeholder': 'Search account, note or page address',
+  'users.search.empty': 'No user matches “{{term}}”',
+  'users.search.clear': 'Clear search',
   'users.empty': 'No users yet',
   'users.pages': 'Pages',
   'users.managePages': 'Manage pages',
@@ -598,6 +601,10 @@ export const adminEn = {
   'regions.members': 'Users',
   'regions.default': 'Default',
   'regions.membersCount': '{{count}} users',
+  'regions.delete.blocked.default':
+    'A default region cannot be deleted. Every admin keeps one, and new users land in it.',
+  'regions.delete.blocked.members':
+    'This region still has users. Move them to another region first.',
   'regions.delete.confirm': 'Delete region {{name}}?',
   'regions.delete.note': 'Only an empty region can be deleted. Move its users out first.',
   'regions.rename.title': 'Rename region',

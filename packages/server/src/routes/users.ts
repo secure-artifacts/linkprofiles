@@ -1,6 +1,6 @@
 import { profiles, regions, users } from '@link-profile/shared/schema';
 import { accountNameSchema, passwordSchema, shortNameSchema } from '@link-profile/shared';
-import { and, count, eq, inArray, isNull } from 'drizzle-orm';
+import { and, count, eq, exists, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -80,8 +80,18 @@ async function resolveTargetRegion(
   return row?.id ?? null;
 }
 
+/**
+ * 搜索词转成 LIKE 模式。
+ *
+ * `%` 与 `_` 是 LIKE 的通配符，用户敲进来的当字面量处理 —— 不转义的话
+ * 搜一个下划线会匹配到所有人。Postgres 的 LIKE 默认就以反斜杠为转义符。
+ */
+function searchPattern(raw: string): string {
+  return `%${raw.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+}
+
 export async function userRoutes(app: FastifyInstance) {
-  app.get<{ Querystring: { region?: string } }>(
+  app.get<{ Querystring: { region?: string; q?: string } }>(
     '/users',
     { onRequest: [requireCapability('user:list')] },
     async (req) => {
@@ -98,6 +108,36 @@ export async function userRoutes(app: FastifyInstance) {
             ? eq(users.regionId, req.query.region)
             : undefined;
 
+      // 四个标识字段都能搜（CONTEXT.md 的术语表），管理员记得哪个就用哪个。
+      // short_name 与显示名走 exists 子查询而不是搭在下面那个 leftJoin 上：
+      // 直接在连接上加条件会把没匹配上的个人页滤掉，profileCount 跟着算错。
+      const term = req.query.q?.trim() ?? '';
+      const searchFilter =
+        term === ''
+          ? undefined
+          : (() => {
+              const pattern = searchPattern(term);
+              const matched = alias(profiles, 'search_profile');
+              return or(
+                sql`${users.account} ilike ${pattern}`,
+                sql`${users.label} ilike ${pattern}`,
+                exists(
+                  app.db
+                    .select({ hit: sql`1` })
+                    .from(matched)
+                    .where(
+                      and(
+                        eq(matched.userId, users.id),
+                        or(
+                          sql`${matched.shortName} ilike ${pattern}`,
+                          sql`${matched.displayName} ilike ${pattern}`,
+                        ),
+                      ),
+                    ),
+                ),
+              );
+            })();
+
       // count(profiles.id) 对没有个人页的账号得 0，正是想要的
       const rows = await app.db
         .select({
@@ -109,7 +149,7 @@ export async function userRoutes(app: FastifyInstance) {
         .from(users)
         .leftJoin(profiles, eq(profiles.userId, users.id))
         .leftJoin(region, eq(region.id, users.regionId))
-        .where(and(eq(users.role, 'user'), scope, regionFilter))
+        .where(and(eq(users.role, 'user'), scope, regionFilter, searchFilter))
         .groupBy(users.id, region.name, region.ownerAdminId)
         .orderBy(users.createdAt);
       return { users: rows };

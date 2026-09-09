@@ -239,6 +239,9 @@ export const adminId: AdminMessages = {
   'users.bulk.columns': 'Catatan internal ⇥ akun ⇥ alamat halaman ⇥ kata sandi',
   'users.bulk.partial':
     'Yang bisa dibuat akan dibuat; baris yang gagal didaftar terpisah, jadi tidak perlu mengulang seluruh kumpulan.',
+  'users.search.placeholder': 'Cari akun, catatan, atau alamat halaman',
+  'users.search.empty': 'Tidak ada pengguna yang cocok dengan “{{term}}”',
+  'users.search.clear': 'Hapus pencarian',
   'users.empty': 'Belum ada pengguna',
   'users.pages': 'Halaman',
   'users.managePages': 'Kelola halaman',
@@ -585,6 +588,10 @@ export const adminId: AdminMessages = {
   'regions.members': 'Pengguna',
   'regions.default': 'Bawaan',
   'regions.membersCount': '{{count}} pengguna',
+  'regions.delete.blocked.default':
+    'Region default tidak dapat dihapus. Setiap admin menyimpan satu, dan pengguna baru masuk ke sana.',
+  'regions.delete.blocked.members':
+    'Region ini masih memiliki pengguna. Pindahkan mereka ke region lain dulu.',
   'regions.delete.confirm': 'Hapus wilayah {{name}}?',
   'regions.delete.note': 'Hanya wilayah kosong yang bisa dihapus. Pindahkan penggunanya dulu.',
   'regions.rename.title': 'Ganti nama wilayah',

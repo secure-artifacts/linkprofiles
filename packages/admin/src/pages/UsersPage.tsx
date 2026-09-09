@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, Search, X, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { validateAccountName } from '@link-profile/shared';
 import type { ReactNode } from 'react';
@@ -43,6 +43,8 @@ export function UsersPage() {
   const [editing, setEditing] = useState<UserSummary | null>(null);
   const [page, setPage] = useState(1);
   const [regionFilter, setRegionFilter] = useState<string | undefined>(undefined);
+  const [search, setSearch] = useState('');
+  const [term, setTerm] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [moving, setMoving] = useState(false);
   const toast = useToast();
@@ -53,7 +55,10 @@ export function UsersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const query = regionFilter ? `?region=${regionFilter}` : '';
+      const params = new URLSearchParams();
+      if (regionFilter) params.set('region', regionFilter);
+      if (term) params.set('q', term);
+      const query = params.size > 0 ? `?${params}` : '';
       const list = await request<{ users: UserSummary[] }>(`/users${query}`);
       setUsers(list.users);
       setSelected(new Set());
@@ -64,11 +69,20 @@ export function UsersPage() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSuperadmin, regionFilter]);
+  }, [isSuperadmin, regionFilter, term]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 停手再查。逐个字符发请求既压库，也会让结果在打字过程中乱跳。
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTerm(search.trim());
+      setPage(1);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const unownedCount = users.filter((u) => u.regionOwnerAdminId === null).length;
   const ownedRegions = regions.filter((r) => r.ownerAdminId !== null);
@@ -117,6 +131,25 @@ export function UsersPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-fg">{t('nav.users')}</h1>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-64">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t('users.search.placeholder')}
+              className="pl-8 pr-8"
+            />
+            {search === '' ? null : (
+              <button
+                type="button"
+                aria-label={t('users.search.clear')}
+                onClick={() => setSearch('')}
+                className="absolute inset-y-0 right-0 flex w-8 items-center justify-center text-muted hover:text-fg"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
           <div className="w-48">
             <Select
               placeholder={t('users.filter.region')}
@@ -186,7 +219,7 @@ export function UsersPage() {
             ) : pageUsers.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-muted">
-                  {t('users.empty')}
+                  {term === '' ? t('users.empty') : t('users.search.empty', { term })}
                 </td>
               </tr>
             ) : (

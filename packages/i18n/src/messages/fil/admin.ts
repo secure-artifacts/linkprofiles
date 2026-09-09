@@ -251,6 +251,9 @@ export const adminFil: AdminMessages = {
   'users.bulk.columns': 'Panloob na tala ⇥ account ⇥ address ng page ⇥ password',
   'users.bulk.partial':
     'Gagawin muna ang kayang gawin; hiwalay na ilalista ang mga nabigo, kaya hindi na kailangang ulitin ang buong batch.',
+  'users.search.placeholder': 'Maghanap ng account, tala o address ng page',
+  'users.search.empty': 'Walang user na tugma sa “{{term}}”',
+  'users.search.clear': 'I-clear ang paghahanap',
   'users.empty': 'Wala pang user',
   'users.pages': 'Mga page',
   'users.managePages': 'Pamahalaan ang mga page',
@@ -608,6 +611,10 @@ export const adminFil: AdminMessages = {
   'regions.members': 'Mga user',
   'regions.default': 'Default',
   'regions.membersCount': '{{count}} user',
+  'regions.delete.blocked.default':
+    'Hindi puwedeng burahin ang default na rehiyon. May isa ang bawat admin, at doon napupunta ang mga bagong user.',
+  'regions.delete.blocked.members':
+    'May mga user pa ang rehiyong ito. Ilipat muna sila sa ibang rehiyon.',
   'regions.delete.confirm': 'Burahin ang rehiyong {{name}}?',
   'regions.delete.note':
     'Ang walang laman na rehiyon lang ang puwedeng burahin. Ilipat muna ang mga user.',
