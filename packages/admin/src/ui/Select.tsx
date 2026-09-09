@@ -1,10 +1,13 @@
 import * as RadixSelect from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useAdminT } from '../i18n/runtime.js';
 
 export interface SelectOption {
   value: string;
   label: string;
+  /** 标签左侧的小图标。放进 ItemText，选中后触发器上也跟着显示。 */
+  icon?: ReactNode;
 }
 
 interface SelectProps {
@@ -64,7 +67,16 @@ export function Select({
                   <RadixSelect.ItemIndicator className="absolute left-2 inline-flex items-center">
                     <Check className="size-3.5 text-accent" />
                   </RadixSelect.ItemIndicator>
-                  <RadixSelect.ItemText>{opt.label}</RadixSelect.ItemText>
+                  <RadixSelect.ItemText>
+                    {opt.icon ? (
+                      <span className="flex items-center gap-2">
+                        {opt.icon}
+                        {opt.label}
+                      </span>
+                    ) : (
+                      opt.label
+                    )}
+                  </RadixSelect.ItemText>
                 </RadixSelect.Item>
               ))
             )}

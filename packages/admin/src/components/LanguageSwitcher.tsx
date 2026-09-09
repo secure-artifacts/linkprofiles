@@ -1,7 +1,7 @@
 import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from '@link-profile/i18n';
-import { Languages } from 'lucide-react';
 import { useState } from 'react';
 import { request } from '../api/client.js';
+import { LocaleFlag } from './LocaleFlag.js';
 import { useAdminT } from '../i18n/runtime.js';
 import { Select } from '../ui/Select.js';
 import { useToast } from '../ui/Toast.js';
@@ -42,9 +42,8 @@ export function LanguageSwitcher({
   };
 
   return (
-    <div className="flex items-center gap-1.5 text-muted">
-      <Languages className="size-3.5 shrink-0" aria-hidden />
-      <div className="w-[132px]">
+    <div className="flex items-center text-muted">
+      <div className="w-[186px]">
         <Select
           aria-label={t('account.menu.language')}
           size="sm"
@@ -53,6 +52,7 @@ export function LanguageSwitcher({
           options={SUPPORTED_LOCALES.map((locale) => ({
             value: locale,
             label: LOCALE_LABELS[locale],
+            icon: <LocaleFlag locale={locale} />,
           }))}
           onChange={(value) => void pick(value)}
         />

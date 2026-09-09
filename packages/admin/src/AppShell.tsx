@@ -14,6 +14,7 @@ import { request } from './api/client.js';
 import { ChangePasswordModal } from './components/ChangePasswordModal.js';
 import { ChangeAccountModal } from './components/ChangeAccountModal.js';
 import { useBreadcrumbTrail } from './nav/breadcrumb.js';
+import { canOpen } from './nav/sections.js';
 import { LanguageSwitcher } from './components/LanguageSwitcher.js';
 import { useAdminT } from './i18n/runtime.js';
 import { ROLE_KEYS, useSession } from './session.js';
@@ -38,23 +39,21 @@ export function AppShell({
   const inEditor = pathname.startsWith('/profiles/');
   const profilesPath = `/users/${session.id}/profiles`;
 
-  const items =
-    session.role === 'user'
-      ? [
-          { to: profilesPath, label: t('nav.myPages'), alsoActive: inEditor },
-          { to: '/analytics', label: t('nav.analytics'), alsoActive: false },
-        ]
-      : [
-          { to: '/users', label: t('nav.users'), alsoActive: inEditor },
-          { to: '/regions', label: t('nav.regions'), alsoActive: false },
-          ...(session.role === 'superadmin'
-            ? [
-                { to: '/admins', label: t('nav.admins'), alsoActive: false },
-                { to: '/settings', label: t('nav.settings'), alsoActive: false },
-              ]
-            : []),
-          { to: '/analytics', label: t('nav.analytics'), alsoActive: false },
-        ];
+  const items = [
+    canOpen(session.role, 'users')
+      ? { to: '/users', label: t('nav.users'), alsoActive: inEditor }
+      : { to: profilesPath, label: t('nav.myPages'), alsoActive: inEditor },
+    ...(canOpen(session.role, 'regions')
+      ? [{ to: '/regions', label: t('nav.regions'), alsoActive: false }]
+      : []),
+    ...(canOpen(session.role, 'admins')
+      ? [{ to: '/admins', label: t('nav.admins'), alsoActive: false }]
+      : []),
+    ...(canOpen(session.role, 'settings')
+      ? [{ to: '/settings', label: t('nav.settings'), alsoActive: false }]
+      : []),
+    { to: '/analytics', label: t('nav.analytics'), alsoActive: false },
+  ];
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg">

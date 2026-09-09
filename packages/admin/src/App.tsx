@@ -1,5 +1,5 @@
 import { DEFAULT_LOCALE, normalizeLocale, type Locale } from '@link-profile/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { request, UnauthorizedError } from './api/client.js';
 import type { Session } from './api/types.js';
@@ -16,6 +16,7 @@ import { SettingsPage } from './pages/SettingsPage.js';
 import { UsersPage } from './pages/UsersPage.js';
 import { applyLocale, browserLocale } from './i18n/runtime.js';
 import { landingPath, SessionProvider } from './session.js';
+import { canOpen, type Section } from './nav/sections.js';
 import { Spinner } from './ui/Spinner.js';
 import { ToastProvider } from './ui/Toast.js';
 import { TooltipProvider } from './ui/Tooltip.js';
@@ -67,6 +68,8 @@ export function App() {
       );
   } else {
     const landing = landingPath(session);
+    const allow = (section: Section, element: ReactNode) =>
+      canOpen(session.role, section) ? element : <Navigate to={landing} replace />;
     content = (
       <SessionProvider value={{ ...session, uiLanguage: locale }}>
         {/* basename 与服务端挂载点一致（ADR-0003），后台整体在 /_admin 下 */}
@@ -79,12 +82,12 @@ export function App() {
                 }
               >
                 <Route index element={<Navigate to={landing} replace />} />
-                <Route path="users" element={<UsersPage />} />
+                <Route path="users" element={allow('users', <UsersPage />)} />
                 <Route path="users/:userId/profiles" element={<ProfilesPage />} />
                 <Route path="profiles/:profileId" element={<EditorPage />} />
-                <Route path="regions" element={<RegionsPage />} />
-                <Route path="admins" element={<AdminsPage />} />
-                <Route path="settings" element={<SettingsPage />} />
+                <Route path="regions" element={allow('regions', <RegionsPage />)} />
+                <Route path="admins" element={allow('admins', <AdminsPage />)} />
+                <Route path="settings" element={allow('settings', <SettingsPage />)} />
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="*" element={<Navigate to={landing} replace />} />
               </Route>
