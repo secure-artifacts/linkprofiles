@@ -48,7 +48,6 @@ export interface SocialPlatform {
 
 export interface SocialValueValidation {
   ok: boolean;
-  /** 失败时给译文 key，文案在 i18n 包的 errors 命名空间里。 */
   error?: ErrorKey;
 }
 

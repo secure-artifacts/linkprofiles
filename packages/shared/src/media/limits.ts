@@ -19,7 +19,6 @@ export const IMAGE_MAX_EDGE = { avatar: 640, banner: 1440, background: 1440 } as
 /** 裁切框的宽高比，按用途给。Banner 取公开页横幅比例，背景图按最窄手机竖屏取。 */
 export const CROP_ASPECT = { avatar: 1, banner: 3, background: 375 / 812 } as const;
 
-/** 拒绝理由带译文 key 与插值参数，文案在 i18n 包的 errors 命名空间里。 */
 export interface MediaProblem {
   messageKey: ErrorKey;
   vars: Record<string, string | number>;

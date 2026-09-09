@@ -13,7 +13,6 @@ export const SHORT_NAME_MAX = 30;
  */
 const PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
-/** 校验失败返回译文 key，文案在 i18n 包的 errors 命名空间里。 */
 export type ShortNameError = Extract<ErrorKey, `field.shortName.${string}`>;
 
 /** 大小写不敏感，因此统一压小写后再校验与入库。 */

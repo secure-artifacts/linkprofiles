@@ -7,8 +7,7 @@ import type { ReactNode } from 'react';
  * 画成内联 SVG 而不是用 emoji：Windows 的 Chrome / Edge 至今不带旗帜字形，
  * emoji 在那里会退化成「US」「PH」这样的字母对，等于没加。
  *
- * 细节按 16px 显示取舍：西班牙与巴西的纹章、美国的五十颗星在这个尺寸下
- * 只会糊成一团，一律省掉，留下认得出来的配色与图形。
+ * 西班牙与巴西的纹章、美国的五十颗星在 16px 下糊成一团，一概省掉。
  */
 
 const STAR =

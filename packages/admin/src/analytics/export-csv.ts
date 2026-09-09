@@ -224,7 +224,6 @@ export function buildAnalyticsCsv(
   return rows.map((row) => row.map(cell).join(',')).join('\r\n');
 }
 
-/** 文件名里只留下能安全落到磁盘的字符。 */
 function slug(raw: string): string {
   return raw.replace(/[^\p{Letter}\p{Number}-]+/gu, '-').replace(/^-|-$/g, '') || 'analytics';
 }
