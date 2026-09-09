@@ -4,7 +4,7 @@
  */
 export const adminPluralsEs: Record<string, string> = {
   'users.pagesCount_one': '{{count}} página',
-  'users.pagination_one': '{{count}} usuario, {{size}} por página',
+  'users.pagination_one': '{{count}} usuario en {{regions}} regiones',
   'users.unowned.count_one': 'Hay {{count}} usuario sin asignar',
   'entries.incomplete.count_one': 'Queda {{count}} entrada incompleta',
   'analytics.ranking.title_one': 'Ranking de páginas de perfil · {{count}} página',

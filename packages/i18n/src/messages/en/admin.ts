@@ -158,6 +158,8 @@ export const adminEn = {
   'common.confirm': 'Confirm',
   'common.actions': 'Actions',
   'common.loading': 'Loading…',
+  'common.search': 'Search',
+  'common.noMatch': 'Nothing matches',
   'common.noData': 'Nothing here yet',
   'common.close': 'Close',
   'common.saved': 'Saved',
@@ -236,15 +238,15 @@ export const adminEn = {
   'users.shortName.hint':
     'The URL of their first profile page. Once published it is a public asset, and after deletion it is never reassigned',
   'users.shortName.rule': 'Lowercase letters, digits and hyphens, 3 to 30 characters',
-  'users.bulk.title': 'Bulk create',
-  'users.bulk.done': 'Created',
-  'users.bulk.start': 'Start creating',
-  'users.bulk.retryFailed': 'Go back to the failed rows',
-  'users.bulk.succeeded': 'Succeeded',
-  'users.bulk.failed': 'Failed',
+  'bulk.title': 'Bulk create',
+  'bulk.done': 'Created',
+  'bulk.start': 'Start creating',
+  'bulk.retryFailed': 'Go back to the failed rows',
+  'bulk.succeeded': 'Succeeded',
+  'bulk.failed': 'Failed',
   'users.bulk.format': 'Paste straight from a spreadsheet: four tab separated columns per row.',
   'users.bulk.columns': 'Internal note ⇥ account ⇥ page address ⇥ password',
-  'users.bulk.partial':
+  'bulk.partial':
     'Whatever can be created is created; the failed rows are listed on their own, so the batch never has to be redone.',
   'users.search.placeholder': 'Search account, note or page address',
   'users.search.empty': 'No user matches “{{term}}”',
@@ -569,9 +571,9 @@ export const adminEn = {
   'users.delete.pagesCount':
     'All {{count}} page addresses under this account go into the tombstone list and are',
   'users.pagesCount': '{{count}} pages',
-  'users.pagination': '{{count}} users, {{size}} per page',
+  'users.pagination': '{{count}} users in {{regions}} regions',
   'users.shownOn': 'Shown on the /{{shortName}} profile page.',
-  'users.bulk.line': 'Line {{line}}',
+  'bulk.line': 'Line {{line}}',
   'preview.livePreview': '{{width}}px live preview · unsaved changes show up too',
 
   'media.slot.banner': 'Banner image',
@@ -605,6 +607,9 @@ export const adminEn = {
   'regions.members': 'Users',
   'regions.default': 'Default',
   'regions.membersCount': '{{count}} users',
+  'regions.bulk.format':
+    'One region name per line. Names are unique across the whole site, so anything already taken is reported instead of created.',
+  'regions.bulk.placeholder': 'Manila team 1\\nDavao team 3',
   'regions.delete.blocked.default':
     'A default region cannot be deleted. Every admin keeps one, and new users land in it.',
   'regions.delete.blocked.members':

@@ -152,6 +152,8 @@ export const adminId: AdminMessages = {
   'common.confirm': 'Konfirmasi',
   'common.actions': 'Tindakan',
   'common.loading': 'Memuat…',
+  'common.search': 'Cari',
+  'common.noMatch': 'Tidak ada yang cocok',
   'common.noData': 'Belum ada apa-apa',
   'common.close': 'Tutup',
   'common.saved': 'Tersimpan',
@@ -229,15 +231,15 @@ export const adminId: AdminMessages = {
   'users.shortName.hint':
     'URL halaman profil pertamanya. Begitu terbit ia jadi aset publik, dan setelah dihapus tidak pernah dipakai lagi',
   'users.shortName.rule': 'Huruf kecil, angka, dan tanda hubung, 3 sampai 30 karakter',
-  'users.bulk.title': 'Buat massal',
-  'users.bulk.done': 'Dibuat',
-  'users.bulk.start': 'Mulai membuat',
-  'users.bulk.retryFailed': 'Kembali ke baris yang gagal',
-  'users.bulk.succeeded': 'Berhasil',
-  'users.bulk.failed': 'Gagal',
+  'bulk.title': 'Buat massal',
+  'bulk.done': 'Dibuat',
+  'bulk.start': 'Mulai membuat',
+  'bulk.retryFailed': 'Kembali ke baris yang gagal',
+  'bulk.succeeded': 'Berhasil',
+  'bulk.failed': 'Gagal',
   'users.bulk.format': 'Tempel langsung dari lembar kerja: empat kolom per baris dipisah tab.',
   'users.bulk.columns': 'Catatan internal ⇥ akun ⇥ alamat halaman ⇥ kata sandi',
-  'users.bulk.partial':
+  'bulk.partial':
     'Yang bisa dibuat akan dibuat; baris yang gagal didaftar terpisah, jadi tidak perlu mengulang seluruh kumpulan.',
   'users.search.placeholder': 'Cari akun, catatan, atau alamat halaman',
   'users.search.empty': 'Tidak ada pengguna yang cocok dengan “{{term}}”',
@@ -556,9 +558,9 @@ export const adminId: AdminMessages = {
   'settings.passthrough.explainTail': 'membawa sumber yang sama sampai ke alamat tujuan.',
   'users.delete.pagesCount': 'Seluruh {{count}} alamat halaman di akun ini masuk daftar nisan dan',
   'users.pagesCount': '{{count}} halaman',
-  'users.pagination': '{{count}} pengguna, {{size}} per halaman',
+  'users.pagination': '{{count}} pengguna di {{regions}} region',
   'users.shownOn': 'Ditampilkan di halaman profil /{{shortName}}.',
-  'users.bulk.line': 'Baris {{line}}',
+  'bulk.line': 'Baris {{line}}',
   'preview.livePreview':
     'Pratinjau langsung {{width}}px · perubahan yang belum disimpan juga terlihat',
   'media.slot.banner': 'Gambar banner',
@@ -592,6 +594,9 @@ export const adminId: AdminMessages = {
   'regions.members': 'Pengguna',
   'regions.default': 'Bawaan',
   'regions.membersCount': '{{count}} pengguna',
+  'regions.bulk.format':
+    'Satu nama region per baris. Nama bersifat unik di seluruh situs, jadi yang sudah dipakai akan dilaporkan, bukan dibuat.',
+  'regions.bulk.placeholder': 'Manila grup 1\\nDavao grup 3',
   'regions.delete.blocked.default':
     'Region default tidak dapat dihapus. Setiap admin menyimpan satu, dan pengguna baru masuk ke sana.',
   'regions.delete.blocked.members':

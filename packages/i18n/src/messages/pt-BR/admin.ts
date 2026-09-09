@@ -150,6 +150,8 @@ export const adminPtBR: AdminMessages = {
   'common.confirm': 'Confirmar',
   'common.actions': 'Ações',
   'common.loading': 'Carregando…',
+  'common.search': 'Buscar',
+  'common.noMatch': 'Nenhuma correspondência',
   'common.noData': 'Ainda não há nada aqui',
   'common.close': 'Fechar',
   'common.saved': 'Salvo',
@@ -226,16 +228,16 @@ export const adminPtBR: AdminMessages = {
   'users.shortName.hint':
     'A URL da primeira página de perfil dele. Uma vez publicada é um bem público e, depois de excluída, nunca é reatribuída',
   'users.shortName.rule': 'Minúsculas, dígitos e hífens, de 3 a 30 caracteres',
-  'users.bulk.title': 'Criação em lote',
-  'users.bulk.done': 'Criados',
-  'users.bulk.start': 'Começar a criar',
-  'users.bulk.retryFailed': 'Voltar às linhas que falharam',
-  'users.bulk.succeeded': 'Certas',
-  'users.bulk.failed': 'Falharam',
+  'bulk.title': 'Criação em lote',
+  'bulk.done': 'Criados',
+  'bulk.start': 'Começar a criar',
+  'bulk.retryFailed': 'Voltar às linhas que falharam',
+  'bulk.succeeded': 'Certas',
+  'bulk.failed': 'Falharam',
   'users.bulk.format':
     'Cole direto de uma planilha: quatro colunas por linha separadas por tabulação.',
   'users.bulk.columns': 'Nota interna ⇥ conta ⇥ endereço da página ⇥ senha',
-  'users.bulk.partial':
+  'bulk.partial':
     'Cria-se tudo o que der; as linhas que falharem são listadas à parte, então nunca é preciso refazer o lote inteiro.',
   'users.search.placeholder': 'Buscar conta, nota ou endereço da página',
   'users.search.empty': 'Nenhum usuário corresponde a “{{term}}”',
@@ -557,9 +559,9 @@ export const adminPtBR: AdminMessages = {
   'users.delete.pagesCount':
     'Os {{count}} endereços de página desta conta vão para a lista de lápides e',
   'users.pagesCount': '{{count}} páginas',
-  'users.pagination': '{{count}} usuários, {{size}} por página',
+  'users.pagination': '{{count}} usuários em {{regions}} regiões',
   'users.shownOn': 'Aparece na página de perfil /{{shortName}}.',
-  'users.bulk.line': 'Linha {{line}}',
+  'bulk.line': 'Linha {{line}}',
   'preview.livePreview': 'Prévia ao vivo de {{width}}px · as mudanças não salvas também aparecem',
   'media.slot.banner': 'Imagem de banner',
   'media.slot.banner.hint':
@@ -592,6 +594,9 @@ export const adminPtBR: AdminMessages = {
   'regions.members': 'Usuários',
   'regions.default': 'Padrão',
   'regions.membersCount': '{{count}} usuários',
+  'regions.bulk.format':
+    'Um nome de região por linha. Os nomes são únicos em todo o site, então os já ocupados são reportados em vez de criados.',
+  'regions.bulk.placeholder': 'Manila grupo 1\\nDavao grupo 3',
   'regions.delete.blocked.default':
     'Uma região padrão não pode ser excluída. Cada admin mantém uma, e os novos usuários caem nela.',
   'regions.delete.blocked.members':

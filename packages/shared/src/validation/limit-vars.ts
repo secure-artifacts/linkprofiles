@@ -1,5 +1,6 @@
 import { ACCOUNT_MAX, ACCOUNT_MIN } from './account-name.js';
 import { INVITE_CODE_MAX, INVITE_CODE_MIN } from './invite-code.js';
+import { REGION_NAME_MAX } from './region-name.js';
 import { PASSWORD_MAX, PASSWORD_MIN } from './password.js';
 import { SHORT_NAME_MAX, SHORT_NAME_MIN } from './short-name.js';
 
@@ -18,4 +19,5 @@ export const FIELD_LIMIT_VARS = {
   shortNameMax: SHORT_NAME_MAX,
   inviteCodeMin: INVITE_CODE_MIN,
   inviteCodeMax: INVITE_CODE_MAX,
+  regionNameMax: REGION_NAME_MAX,
 } as const;

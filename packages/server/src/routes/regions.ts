@@ -5,8 +5,10 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { loadTargetRegion, requireCapability } from '../auth/guards.js';
 import { can, visibleRegionsFilter } from '../auth/policy.js';
-import { fail, forbidden } from '../http/errors.js';
+import { fail, forbidden, localeOf } from '../http/errors.js';
 import { issueInviteCode } from '../regions/invite-code.js';
+import { FIELD_LIMIT_VARS, REGION_NAME_MAX } from '@link-profile/shared';
+import { errorT } from '@link-profile/i18n/server';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -20,7 +22,11 @@ function isForeignKeyViolation(err: unknown): boolean {
   return false;
 }
 
-const regionName = z.string().trim().min(1, 'field.region.name.required').max(60);
+const regionName = z
+  .string()
+  .trim()
+  .min(1, 'field.region.name.required')
+  .max(REGION_NAME_MAX, 'field.region.name.max');
 
 const createRegionBody = z.object({
   name: regionName,
@@ -40,6 +46,17 @@ const updateRegionBody = z
 
 /** 不传 code 就系统随机生成；传了就按管理员指定的来。 */
 const resetInviteCodeBody = z.object({ code: z.string().optional() }).default({});
+
+const bulkRegionsBody = z.object({
+  /** 原文照贴，一行一个区域名。解析放在服务端，行号才对得上用户看到的那一行。 */
+  text: z.string(),
+  ownerAdminId: z.string().uuid().nullable().optional(),
+});
+
+interface BulkRegionFailure {
+  line: number;
+  error: string;
+}
 
 /** 区域的增删改查。归属管理员由区域推导，见 ADR-0017。 */
 export async function regionRoutes(app: FastifyInstance) {
@@ -119,6 +136,85 @@ export async function regionRoutes(app: FastifyInstance) {
       inviteCode: issued?.ok ? issued.code : null,
     });
   });
+
+  /**
+   * 批量建区域。一行一个名字。
+   *
+   * 与批量建用户同一套取舍：**不做整批回滚**，能建的先建好，失败的行带行号与
+   * 原因回去。管理员粘几十行进来，个别名字被占不该逼他整批重来。
+   *
+   * 批内重名单独报，而不是让第二行去撞唯一索引 —— 撞出来的「名字已被占用」
+   * 会让人以为是别人占的，跑去改一个其实自己刚写重的名字。
+   */
+  app.post(
+    '/regions/bulk',
+    { onRequest: [requireCapability('region:create')] },
+    async (req, reply) => {
+      const parsed = bulkRegionsBody.safeParse(req.body);
+      if (!parsed.success) {
+        return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
+      }
+
+      const actor = req.currentUser!;
+      const translate = errorT(localeOf(req));
+      const ownerAdminId = can(actor, 'region:assignOwner')
+        ? (parsed.data.ownerAdminId ?? null)
+        : actor.id;
+
+      if (ownerAdminId !== null) {
+        const [admin] = await app.db
+          .select({ id: users.id })
+          .from(users)
+          .where(and(eq(users.id, ownerAdminId), eq(users.role, 'admin')))
+          .limit(1);
+        if (!admin) return fail(reply, 400, 'not_an_admin');
+      }
+
+      const created: { line: number; id: string; name: string; inviteCode: string | null }[] = [];
+      const failed: BulkRegionFailure[] = [];
+      const seen = new Set<string>();
+
+      // \r\n 与 \r 都当换行：从表格复制过来的内容换行符不一定是哪种。
+      const lines = parsed.data.text.split(/\r\n|\r|\n/);
+      for (const [index, raw] of lines.entries()) {
+        const line = index + 1;
+        const name = raw.trim();
+        // 整行空白跳过，不占行号也不算失败：粘贴时结尾常常多一个换行。
+        if (name === '') continue;
+
+        if (name.length > REGION_NAME_MAX) {
+          failed.push({ line, error: translate('field.region.name.max', FIELD_LIMIT_VARS) });
+          continue;
+        }
+        if (seen.has(name)) {
+          failed.push({ line, error: translate('bulk.duplicateName') });
+          continue;
+        }
+        seen.add(name);
+
+        const [row] = await app.db
+          .insert(regions)
+          .values({ name, ownerAdminId, isDefault: false })
+          .onConflictDoNothing({ target: regions.name })
+          .returning({ id: regions.id, name: regions.name });
+        if (!row) {
+          failed.push({ line, error: translate('code.region_name_taken') });
+          continue;
+        }
+
+        // 超级管理员建得出无归属区域，那种区域不该带码。
+        const issued = ownerAdminId === null ? null : await issueInviteCode(app.db, row.id);
+        created.push({
+          line,
+          id: row.id,
+          name: row.name,
+          inviteCode: issued?.ok ? issued.code : null,
+        });
+      }
+
+      return { created, failed, createdCount: created.length, failedCount: failed.length };
+    },
+  );
 
   app.patch<{ Params: { id: string } }>(
     '/regions/:id',

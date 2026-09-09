@@ -81,4 +81,6 @@ export const errorsZhHans: ErrorMessages = {
   'field.account.required': '账号不能为空',
   'field.password.required': '密码不能为空',
   'bulk.columns': '列数不对，应为四列：用户名称、账号、short_name、密码',
+  'field.region.name.max': '区域名最多 {{regionNameMax}} 个字符',
+  'bulk.duplicateName': '同一批里前面已经有这个名字了',
 };

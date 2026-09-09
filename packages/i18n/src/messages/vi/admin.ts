@@ -149,6 +149,8 @@ export const adminVi: AdminMessages = {
   'common.confirm': 'Xác nhận',
   'common.actions': 'Thao tác',
   'common.loading': 'Đang tải…',
+  'common.search': 'Tìm kiếm',
+  'common.noMatch': 'Không có kết quả khớp',
   'common.noData': 'Chưa có gì ở đây',
   'common.close': 'Đóng',
   'common.saved': 'Đã lưu',
@@ -225,15 +227,15 @@ export const adminVi: AdminMessages = {
   'users.shortName.hint':
     'URL của trang hồ sơ đầu tiên. Khi đã công bố thì đó là tài sản đối ngoại, và sau khi xoá sẽ không bao giờ được cấp lại',
   'users.shortName.rule': 'Chữ thường, chữ số và gạch nối, 3 đến 30 ký tự',
-  'users.bulk.title': 'Tạo hàng loạt',
-  'users.bulk.done': 'Đã tạo',
-  'users.bulk.start': 'Bắt đầu tạo',
-  'users.bulk.retryFailed': 'Quay lại các dòng lỗi',
-  'users.bulk.succeeded': 'Thành công',
-  'users.bulk.failed': 'Thất bại',
+  'bulk.title': 'Tạo hàng loạt',
+  'bulk.done': 'Đã tạo',
+  'bulk.start': 'Bắt đầu tạo',
+  'bulk.retryFailed': 'Quay lại các dòng lỗi',
+  'bulk.succeeded': 'Thành công',
+  'bulk.failed': 'Thất bại',
   'users.bulk.format': 'Dán thẳng từ bảng tính: mỗi dòng bốn cột, ngăn cách bằng tab.',
   'users.bulk.columns': 'Ghi chú nội bộ ⇥ tài khoản ⇥ địa chỉ trang ⇥ mật khẩu',
-  'users.bulk.partial':
+  'bulk.partial':
     'Tạo được đến đâu làm đến đó; các dòng lỗi được liệt kê riêng nên không phải làm lại cả lô.',
   'users.search.placeholder': 'Tìm tài khoản, ghi chú hoặc địa chỉ trang',
   'users.search.empty': 'Không có người dùng nào khớp với “{{term}}”',
@@ -551,9 +553,9 @@ export const adminVi: AdminMessages = {
   'users.delete.pagesCount':
     'Toàn bộ {{count}} địa chỉ trang của tài khoản này sẽ vào danh sách bia mộ và',
   'users.pagesCount': '{{count}} trang',
-  'users.pagination': '{{count}} người dùng, {{size}} mỗi trang',
+  'users.pagination': '{{count}} người dùng trong {{regions}} vùng',
   'users.shownOn': 'Hiển thị trên trang hồ sơ /{{shortName}}.',
-  'users.bulk.line': 'Dòng {{line}}',
+  'bulk.line': 'Dòng {{line}}',
   'preview.livePreview': 'Xem thử trực tiếp ở {{width}}px · thay đổi chưa lưu cũng hiện ra',
   'media.slot.banner': 'Ảnh banner',
   'media.slot.banner.hint':
@@ -586,6 +588,9 @@ export const adminVi: AdminMessages = {
   'regions.members': 'Người dùng',
   'regions.default': 'Mặc định',
   'regions.membersCount': '{{count}} người dùng',
+  'regions.bulk.format':
+    'Mỗi dòng một tên vùng. Tên là duy nhất trên toàn hệ thống, nên tên đã bị chiếm sẽ được báo lại thay vì tạo mới.',
+  'regions.bulk.placeholder': 'Manila nhóm 1\\nDavao nhóm 3',
   'regions.delete.blocked.default':
     'Không thể xoá vùng mặc định. Mỗi quản trị viên giữ một vùng, và người dùng mới sẽ vào đó.',
   'regions.delete.blocked.members':

@@ -1,5 +1,5 @@
-import { CheckCircle2, Search, X, XCircle } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { CheckCircle2, ChevronDown, ChevronRight, Search, X, XCircle } from 'lucide-react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { validateAccountName } from '@link-profile/shared';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,8 @@ import { useConfirm } from '../ui/useConfirm.js';
 import { useAdminT, useErrorT } from '../i18n/runtime.js';
 import { regionLabel } from '../regions/label.js';
 
-const PAGE_SIZE = 20;
+/** 分页数的是区域，不是用户 —— 表格按「区域 → 用户」两层展开。 */
+const PAGE_SIZE = 10;
 
 /** 「全部区域」在下拉里得有个真值：Radix 的 Select 不接受空串当选项值。 */
 const ALL_REGIONS = 'all';
@@ -46,6 +47,9 @@ export function UsersPage() {
   const [search, setSearch] = useState('');
   const [term, setTerm] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // 记「收起了哪些」而不是「展开了哪些」：新出现的区域默认是打开的，
+  // 搜索之后结果才不会藏在一排收起的行里。
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [moving, setMoving] = useState(false);
   const toast = useToast();
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -86,8 +90,50 @@ export function UsersPage() {
 
   const unownedCount = users.filter((u) => u.regionOwnerAdminId === null).length;
   const ownedRegions = regions.filter((r) => r.ownerAdminId !== null);
-  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
-  const pageUsers = users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  /** 按区域分组。区域的先后跟着用户列表里第一次出现的顺序，与服务端排序一致。 */
+  const groups = useMemo(() => {
+    const byRegion = new Map<string, { key: string; name: string; users: UserSummary[] }>();
+    for (const user of users) {
+      const key = user.regionId ?? 'none';
+      let group = byRegion.get(key);
+      if (!group) {
+        group = {
+          key,
+          name:
+            user.regionId && user.regionName
+              ? regionLabel(user.regionId, user.regionName)
+              : t('users.unowned'),
+          users: [],
+        };
+        byRegion.set(key, group);
+      }
+      group.users.push(user);
+    }
+    return [...byRegion.values()];
+  }, [users, t]);
+
+  const totalPages = Math.max(1, Math.ceil(groups.length / PAGE_SIZE));
+  const pageGroups = groups.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageUsers = pageGroups.flatMap((group) => group.users);
+
+  const toggleGroup = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const toggleGroupSelection = (group: { users: UserSummary[] }, checked: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const user of group.users) {
+        if (checked) next.add(user.id);
+        else next.delete(user.id);
+      }
+      return next;
+    });
 
   const remove = async (user: UserSummary) => {
     const ok = await confirm({
@@ -152,6 +198,7 @@ export function UsersPage() {
           </div>
           <div className="w-48">
             <Select
+              searchable
               placeholder={t('users.filter.region')}
               value={regionFilter ?? ALL_REGIONS}
               options={[
@@ -170,7 +217,7 @@ export function UsersPage() {
             </Button>
           ) : null}
           <Button variant="default" onClick={() => setBulkOpen(true)}>
-            {t('users.bulk.title')}
+            {t('bulk.title')}
           </Button>
           <Button variant="primary" onClick={() => setCreating(true)}>
             {t('users.create.title')}
@@ -205,106 +252,144 @@ export function UsersPage() {
               <th className="px-4 py-2.5">{t('common.field.label')}</th>
               <th className="px-4 py-2.5">{t('common.field.account')}</th>
               <th className="px-4 py-2.5">{t('users.pages')}</th>
-              <th className="px-4 py-2.5">{t('users.region')}</th>
               <th className="px-4 py-2.5">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted">
                   {t('common.loading')}
                 </td>
               </tr>
             ) : pageUsers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted">
                   {term === '' ? t('users.empty') : t('users.search.empty', { term })}
                 </td>
               </tr>
             ) : (
-              pageUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className="h-[52px] border-b border-border last:border-b-0 hover:bg-surface-hover"
-                >
-                  <td className="px-4 py-2">
-                    <input
-                      type="checkbox"
-                      aria-label={user.label || user.account}
-                      checked={selected.has(user.id)}
-                      onChange={() => toggleSelected(user.id)}
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-fg">
-                    {user.label || <span className="text-muted">—</span>}
-                  </td>
-                  <td className="px-4 py-2 font-mono text-[13px] text-fg">{user.account}</td>
-                  <td className="px-4 py-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/users/${user.id}/profiles`)}
-                      className="text-accent hover:underline"
-                    >
-                      {t('users.pagesCount', { count: user.profileCount })}
-                    </button>
-                  </td>
-                  <td className="px-4 py-2">
-                    {isSuperadmin && user.regionOwnerAdminId === null ? (
-                      <div className="flex items-center gap-2">
-                        <Tag tone="danger">{t('users.unowned')}</Tag>
-                        <div className="w-36">
-                          <Select
-                            size="sm"
-                            placeholder={t('users.assignTo')}
-                            value={undefined}
-                            options={ownedRegions.map((r) => ({
-                              value: r.id,
-                              label: regionLabel(r.id, r.name),
-                            }))}
-                            onChange={(value) => void moveToRegion([user.id], value)}
-                          />
-                        </div>
-                      </div>
-                    ) : user.regionId && user.regionName ? (
-                      regionLabel(user.regionId, user.regionName)
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => navigate(`/users/${user.id}/profiles`)}
-                      >
-                        {t('users.managePages')}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(user)}>
-                        {t('users.accountSettings')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/analytics?userId=${user.id}`)}
-                      >
-                        {t('users.analytics')}
-                      </Button>
-                      <Button variant="danger-ghost" size="sm" onClick={() => void remove(user)}>
-                        {t('common.delete')}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              pageGroups.map((group) => {
+                const open = !collapsed.has(group.key);
+                const allSelected = group.users.every((user) => selected.has(user.id));
+                return (
+                  <Fragment key={group.key}>
+                    <tr className="border-b border-border bg-bg">
+                      <td className="px-4 py-2">
+                        <input
+                          type="checkbox"
+                          aria-label={group.name}
+                          checked={allSelected}
+                          onChange={(event) => toggleGroupSelection(group, event.target.checked)}
+                        />
+                      </td>
+                      <td className="px-4 py-2" colSpan={4}>
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(group.key)}
+                          aria-expanded={open}
+                          className="flex items-center gap-1.5 text-[13px] font-medium text-fg"
+                        >
+                          {open ? (
+                            <ChevronDown className="size-3.5 text-muted" />
+                          ) : (
+                            <ChevronRight className="size-3.5 text-muted" />
+                          )}
+                          {group.name}
+                          <span className="font-normal text-muted">
+                            · {t('regions.membersCount', { count: group.users.length })}
+                          </span>
+                        </button>
+                      </td>
+                    </tr>
+                    {open
+                      ? group.users.map((user) => (
+                          <tr
+                            key={user.id}
+                            className="h-[52px] border-b border-border last:border-b-0 hover:bg-surface-hover"
+                          >
+                            <td className="px-4 py-2">
+                              <input
+                                type="checkbox"
+                                aria-label={user.label || user.account}
+                                checked={selected.has(user.id)}
+                                onChange={() => toggleSelected(user.id)}
+                              />
+                            </td>
+                            <td className="py-2 pl-9 pr-4 text-fg">
+                              {user.label || <span className="text-muted">—</span>}
+                            </td>
+                            <td className="px-4 py-2 font-mono text-[13px] text-fg">
+                              {user.account}
+                            </td>
+                            <td className="px-4 py-2">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/users/${user.id}/profiles`)}
+                                className="text-accent hover:underline"
+                              >
+                                {t('users.pagesCount', { count: user.profileCount })}
+                              </button>
+                            </td>
+                            <td className="px-4 py-2">
+                              <div className="flex items-center gap-1">
+                                {isSuperadmin && user.regionOwnerAdminId === null ? (
+                                  <div className="mr-1 flex items-center gap-2">
+                                    <Tag tone="danger">{t('users.unowned')}</Tag>
+                                    <div className="w-36">
+                                      <Select
+                                        size="sm"
+                                        searchable
+                                        placeholder={t('users.assignTo')}
+                                        value={undefined}
+                                        options={ownedRegions.map((r) => ({
+                                          value: r.id,
+                                          label: regionLabel(r.id, r.name),
+                                        }))}
+                                        onChange={(value) => void moveToRegion([user.id], value)}
+                                      />
+                                    </div>
+                                  </div>
+                                ) : null}
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => navigate(`/users/${user.id}/profiles`)}
+                                >
+                                  {t('users.managePages')}
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => setEditing(user)}>
+                                  {t('users.accountSettings')}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigate(`/analytics?userId=${user.id}`)}
+                                >
+                                  {t('users.analytics')}
+                                </Button>
+                                <Button
+                                  variant="danger-ghost"
+                                  size="sm"
+                                  onClick={() => void remove(user)}
+                                >
+                                  {t('common.delete')}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      : null}
+                  </Fragment>
+                );
+              })
             )}
           </tbody>
         </table>
 
-        {users.length > PAGE_SIZE ? (
+        {groups.length > PAGE_SIZE ? (
           <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-[13px] text-muted">
-            <span>{t('users.pagination', { count: users.length, size: PAGE_SIZE })}</span>
+            <span>{t('users.pagination', { count: users.length, regions: groups.length })}</span>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -807,7 +892,7 @@ function BulkCreateModal({
     <Dialog
       open={open}
       onOpenChange={(o) => !o && close()}
-      title={t('users.bulk.title')}
+      title={t('bulk.title')}
       width={640}
       footer={
         result ? (
@@ -816,7 +901,7 @@ function BulkCreateModal({
               {t('common.cancel')}
             </Button>
             <Button variant="primary" onClick={() => setResult(null)}>
-              {t('users.bulk.retryFailed')}
+              {t('bulk.retryFailed')}
             </Button>
           </>
         ) : (
@@ -825,7 +910,7 @@ function BulkCreateModal({
               {t('common.cancel')}
             </Button>
             <Button variant="primary" loading={submitting} onClick={() => void submit()}>
-              {t('users.bulk.start')}
+              {t('bulk.start')}
             </Button>
           </>
         )
@@ -835,13 +920,13 @@ function BulkCreateModal({
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
             <div className="flex-1 rounded-[var(--radius-control)] border border-border bg-bg px-4 py-3">
-              <div className="text-[12px] text-muted">{t('users.bulk.succeeded')}</div>
+              <div className="text-[12px] text-muted">{t('bulk.succeeded')}</div>
               <div className="font-mono text-2xl font-semibold text-accent">
                 {result.createdCount}
               </div>
             </div>
             <div className="flex-1 rounded-[var(--radius-control)] border border-border bg-bg px-4 py-3">
-              <div className="text-[12px] text-muted">{t('users.bulk.failed')}</div>
+              <div className="text-[12px] text-muted">{t('bulk.failed')}</div>
               <div className="font-mono text-2xl font-semibold text-danger">
                 {result.failedCount}
               </div>
@@ -864,10 +949,10 @@ function BulkCreateModal({
                       <CheckCircle2 className="size-4 shrink-0 text-accent" />
                     )}
                     <span className="w-14 shrink-0 whitespace-nowrap font-mono text-muted">
-                      {t('users.bulk.line', { line })}
+                      {t('bulk.line', { line })}
                     </span>
                     <span className={failure ? 'text-danger' : 'text-muted'}>
-                      {failure ? failure.error : t('users.bulk.done')}
+                      {failure ? failure.error : t('bulk.done')}
                     </span>
                   </div>
                 );
@@ -884,7 +969,7 @@ function BulkCreateModal({
               {t('users.bulk.columns')}
             </code>
             <br />
-            {t('users.bulk.partial')}
+            {t('bulk.partial')}
           </p>
           {regions.length > 0 ? (
             <Field label={t('users.create.region')} hint={t('users.create.region.hint')}>

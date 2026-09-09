@@ -89,4 +89,6 @@ export const errorsPtBR: ErrorMessages = {
   'field.password.required': 'A senha não pode ficar vazia',
   'bulk.columns':
     'Cada linha precisa de quatro colunas separadas por tabulação: nome, conta, short_name, senha',
+  'field.region.name.max': 'O nome da região pode ter no máximo {{regionNameMax}} caracteres',
+  'bulk.duplicateName': 'Este nome já aparece antes no mesmo lote',
 };

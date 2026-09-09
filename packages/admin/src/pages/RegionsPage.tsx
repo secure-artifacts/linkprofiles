@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { validateInviteCode } from '@link-profile/shared';
 import { request } from '../api/client.js';
 import type { AdminSummary, RegionSummary } from '../api/types.js';
@@ -9,7 +10,7 @@ import { useSession } from '../session.js';
 import { Alert } from '../ui/Alert.js';
 import { Button } from '../ui/Button.js';
 import { Dialog } from '../ui/Dialog.js';
-import { Input } from '../ui/Input.js';
+import { Input, Textarea } from '../ui/Input.js';
 import { Select } from '../ui/Select.js';
 import { Spinner } from '../ui/Spinner.js';
 import { Tag } from '../ui/Tag.js';
@@ -33,6 +34,7 @@ export function RegionsPage() {
   const [admins, setAdmins] = useState<AdminSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [renaming, setRenaming] = useState<RegionSummary | null>(null);
   const [resetting, setResetting] = useState<RegionSummary | null>(null);
 
@@ -104,9 +106,14 @@ export function RegionsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-xl font-semibold text-fg">{t('regions.title')}</h1>
-        <Button variant="primary" onClick={() => setCreating(true)}>
-          {t('regions.create.title')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="default" onClick={() => setBulkOpen(true)}>
+            {t('bulk.title')}
+          </Button>
+          <Button variant="primary" onClick={() => setCreating(true)}>
+            {t('regions.create.title')}
+          </Button>
+        </div>
       </div>
 
       {isSuperadmin && unowned.length > 0 ? (
@@ -241,8 +248,151 @@ export function RegionsPage() {
           await load();
         }}
       />
+      <BulkRegionsModal open={bulkOpen} onClose={() => setBulkOpen(false)} onDone={load} />
       {confirmDialog}
     </div>
+  );
+}
+
+interface BulkRegionResult {
+  createdCount: number;
+  failedCount: number;
+  created: { line: number; name: string }[];
+  failed: { line: number; error: string }[];
+}
+
+/**
+ * 批量建区域。一行一个名字。
+ *
+ * 结果按行号逐行回放，成功与失败排在一起 —— 只报一个「成功 3 失败 2」的话，
+ * 管理员还得自己把失败的名字从原文里找出来。
+ */
+function BulkRegionsModal({
+  open,
+  onClose,
+  onDone,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onDone: () => Promise<void>;
+}) {
+  const t = useAdminT();
+  const toast = useToast();
+  const [text, setText] = useState('');
+  const [result, setResult] = useState<BulkRegionResult | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const close = () => {
+    setText('');
+    setResult(null);
+    onClose();
+  };
+
+  const submit = async () => {
+    setSubmitting(true);
+    try {
+      const res = await request<BulkRegionResult>('/regions/bulk', {
+        method: 'POST',
+        body: { text },
+      });
+      setResult(res);
+      if (res.createdCount > 0) await onDone();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const rows = result
+    ? [
+        ...result.created.map((row) => ({ line: row.line, text: row.name, ok: true })),
+        ...result.failed.map((row) => ({ line: row.line, text: row.error, ok: false })),
+      ].sort((a, b) => a.line - b.line)
+    : [];
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => !o && close()}
+      title={t('bulk.title')}
+      width={560}
+      footer={
+        <>
+          <Button variant="default" onClick={close}>
+            {t('common.cancel')}
+          </Button>
+          {result ? (
+            <Button variant="primary" onClick={() => setResult(null)}>
+              {t('bulk.retryFailed')}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              loading={submitting}
+              disabled={text.trim() === ''}
+              onClick={() => void submit()}
+            >
+              {t('bulk.start')}
+            </Button>
+          )}
+        </>
+      }
+    >
+      {result ? (
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-3">
+            <div className="flex-1 rounded-[var(--radius-control)] border border-border bg-bg px-4 py-3">
+              <div className="text-[12px] text-muted">{t('bulk.succeeded')}</div>
+              <div className="font-mono text-2xl font-semibold text-accent">
+                {result.createdCount}
+              </div>
+            </div>
+            <div className="flex-1 rounded-[var(--radius-control)] border border-border bg-bg px-4 py-3">
+              <div className="text-[12px] text-muted">{t('bulk.failed')}</div>
+              <div className="font-mono text-2xl font-semibold text-danger">
+                {result.failedCount}
+              </div>
+            </div>
+          </div>
+
+          <div className="max-h-80 overflow-y-auto rounded-[var(--radius-control)] border border-border">
+            {rows.map((row) => (
+              <div
+                key={row.line}
+                className={`flex items-center gap-2.5 border-b border-border px-3 py-2 text-[13px] last:border-b-0
+                  ${row.ok ? '' : 'bg-danger-soft'}`}
+              >
+                {row.ok ? (
+                  <CheckCircle2 className="size-4 shrink-0 text-accent" />
+                ) : (
+                  <XCircle className="size-4 shrink-0 text-danger" />
+                )}
+                <span className="w-14 shrink-0 whitespace-nowrap font-mono text-muted">
+                  {t('bulk.line', { line: row.line })}
+                </span>
+                <span className={row.ok ? 'text-fg' : 'text-danger'}>{row.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <p className="text-[13px] text-muted">
+            {t('regions.bulk.format')}
+            <br />
+            {t('bulk.partial')}
+          </p>
+          <Textarea
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            rows={10}
+            placeholder={t('regions.bulk.placeholder')}
+            className="font-mono text-[13px]"
+          />
+        </div>
+      )}
+    </Dialog>
   );
 }
 

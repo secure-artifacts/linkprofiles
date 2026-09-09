@@ -87,4 +87,6 @@ export const errorsId: ErrorMessages = {
   'field.password.required': 'Kata sandi tidak boleh kosong',
   'bulk.columns':
     'Setiap baris memerlukan empat kolom yang dipisahkan tab: nama, akun, short_name, kata sandi',
+  'field.region.name.max': 'Nama region maksimal {{regionNameMax}} karakter',
+  'bulk.duplicateName': 'Nama ini sudah muncul sebelumnya dalam batch yang sama',
 };

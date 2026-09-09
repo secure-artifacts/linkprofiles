@@ -96,4 +96,6 @@ export const errorsFil: ErrorMessages = {
   'field.password.required': 'Hindi puwedeng walang laman ang password',
   'bulk.columns':
     'Kailangan ng bawat hilera ng apat na hanay na pinaghihiwalay ng tab: pangalan, account, short_name, password',
+  'field.region.name.max': 'Hanggang {{regionNameMax}} karakter lang ang pangalan ng rehiyon',
+  'bulk.duplicateName': 'Lumitaw na ang pangalang ito sa mas maaga sa parehong batch',
 };

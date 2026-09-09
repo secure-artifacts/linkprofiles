@@ -93,4 +93,6 @@ export const errorsEn = {
   'field.account.required': 'Account cannot be empty',
   'field.password.required': 'Password cannot be empty',
   'bulk.columns': 'Each row needs four tab-separated columns: name, account, short_name, password',
+  'field.region.name.max': 'Region name can be at most {{regionNameMax}} characters',
+  'bulk.duplicateName': 'This name appears earlier in the same batch',
 } as const;

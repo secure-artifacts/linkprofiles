@@ -260,6 +260,7 @@ export function AnalyticsPage() {
             <div className="w-40">
               <Select
                 size="sm"
+                searchable
                 value={regionId ?? ALL_REGIONS}
                 placeholder={t('analytics.allRegions')}
                 onChange={(value) =>
@@ -276,6 +277,7 @@ export function AnalyticsPage() {
           <div className="w-44">
             <Select
               size="sm"
+              searchable
               value={timeZone}
               onChange={setTimeZone}
               options={TIME_ZONES.map((tz) => ({ value: tz, label: tz }))}

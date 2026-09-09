@@ -90,4 +90,7 @@ export const errorsEs: ErrorMessages = {
   'field.password.required': 'La contraseña no puede estar vacía',
   'bulk.columns':
     'Cada fila necesita cuatro columnas separadas por tabulador: nombre, cuenta, short_name, contraseña',
+  'field.region.name.max':
+    'El nombre de la región puede tener como máximo {{regionNameMax}} caracteres',
+  'bulk.duplicateName': 'Este nombre ya aparece antes en el mismo lote',
 };

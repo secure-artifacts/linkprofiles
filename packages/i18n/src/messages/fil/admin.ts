@@ -161,6 +161,8 @@ export const adminFil: AdminMessages = {
   'common.confirm': 'Kumpirmahin',
   'common.actions': 'Mga aksyon',
   'common.loading': 'Naglo-load…',
+  'common.search': 'Maghanap',
+  'common.noMatch': 'Walang tugma',
   'common.noData': 'Wala pang laman',
   'common.close': 'Isara',
   'common.saved': 'Na-save',
@@ -240,16 +242,16 @@ export const adminFil: AdminMessages = {
   'users.shortName.hint':
     'Ang URL ng unang profile page nila. Kapag nailathala, pampublikong ari-arian na ito, at hindi na ibibigay muli pagkatapos burahin',
   'users.shortName.rule': 'Maliliit na titik, numero at gitling, 3 hanggang 30 karakter',
-  'users.bulk.title': 'Maramihang paggawa',
-  'users.bulk.done': 'Nagawa na',
-  'users.bulk.start': 'Simulan ang paggawa',
-  'users.bulk.retryFailed': 'Balikan ang mga hindi nagtagumpay',
-  'users.bulk.succeeded': 'Nagtagumpay',
-  'users.bulk.failed': 'Nabigo',
+  'bulk.title': 'Maramihang paggawa',
+  'bulk.done': 'Nagawa na',
+  'bulk.start': 'Simulan ang paggawa',
+  'bulk.retryFailed': 'Balikan ang mga hindi nagtagumpay',
+  'bulk.succeeded': 'Nagtagumpay',
+  'bulk.failed': 'Nabigo',
   'users.bulk.format':
     'I-paste mula mismo sa spreadsheet: apat na hanay bawat linya, hiwalay ng tab.',
   'users.bulk.columns': 'Panloob na tala ⇥ account ⇥ address ng page ⇥ password',
-  'users.bulk.partial':
+  'bulk.partial':
     'Gagawin muna ang kayang gawin; hiwalay na ilalista ang mga nabigo, kaya hindi na kailangang ulitin ang buong batch.',
   'users.search.placeholder': 'Maghanap ng account, tala o address ng page',
   'users.search.empty': 'Walang user na tugma sa “{{term}}”',
@@ -579,9 +581,9 @@ export const adminFil: AdminMessages = {
   'users.delete.pagesCount':
     'Lahat ng {{count}} address ng page sa ilalim ng account na ito ay mapupunta sa tombstone at',
   'users.pagesCount': '{{count}} page',
-  'users.pagination': '{{count}} user, {{size}} kada page',
+  'users.pagination': '{{count}} user sa {{regions}} rehiyon',
   'users.shownOn': 'Ipinapakita sa profile page na /{{shortName}}.',
-  'users.bulk.line': 'Linya {{line}}',
+  'bulk.line': 'Linya {{line}}',
   'preview.livePreview': '{{width}}px live preview · lumalabas din ang mga hindi pa nase-save',
 
   'media.slot.banner': 'Banner na larawan',
@@ -615,6 +617,9 @@ export const adminFil: AdminMessages = {
   'regions.members': 'Mga user',
   'regions.default': 'Default',
   'regions.membersCount': '{{count}} user',
+  'regions.bulk.format':
+    'Isang pangalan ng rehiyon bawat linya. Natatangi ang pangalan sa buong site, kaya iuulat ang nakuha na sa halip na likhain.',
+  'regions.bulk.placeholder': 'Manila grupo 1\\nDavao grupo 3',
   'regions.delete.blocked.default':
     'Hindi puwedeng burahin ang default na rehiyon. May isa ang bawat admin, at doon napupunta ang mga bagong user.',
   'regions.delete.blocked.members':

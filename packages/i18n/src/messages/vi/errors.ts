@@ -83,4 +83,6 @@ export const errorsVi: ErrorMessages = {
   'field.account.required': 'Tài khoản không được để trống',
   'field.password.required': 'Mật khẩu không được để trống',
   'bulk.columns': 'Mỗi dòng cần bốn cột phân tách bằng tab: tên, tài khoản, short_name, mật khẩu',
+  'field.region.name.max': 'Tên vùng tối đa {{regionNameMax}} ký tự',
+  'bulk.duplicateName': 'Tên này đã xuất hiện trước đó trong cùng lô',
 };

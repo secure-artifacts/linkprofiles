@@ -150,6 +150,8 @@ export const adminEs: AdminMessages = {
   'common.confirm': 'Confirmar',
   'common.actions': 'Acciones',
   'common.loading': 'Cargando…',
+  'common.search': 'Buscar',
+  'common.noMatch': 'Sin coincidencias',
   'common.noData': 'Todavía no hay nada',
   'common.close': 'Cerrar',
   'common.saved': 'Guardado',
@@ -228,16 +230,16 @@ export const adminEs: AdminMessages = {
   'users.shortName.hint':
     'La URL de su primera página de perfil. Una vez publicada es un activo público y, tras eliminarla, nunca se reasigna',
   'users.shortName.rule': 'Minúsculas, dígitos y guiones, de 3 a 30 caracteres',
-  'users.bulk.title': 'Creación masiva',
-  'users.bulk.done': 'Creados',
-  'users.bulk.start': 'Empezar a crear',
-  'users.bulk.retryFailed': 'Volver a las filas fallidas',
-  'users.bulk.succeeded': 'Correctas',
-  'users.bulk.failed': 'Fallidas',
+  'bulk.title': 'Creación masiva',
+  'bulk.done': 'Creados',
+  'bulk.start': 'Empezar a crear',
+  'bulk.retryFailed': 'Volver a las filas fallidas',
+  'bulk.succeeded': 'Correctas',
+  'bulk.failed': 'Fallidas',
   'users.bulk.format':
     'Pega directamente desde una hoja de cálculo: cuatro columnas por fila separadas por tabulaciones.',
   'users.bulk.columns': 'Nota interna ⇥ cuenta ⇥ dirección de la página ⇥ contraseña',
-  'users.bulk.partial':
+  'bulk.partial':
     'Se crea todo lo que se pueda; las filas fallidas se listan aparte, así que nunca hay que repetir el lote entero.',
   'users.search.placeholder': 'Buscar cuenta, nota o dirección de página',
   'users.search.empty': 'Ningún usuario coincide con «{{term}}»',
@@ -559,9 +561,9 @@ export const adminEs: AdminMessages = {
   'users.delete.pagesCount':
     'Las {{count}} direcciones de página de esta cuenta pasan a la lista de lápidas y',
   'users.pagesCount': '{{count}} páginas',
-  'users.pagination': '{{count}} usuarios, {{size}} por página',
+  'users.pagination': '{{count}} usuarios en {{regions}} regiones',
   'users.shownOn': 'Se muestra en la página de perfil /{{shortName}}.',
-  'users.bulk.line': 'Fila {{line}}',
+  'bulk.line': 'Fila {{line}}',
   'preview.livePreview':
     'Vista previa en vivo de {{width}}px · también se ven los cambios sin guardar',
   'media.slot.banner': 'Imagen de banner',
@@ -595,6 +597,9 @@ export const adminEs: AdminMessages = {
   'regions.members': 'Usuarios',
   'regions.default': 'Predeterminada',
   'regions.membersCount': '{{count}} usuarios',
+  'regions.bulk.format':
+    'Un nombre de región por línea. Los nombres son únicos en todo el sitio, así que los ya ocupados se informan en lugar de crearse.',
+  'regions.bulk.placeholder': 'Manila grupo 1\\nDavao grupo 3',
   'regions.delete.blocked.default':
     'No se puede eliminar una región predeterminada. Cada administrador conserva una y los usuarios nuevos entran ahí.',
   'regions.delete.blocked.members':
