@@ -430,6 +430,10 @@ export const adminVi: AdminMessages = {
   'analytics.range.7d': '7 ngày',
   'analytics.range.30d': '30 ngày',
   'analytics.range.custom': 'Tự chọn',
+  'analytics.export': 'Xuất CSV',
+  'analytics.export.hint':
+    'Tải toàn bộ khoảng thời gian hiện tại thành một tệp CSV, sẵn sàng nhập vào bảng tính.',
+  'analytics.export.done': 'Đã tải CSV',
   'analytics.timeZone': 'Múi giờ',
   'analytics.counts.title': 'Đây là số lượt, không phải số người',
   'analytics.counts.body':

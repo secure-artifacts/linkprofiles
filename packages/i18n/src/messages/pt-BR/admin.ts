@@ -435,6 +435,10 @@ export const adminPtBR: AdminMessages = {
   'analytics.range.7d': '7 dias',
   'analytics.range.30d': '30 dias',
   'analytics.range.custom': 'Personalizado',
+  'analytics.export': 'Exportar CSV',
+  'analytics.export.hint':
+    'Baixa tudo do intervalo atual em um CSV pronto para importar em uma planilha.',
+  'analytics.export.done': 'CSV baixado',
   'analytics.timeZone': 'Fuso horário',
   'analytics.counts.title': 'Estes números são vezes, não pessoas',
   'analytics.counts.body':

@@ -436,6 +436,10 @@ export const adminId: AdminMessages = {
   'analytics.range.7d': '7 hari',
   'analytics.range.30d': '30 hari',
   'analytics.range.custom': 'Khusus',
+  'analytics.export': 'Ekspor CSV',
+  'analytics.export.hint':
+    'Mengunduh seluruh rentang saat ini sebagai satu CSV yang siap diimpor ke spreadsheet.',
+  'analytics.export.done': 'CSV telah diunduh',
   'analytics.timeZone': 'Zona waktu',
   'analytics.counts.title': 'Angka ini jumlah kejadian, bukan jumlah orang',
   'analytics.counts.body':

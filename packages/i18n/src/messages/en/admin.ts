@@ -446,6 +446,10 @@ export const adminEn = {
   'analytics.range.7d': '7 days',
   'analytics.range.30d': '30 days',
   'analytics.range.custom': 'Custom',
+  'analytics.export': 'Export CSV',
+  'analytics.export.hint':
+    'Downloads everything in the current range as one CSV, ready to import into a spreadsheet.',
+  'analytics.export.done': 'CSV downloaded',
   'analytics.timeZone': 'Time zone',
   'analytics.counts.title': 'These are counts, not people',
   'analytics.counts.body':

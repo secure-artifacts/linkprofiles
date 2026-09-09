@@ -452,6 +452,10 @@ export const adminFil: AdminMessages = {
   'analytics.range.7d': '7 araw',
   'analytics.range.30d': '30 araw',
   'analytics.range.custom': 'Sariling saklaw',
+  'analytics.export': 'I-export ang CSV',
+  'analytics.export.hint':
+    'Ida-download ang lahat sa kasalukuyang saklaw bilang isang CSV, handang i-import sa spreadsheet.',
+  'analytics.export.done': 'Na-download ang CSV',
   'analytics.timeZone': 'Time zone',
   'analytics.counts.title': 'Bilang ito, hindi tao',
   'analytics.counts.body':

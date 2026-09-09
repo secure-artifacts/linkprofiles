@@ -437,6 +437,10 @@ export const adminEs: AdminMessages = {
   'analytics.range.7d': '7 días',
   'analytics.range.30d': '30 días',
   'analytics.range.custom': 'Personalizado',
+  'analytics.export': 'Exportar CSV',
+  'analytics.export.hint':
+    'Descarga todo el rango actual en un CSV listo para importar en una hoja de cálculo.',
+  'analytics.export.done': 'CSV descargado',
   'analytics.timeZone': 'Zona horaria',
   'analytics.counts.title': 'Estos números son veces, no personas',
   'analytics.counts.body':

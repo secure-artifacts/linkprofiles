@@ -1,5 +1,5 @@
 import { DEFAULT_DISPLAY_TIMEZONE } from '@link-profile/shared';
-import { ArrowLeft, Copy, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Copy, Download, ExternalLink } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -31,11 +31,14 @@ import { buildDashboardInsights, periodChange } from '../analytics/dashboard-ins
 import { countryLabel, percent, sourceLabel } from '../analytics/labels.js';
 import { rankProfiles, type ProfileRankKey } from '../analytics/profile-ranking.js';
 import { regionLabel } from '../regions/label.js';
+import { buildAnalyticsCsv, downloadCsv } from '../analytics/export-csv.js';
+import { Tooltip } from '../ui/Tooltip.js';
 import { useSession } from '../session.js';
 import { Alert } from '../ui/Alert.js';
 import { Button } from '../ui/Button.js';
 import { Segmented } from '../ui/Segmented.js';
 import { Select } from '../ui/Select.js';
+import { useToast } from '../ui/Toast.js';
 import { useAdminT, useLocale } from '../i18n/runtime.js';
 import { formatNumber } from '../format.js';
 
@@ -66,6 +69,8 @@ const ALL_REGIONS = 'all';
 
 export function AnalyticsPage() {
   const t = useAdminT();
+  const locale = useLocale();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const session = useSession();
@@ -277,6 +282,21 @@ export function AnalyticsPage() {
               aria-label={t('analytics.timeZone')}
             />
           </div>
+          <Tooltip content={t('analytics.export.hint')}>
+            <Button
+              variant="default"
+              size="sm"
+              disabled={!data}
+              onClick={() => {
+                if (!data) return;
+                downloadCsv(data, scopeName, buildAnalyticsCsv(data, t, locale, scopeName));
+                toast.success(t('analytics.export.done'));
+              }}
+            >
+              <Download size={14} />
+              {t('analytics.export')}
+            </Button>
+          </Tooltip>
         </div>
       </div>
     </div>

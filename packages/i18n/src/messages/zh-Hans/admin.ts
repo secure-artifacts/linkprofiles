@@ -408,6 +408,9 @@ export const adminZhHans: AdminMessages = {
   'analytics.range.7d': '7 天',
   'analytics.range.30d': '30 天',
   'analytics.range.custom': '自定义',
+  'analytics.export': '导出 CSV',
+  'analytics.export.hint': '把当前时间范围的数据导成一个 CSV，可直接导入表格。',
+  'analytics.export.done': 'CSV 已下载',
   'analytics.timeZone': '展示时区',
   'analytics.counts.title': '这里的数字是次数，不是人数',
   'analytics.counts.body':
