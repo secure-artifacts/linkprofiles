@@ -21,6 +21,8 @@ import { profileRoutes } from './routes/profile.js';
 import { settingsRoutes } from './routes/settings.js';
 import { trackRoutes } from './routes/track.js';
 import { userRoutes } from './routes/users.js';
+import { regionRoutes } from './routes/regions.js';
+import { registerRoutes } from './routes/register.js';
 import { apiKeyRoutes } from './routes/api-keys.js';
 import { externalApiRoutes } from './routes/external-api.js';
 
@@ -84,6 +86,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(adminRoutes, { prefix: '/_api' });
   await app.register(bulkUserRoutes, { prefix: '/_api' });
   await app.register(userRoutes, { prefix: '/_api' });
+  await app.register(regionRoutes, { prefix: '/_api' });
+  await app.register(registerRoutes, { prefix: '/_api' });
   await app.register(profileContentRoutes, { prefix: '/_api' });
   await app.register(apiKeyRoutes, { prefix: '/_api' });
   await app.register(externalApiRoutes, { prefix: '/_api/v1' });

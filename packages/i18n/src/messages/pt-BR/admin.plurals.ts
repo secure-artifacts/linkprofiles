@@ -16,4 +16,9 @@ export const adminPluralsPtBR: Record<string, string> = {
   'analytics.visitsCount_one': '{{count}} visita',
   'analytics.leadsCount_one': '{{count}} contato',
   'country.clicksShare_one': '{{count}} clique · {{percent}}',
+  'regions.membersCount_one': '{{count}} usuário',
+  'admins.regionCountValue_one': '{{count}} região',
+  'users.selected_one': '{{count}} selecionado',
+  'regions.unowned.count_one': '{{count}} região sem administrador responsável',
+  'analytics.regions.title_one': 'Por região · {{count}} região',
 };

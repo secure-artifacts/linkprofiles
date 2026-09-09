@@ -1,5 +1,6 @@
-import { users } from '@link-profile/shared/schema';
+import { regions, users } from '@link-profile/shared/schema';
 import { and, eq } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Db } from '../db/client.js';
 import {
@@ -33,7 +34,8 @@ export function requireCapability(capability: Capability) {
 export interface TargetUserRow {
   id: string;
   role: CurrentUser['role'];
-  owningAdminId: string | null;
+  regionId: string | null;
+  regionOwnerAdminId: string | null;
   uiLanguage: string;
 }
 
@@ -50,14 +52,19 @@ export async function loadTargetUser(
   action: UserAction,
 ): Promise<TargetUserRow | null> {
   const scope = visibleUsersFilter(actor);
+  // 起别名：`visibleUsersFilter` 的相关子查询里用的是未加别名的 regions，
+  // 同名会让子查询里的引用绑到外层这张表上。
+  const region = alias(regions, 'target_region');
   const [row] = await db
     .select({
       id: users.id,
       role: users.role,
-      owningAdminId: users.owningAdminId,
+      regionId: users.regionId,
+      regionOwnerAdminId: region.ownerAdminId,
       uiLanguage: users.uiLanguage,
     })
     .from(users)
+    .leftJoin(region, eq(region.id, users.regionId))
     .where(scope ? and(eq(users.id, targetId), scope) : eq(users.id, targetId))
     .limit(1);
 

@@ -1,3 +1,5 @@
+export * from './regions.js';
+export * from './invite-codes.js';
 export * from './users.js';
 export * from './profiles.js';
 export * from './sessions.js';

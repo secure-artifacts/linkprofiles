@@ -15,7 +15,7 @@ export interface CurrentUser {
   id: string;
   role: 'superadmin' | 'admin' | 'user';
   account: string;
-  owningAdminId: string | null;
+  regionId: string | null;
   /** 界面语言。服务端据此翻自己产出的报错，见 ADR-0021。 */
   uiLanguage: string;
 }
@@ -42,7 +42,7 @@ export async function resolveSession(
       id: users.id,
       role: users.role,
       account: users.account,
-      owningAdminId: users.owningAdminId,
+      regionId: users.regionId,
       uiLanguage: users.uiLanguage,
     })
     .from(sessions)

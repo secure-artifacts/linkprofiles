@@ -1,11 +1,80 @@
-import { profiles, users, type NewProfileRow, type NewUserRow } from '@link-profile/shared/schema';
+import {
+  profiles,
+  regions,
+  users,
+  UNASSIGNED_REGION_ID,
+  type NewProfileRow,
+  type NewRegionRow,
+  type NewUserRow,
+} from '@link-profile/shared/schema';
+import { and, eq } from 'drizzle-orm';
 import type { Db } from '../../src/db/client.js';
 
 let seq = 0;
 
-/** 只建账号，不建个人页。管理员与超级管理员用这个。 */
-export async function createUserAccount(db: Db, overrides: Partial<NewUserRow> = {}) {
+/**
+ * 确保「未分配」区域存在，返回它的 id。
+ *
+ * 迁移建过它，但测试普遍用 `truncate table users cascade` 清场，而 `regions`
+ * 有指向 `users` 的外键，会被一并截断。所以每次造账号前重新补上，既有调用点
+ * 才不必逐个去关心区域。
+ */
+export async function ensureUnassignedRegion(db: Db) {
+  await db
+    .insert(regions)
+    .values({ id: UNASSIGNED_REGION_ID, name: '未分配', ownerAdminId: null, isDefault: false })
+    .onConflictDoNothing();
+  return UNASSIGNED_REGION_ID;
+}
+
+/** 建一个区域。默认无归属，传 `ownerAdminId` 挂到某个管理员名下。 */
+export async function createRegion(db: Db, overrides: Partial<NewRegionRow> = {}) {
   seq += 1;
+  const [row] = await db
+    .insert(regions)
+    .values({ name: `区域 ${seq}`, ...overrides })
+    .returning();
+  if (!row) throw new Error('创建区域失败');
+  return row;
+}
+
+/**
+ * 取某个管理员的默认区域，没有就建一个。
+ *
+ * 测试里普遍要表达「这个用户归属于 alice」，而归属现在沿区域推导，直接落到
+ * alice 的默认区域就是那个意思。
+ */
+export async function defaultRegionOf(db: Db, adminId: string) {
+  const [existing] = await db
+    .select({ id: regions.id })
+    .from(regions)
+    .where(and(eq(regions.ownerAdminId, adminId), eq(regions.isDefault, true)))
+    .limit(1);
+  if (existing) return existing.id;
+  const created = await createRegion(db, { ownerAdminId: adminId, isDefault: true });
+  return created.id;
+}
+
+type AccountOverrides = Partial<NewUserRow> & {
+  /** 落进这个管理员的默认区域。`regionId` 的语义糖，别名不代表用户身上还有归属字段。 */
+  ownedBy?: string;
+};
+
+/** 只建账号，不建个人页。管理员与超级管理员用这个。 */
+export async function createUserAccount(db: Db, overrides: AccountOverrides = {}) {
+  seq += 1;
+  const { ownedBy, ...rest } = overrides;
+  const role = rest.role ?? 'user';
+  // 只有 user 属于区域；管理员与超级管理员不属于任何区域，见 ADR-0017。
+  const regionId =
+    role !== 'user'
+      ? null
+      : ownedBy
+        ? await defaultRegionOf(db, ownedBy)
+        : 'regionId' in rest
+          ? rest.regionId
+          : await ensureUnassignedRegion(db);
+
   const [row] = await db
     .insert(users)
     .values({
@@ -13,10 +82,13 @@ export async function createUserAccount(db: Db, overrides: Partial<NewUserRow> =
       account: `account-${seq}`,
       passwordHash: 'not-a-real-hash',
       label: `用户 ${seq}`,
-      ...overrides,
+      ...rest,
+      regionId,
     })
     .returning();
   if (!row) throw new Error('创建账号失败');
+  // 管理员一被创建就该有默认区域，与 POST /_api/admins 走的是同一条不变式。
+  if (row.role === 'admin') await defaultRegionOf(db, row.id);
   return row;
 }
 
@@ -54,7 +126,7 @@ const PROFILE_KEYS = new Set([
   'backgroundOverlay',
 ]);
 
-type UserWithProfileOverrides = Partial<NewUserRow> & Partial<Omit<NewProfileRow, 'userId'>>;
+type UserWithProfileOverrides = AccountOverrides & Partial<Omit<NewProfileRow, 'userId'>>;
 
 /**
  * 建一个账号 + 它的第一个个人页，字段按名字自动分流到两张表。

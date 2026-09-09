@@ -1,6 +1,8 @@
+import { regions, users } from '@link-profile/shared/schema';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from './helpers/context.js';
-import { createLoginableUser } from './helpers/factories.js';
+import { createLoginableUser, createRegion } from './helpers/factories.js';
 import { login, withSession } from './helpers/http.js';
 
 let ctx: TestContext;
@@ -57,14 +59,33 @@ async function createUserAs(token: string, shortName: string) {
   expect(res.statusCode).toBe(201);
   return res.json() as {
     id: string;
-    owningAdminId: string | null;
+    regionId: string | null;
     firstProfile: { id: string; shortName: string };
   };
 }
 
-test('创建者自动成为归属管理员', async () => {
+/** 归属管理员现在由「用户 → 区域 → 管理员」推导，测试里照这条链断言。 */
+async function ownerOf(userId: string) {
+  const [row] = await ctx.db
+    .select({ ownerAdminId: regions.ownerAdminId })
+    .from(users)
+    .innerJoin(regions, eq(regions.id, users.regionId))
+    .where(eq(users.id, userId));
+  return row?.ownerAdminId ?? null;
+}
+
+async function defaultRegionIdOf(adminId: string) {
+  const [row] = await ctx.db
+    .select({ id: regions.id })
+    .from(regions)
+    .where(and(eq(regions.ownerAdminId, adminId), eq(regions.isDefault, true)));
+  return row!.id;
+}
+
+test('新建用户落进创建者的默认区域，归属管理员由此推导', async () => {
   const created = await createUserAs(aliceToken, 'alice-one');
-  expect(created.owningAdminId).toBe(aliceId);
+  expect(created.regionId).toBe(await defaultRegionIdOf(aliceId));
+  expect(await ownerOf(created.id)).toBe(aliceId);
 });
 
 test('管理员的列表只返回归属于自己的用户', async () => {
@@ -153,7 +174,7 @@ test('删除管理员后，其名下用户转为无归属而不是被连带删�
     ...withSession(superToken),
   });
   expect(detail.statusCode).toBe(200);
-  expect(detail.json().owningAdminId).toBeNull();
+  expect(await ownerOf(orphan.id)).toBeNull();
 });
 
 test('无归属用户仅超级管理员可见，可单独列出', async () => {
@@ -167,7 +188,7 @@ test('无归属用户仅超级管理员可见，可单独列出', async () => {
 
   const unowned = await ctx.app.inject({
     method: 'GET',
-    url: '/_api/users?owner=none',
+    url: '/_api/users?region=unowned',
     ...withSession(superToken),
   });
   expect(unowned.json().users.map((u: { id: string }) => u.id)).toEqual([orphan.id]);
@@ -175,7 +196,7 @@ test('无归属用户仅超级管理员可见，可单独列出', async () => {
   // bob 既看不到无归属的，也拿不到这份清单
   const bobSees = await ctx.app.inject({
     method: 'GET',
-    url: '/_api/users?owner=none',
+    url: '/_api/users?region=unowned',
     ...withSession(bobToken),
   });
   expect(bobSees.json().users).toEqual([]);
@@ -196,14 +217,16 @@ test('超级管理员可以把无归属用户重新指派给某个管理员', as
     ...withSession(superToken),
   });
 
+  const bobRegion = await defaultRegionIdOf(bobId);
   const assigned = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${orphan.id}/owner`,
+    url: '/_api/users/region',
     ...withSession(superToken),
-    payload: { owningAdminId: bobId },
+    payload: { userIds: [orphan.id], regionId: bobRegion },
   });
   expect(assigned.statusCode).toBe(200);
-  expect(assigned.json().owningAdminId).toBe(bobId);
+  expect(assigned.json()).toMatchObject({ moved: 1, regionId: bobRegion });
+  expect(await ownerOf(orphan.id)).toBe(bobId);
 
   // 指派之后 bob 就管得了
   const bobSees = await ctx.app.inject({
@@ -219,40 +242,72 @@ test('管理员不能自己抢用户', async () => {
 
   const res = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${bobsUser.id}/owner`,
+    url: '/_api/users/region',
     ...withSession(aliceToken),
-    payload: { owningAdminId: aliceId },
+    payload: { userIds: [bobsUser.id], regionId: await defaultRegionIdOf(aliceId) },
   });
 
   expect(res.statusCode).toBe(403);
 });
 
-test('只能指派给真正的管理员', async () => {
+test('目标区域不存在时拒绝', async () => {
   const someone = await createUserAs(bobToken, 'bob-one');
 
   const res = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${someone.id}/owner`,
+    url: '/_api/users/region',
     ...withSession(superToken),
-    payload: { owningAdminId: someone.id },
+    payload: { userIds: [someone.id], regionId: '00000000-0000-4000-8000-0000000000ff' },
   });
 
   expect(res.statusCode).toBe(400);
-  expect(res.json()).toEqual({ error: 'not_an_admin' });
+  expect(res.json()).toMatchObject({ error: 'region_not_found' });
 });
 
-test('可以显式把用户置为无归属', async () => {
+test('可以把用户移进无归属区域', async () => {
   const someone = await createUserAs(bobToken, 'bob-one');
+  const unowned = await createRegion(ctx.db, { ownerAdminId: null });
 
   const res = await ctx.app.inject({
     method: 'PUT',
-    url: `/_api/users/${someone.id}/owner`,
+    url: '/_api/users/region',
     ...withSession(superToken),
-    payload: { owningAdminId: null },
+    payload: { userIds: [someone.id], regionId: unowned.id },
   });
 
   expect(res.statusCode).toBe(200);
-  expect(res.json().owningAdminId).toBeNull();
+  expect(await ownerOf(someone.id)).toBeNull();
+
+  // 挪走之后 bob 就看不见了
+  const bobSees = await ctx.app.inject({
+    method: 'GET',
+    url: `/_api/users/${someone.id}`,
+    ...withSession(bobToken),
+  });
+  expect(bobSees.statusCode).toBe(403);
+});
+
+test('管理员列得到自己名下的区域，列不到别人的', async () => {
+  const forAlice = await ctx.app.inject({
+    method: 'GET',
+    url: '/_api/regions',
+    ...withSession(aliceToken),
+  });
+  expect(forAlice.statusCode).toBe(200);
+  const names = forAlice.json().regions.map((r: { ownerAdminId: string }) => r.ownerAdminId);
+  expect(names).toEqual([aliceId]);
+
+  const forSuper = await ctx.app.inject({
+    method: 'GET',
+    url: '/_api/regions',
+    ...withSession(superToken),
+  });
+  expect(
+    forSuper
+      .json()
+      .regions.map((r: { ownerAdminId: string }) => r.ownerAdminId)
+      .sort(),
+  ).toEqual([aliceId, bobId].sort());
 });
 
 test('用户自己不受归属影响，仍然只看得到自己', async () => {

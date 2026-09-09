@@ -5,11 +5,12 @@ import {
   presetRange,
   type RangePreset,
 } from '@link-profile/shared';
-import { profiles, users } from '@link-profile/shared/schema';
+import { profiles, regions, users } from '@link-profile/shared/schema';
+import { alias } from 'drizzle-orm/pg-core';
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { visibleUsersFilter } from '../auth/policy.js';
+import { visibleRegionsFilter, visibleUsersFilter } from '../auth/policy.js';
 import type { CurrentUser } from '../auth/sessions.js';
 import {
   queryButtons,
@@ -22,6 +23,7 @@ import { queryCrossBreakdowns } from '../analytics/cross-breakdowns.js';
 import { queryCountryDaily } from '../analytics/country-daily.js';
 import { queryActivityHeatmap, queryProfileHighlights } from '../analytics/overview.js';
 import {
+  foldAccountsIntoRegions,
   queryScopePerformance,
   type VisibleAccount,
   type VisibleProfile,
@@ -30,6 +32,8 @@ import { fail, unauthorized } from '../http/errors.js';
 
 const querySchema = z
   .object({
+    /** 最外层筛选：只看这个区域里的用户 */
+    regionId: z.string().uuid().optional(),
     /** 汇总视图：某个账号名下全部个人页的合计 */
     userId: z.string().uuid().optional(),
     /** 单页视图：只看这一个个人页 */
@@ -68,17 +72,23 @@ export async function analyticsRoutes(app: FastifyInstance) {
     if ('error' in range) return reply.code(400).send(range);
 
     const filter = {
+      ...(parsed.data.regionId ? { regionId: parsed.data.regionId } : {}),
       ...(parsed.data.userId ? { userId: parsed.data.userId } : {}),
       ...(parsed.data.profileId ? { profileId: parsed.data.profileId } : {}),
     };
-    const [visibleProfiles, visibleAccounts] = await Promise.all([
+    const [visibleProfiles, visibleAccounts, visibleRegions] = await Promise.all([
       resolveVisibleProfiles(app, req.currentUser, filter),
       resolveVisibleAccounts(app, req.currentUser, filter),
+      resolveVisibleRegions(app, req.currentUser),
     ]);
     // 指名道姓要看一个自己看不见的对象，与「它不存在」同一个响应
+    const selectedRegion = parsed.data.regionId
+      ? visibleRegions.find((region) => region.id === parsed.data.regionId)
+      : undefined;
     if (
       (parsed.data.profileId && visibleProfiles.length === 0) ||
-      (parsed.data.userId && visibleAccounts.length === 0)
+      (parsed.data.userId && visibleAccounts.length === 0) ||
+      (parsed.data.regionId && !selectedRegion)
     ) {
       return fail(reply, 403, 'forbidden');
     }
@@ -94,7 +104,13 @@ export async function analyticsRoutes(app: FastifyInstance) {
     const selectedProfile = parsed.data.profileId ? visibleProfiles[0] : undefined;
     const selectedAccount =
       parsed.data.userId || req.currentUser.role === 'user' ? visibleAccounts[0] : undefined;
-    const scopeKind = selectedProfile ? 'profile' : selectedAccount ? 'account' : 'portfolio';
+    const scopeKind = selectedProfile
+      ? 'profile'
+      : selectedAccount
+        ? 'account'
+        : selectedRegion
+          ? 'region'
+          : 'portfolio';
     const duration = range.to.getTime() - range.from.getTime();
     const previousScope: QueryScope = {
       ...scope,
@@ -167,7 +183,9 @@ export async function analyticsRoutes(app: FastifyInstance) {
                 account: selectedAccount!.account,
                 label: selectedAccount!.label,
               }
-            : { kind: 'portfolio' },
+            : selectedRegion
+              ? { kind: 'region', regionId: selectedRegion.id, regionName: selectedRegion.name }
+              : { kind: 'portfolio' },
       range: {
         from: range.from.toISOString(),
         to: range.to.toISOString(),
@@ -191,7 +209,12 @@ export async function analyticsRoutes(app: FastifyInstance) {
       countryDaily,
       activityHeatmap,
       profileHighlights,
-      performance,
+      performance: {
+        ...performance,
+        // 折叠而不是另查：区域指标恒等于其中全部账号之和，见 ADR-0015。
+        regions: foldAccountsIntoRegions(performance.accounts),
+      },
+      regions: visibleRegions,
     };
   });
 }
@@ -245,11 +268,12 @@ function resolveRange(
 async function resolveVisibleProfiles(
   app: FastifyInstance,
   actor: CurrentUser,
-  filter: { userId?: string; profileId?: string },
+  filter: { regionId?: string; userId?: string; profileId?: string },
 ): Promise<VisibleProfile[]> {
   const scope = visibleUsersFilter(actor);
   const conditions = [eq(users.role, 'user' as const)];
   if (scope) conditions.push(scope);
+  if (filter.regionId) conditions.push(eq(users.regionId, filter.regionId));
   if (filter.userId) conditions.push(eq(profiles.userId, filter.userId));
   if (filter.profileId) conditions.push(eq(profiles.id, filter.profileId));
 
@@ -272,19 +296,29 @@ async function resolveVisibleProfiles(
 async function resolveVisibleAccounts(
   app: FastifyInstance,
   actor: CurrentUser,
-  filter: { userId?: string; profileId?: string },
+  filter: { regionId?: string; userId?: string; profileId?: string },
 ): Promise<VisibleAccount[]> {
   const scope = visibleUsersFilter(actor);
   const conditions = [eq(users.role, 'user' as const)];
   if (scope) conditions.push(scope);
+  if (filter.regionId) conditions.push(eq(users.regionId, filter.regionId));
   if (filter.userId) conditions.push(eq(users.id, filter.userId));
   if (filter.profileId) conditions.push(eq(profiles.id, filter.profileId));
 
-  const selection = { id: users.id, account: users.account, label: users.label };
+  // 区域名一并取出来，路由折叠区域行时不必再查一次。
+  const region = alias(regions, 'account_region');
+  const selection = {
+    id: users.id,
+    account: users.account,
+    label: users.label,
+    regionId: users.regionId,
+    regionName: region.name,
+  };
   if (filter.profileId) {
     return app.db
       .selectDistinct(selection)
       .from(users)
+      .leftJoin(region, eq(region.id, users.regionId))
       .innerJoin(profiles, eq(profiles.userId, users.id))
       .where(and(...conditions));
   }
@@ -292,5 +326,22 @@ async function resolveVisibleAccounts(
   return app.db
     .select(selection)
     .from(users)
+    .leftJoin(region, eq(region.id, users.regionId))
     .where(and(...conditions));
+}
+
+/** 区域筛选器的可选项。与用户可见范围同源，见 ADR-0017。 */
+async function resolveVisibleRegions(
+  app: FastifyInstance,
+  actor: CurrentUser,
+): Promise<{ id: string; name: string }[]> {
+  // 用户角色没有区域概念，筛选器整个不给。
+  if (actor.role === 'user') return [];
+
+  const scope = visibleRegionsFilter(actor);
+  return app.db
+    .select({ id: regions.id, name: regions.name })
+    .from(regions)
+    .where(scope)
+    .orderBy(regions.createdAt);
 }

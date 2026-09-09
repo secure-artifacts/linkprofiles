@@ -12,6 +12,14 @@ export const settings = pgTable('settings', {
   /** 来源透传的全局默认值，只有超级管理员改得了。按钮可逐条覆盖。 */
   sourcePassthroughDefault: boolean().notNull().default(false),
 
+  /**
+   * 自助注册总闸。只有超级管理员改得了。
+   *
+   * 邀请码泄露时唯一的止损手段——本系统不做限流也不做名额上限，见 ADR-0018。
+   * 关掉只挡新注册，不影响已有用户登录与使用。
+   */
+  registrationEnabled: boolean().notNull().default(false),
+
   updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 

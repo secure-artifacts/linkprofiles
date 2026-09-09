@@ -1,5 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import {
+  check,
   index,
   pgEnum,
   pgTable,
@@ -9,6 +10,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
+import { regions } from './regions.js';
 
 /**
  * 三级角色。超级管理员与管理员是纯后台运营者，不拥有个人页；
@@ -45,10 +47,16 @@ export const users = pgTable(
     uiLanguage: text().notNull().default('zh-Hans'),
 
     /**
-     * 归属管理员。为空即「无归属」，仅超级管理员可见。见 ADR-0005。
-     * 管理员被删除时置空而非连带删除名下用户。
+     * 区域。归属的唯一载体，见 ADR-0017。归属管理员由「用户 → 区域 → 管理员」
+     * 推导，不在本表上单独存。
+     *
+     * 列上可空是因为管理员与超级管理员不属于任何区域；`role = 'user'` 必须有
+     * 区域这条规则由下面的检查约束表达。
+     *
+     * 删除时**限制**而非级联：区域必须先清空才删得掉，误删一个区域不该带走
+     * 里面几百个账号。
      */
-    owningAdminId: uuid().references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
+    regionId: uuid().references((): AnyPgColumn => regions.id, { onDelete: 'restrict' }),
 
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
@@ -56,17 +64,20 @@ export const users = pgTable(
   (t) => [
     // 登录用户名不区分大小写；历史值不强制改写，新增与改名路径统一存小写。
     uniqueIndex('users_account_unique').on(sql`lower(${t.account})`),
-    index('users_owning_admin_idx').on(t.owningAdminId),
+    index('users_region_idx').on(t.regionId),
+    // 只有用户属于区域，管理员与超级管理员一个都不属于。两边同时为真或同时
+    // 为假，写成等式就把两个方向一次约束住。
+    check('users_region_matches_role', sql`(${t.role} = 'user') = (${t.regionId} is not null)`),
   ],
 );
 
 export const usersRelations = relations(users, ({ one, many }) => ({
-  owningAdmin: one(users, {
-    fields: [users.owningAdminId],
-    references: [users.id],
-    relationName: 'owning_admin',
+  region: one(regions, {
+    fields: [users.regionId],
+    references: [regions.id],
+    relationName: 'region_members',
   }),
-  ownedUsers: many(users, { relationName: 'owning_admin' }),
+  ownedRegions: many(regions, { relationName: 'region_owner' }),
 }));
 
 export type UserRow = typeof users.$inferSelect;

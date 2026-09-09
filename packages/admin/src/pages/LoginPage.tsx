@@ -8,7 +8,13 @@ import { Input, PasswordInput } from '../ui/Input.js';
 import { useToast } from '../ui/Toast.js';
 import { useAdminT } from '../i18n/runtime.js';
 
-export function LoginPage({ onSignedIn }: { onSignedIn: (session: Session) => void }) {
+export function LoginPage({
+  onSignedIn,
+  onRegister,
+}: {
+  onSignedIn: (session: Session) => void;
+  onRegister: () => void;
+}) {
   const t = useAdminT();
   const toast = useToast();
   const [account, setAccount] = useState('');
@@ -98,9 +104,15 @@ export function LoginPage({ onSignedIn }: { onSignedIn: (session: Session) => vo
             {t('login.submit')}
           </Button>
 
-          <p className="mt-6 border-t border-border pt-4 text-[12px] text-muted">
-            {t('login.help')}
-          </p>
+          <button
+            type="button"
+            onClick={onRegister}
+            className="mt-6 w-full border-t border-border pt-4 text-[13px] text-accent hover:underline"
+          >
+            {t('register.link')}
+          </button>
+
+          <p className="mt-3 text-[12px] text-muted">{t('login.help')}</p>
         </form>
       </div>
     </div>

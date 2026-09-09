@@ -15,6 +15,8 @@ export interface VisibleAccount {
   id: string;
   account: string;
   label: string;
+  regionId: string | null;
+  regionName: string | null;
 }
 
 export interface PerformanceTotals {
@@ -39,6 +41,54 @@ export interface AccountPerformance extends PerformanceTotals {
   account: string;
   label: string;
   profileCount: number;
+  regionId: string | null;
+  regionName: string | null;
+}
+
+export interface RegionPerformance extends PerformanceTotals {
+  id: string | null;
+  name: string | null;
+  accountCount: number;
+  profileCount: number;
+}
+
+/**
+ * 把账号行折叠成区域行。
+ *
+ * 折叠而不是另查一次，是为了让 ADR-0015 的恒等式按构造成立：区域指标恒等于
+ * 其中全部账号之和，账号又恒等于名下个人页之和。区域口径按用户**当前**所属
+ * 区域计算，见 ADR-0019。
+ */
+export function foldAccountsIntoRegions(accounts: AccountPerformance[]): RegionPerformance[] {
+  const byRegion = new Map<string, RegionPerformance>();
+
+  for (const account of accounts) {
+    const key = account.regionId ?? '';
+    const row = byRegion.get(key) ?? {
+      id: account.regionId,
+      name: account.regionName,
+      pageViews: 0,
+      clicks: 0,
+      leads: 0,
+      ctr: 0,
+      leadRate: 0,
+      accountCount: 0,
+      profileCount: 0,
+    };
+    row.pageViews += account.pageViews;
+    row.clicks += account.clicks;
+    row.leads += account.leads;
+    row.accountCount += 1;
+    row.profileCount += account.profileCount;
+    byRegion.set(key, row);
+  }
+
+  for (const row of byRegion.values()) {
+    row.ctr = ratio(row.clicks, row.pageViews);
+    row.leadRate = ratio(row.leads, row.pageViews);
+  }
+
+  return [...byRegion.values()].sort((a, b) => b.leads - a.leads || b.clicks - a.clicks);
 }
 
 const ratio = (numerator: number, denominator: number) =>
@@ -119,6 +169,8 @@ export async function queryScopePerformance(
         id: account.id,
         account: account.account,
         label: account.label,
+        regionId: account.regionId,
+        regionName: account.regionName,
         profileCount: 0,
         pageViews: 0,
         clicks: 0,

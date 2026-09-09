@@ -1,4 +1,4 @@
-import { users } from '@link-profile/shared/schema';
+import { regions, users } from '@link-profile/shared/schema';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createTestContext, type TestContext } from './helpers/context.js';
@@ -30,7 +30,7 @@ beforeEach(async () => {
     role: 'user',
     account: 'plain',
     shortName: 'plain-user',
-    owningAdminId: admin.id,
+    ownedBy: admin.id,
   });
 
   adminToken = (await login(ctx, 'admin', 'admin-pass')).token;
@@ -124,14 +124,15 @@ test('同一批里的重复也被挡住，先到先得', async () => {
   ]);
 });
 
-test('批量创建的用户归属于操作者', async () => {
+test('批量创建的用户落进操作者的默认区域', async () => {
   await bulk(adminToken, row('张三', 'zhangsan', 'zhangsan', 'pass-1234'));
 
   const [row0] = await ctx.db
-    .select({ owningAdminId: users.owningAdminId })
+    .select({ ownerAdminId: regions.ownerAdminId, isDefault: regions.isDefault })
     .from(users)
+    .innerJoin(regions, eq(regions.id, users.regionId))
     .where(eq(users.account, 'zhangsan'));
-  expect(row0?.owningAdminId).toBe(adminId);
+  expect(row0).toMatchObject({ ownerAdminId: adminId, isDefault: true });
 });
 
 test('密码以 argon2 哈希入库，不是明文', async () => {

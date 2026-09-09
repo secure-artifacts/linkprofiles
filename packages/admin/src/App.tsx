@@ -6,6 +6,8 @@ import type { Session } from './api/types.js';
 import { AppShell } from './AppShell.js';
 import { BreadcrumbProvider } from './nav/breadcrumb.js';
 import { AdminsPage } from './pages/AdminsPage.js';
+import { RegisterPage } from './pages/RegisterPage.js';
+import { RegionsPage } from './pages/RegionsPage.js';
 import { AnalyticsPage } from './pages/AnalyticsPage.js';
 import { EditorPage } from './pages/EditorPage.js';
 import { LoginPage } from './pages/LoginPage.js';
@@ -21,6 +23,9 @@ import { TooltipProvider } from './ui/Tooltip.js';
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
+  const [authView, setAuthView] = useState<'login' | 'register'>(
+    location.pathname.endsWith('/register') ? 'register' : 'login',
+  );
   // 登录前只有浏览器语言这一个线索；登录后一律以账号上的界面语言为准。
   const [locale, setLocale] = useState<Locale>(browserLocale);
   const [localeReady, setLocaleReady] = useState(false);
@@ -45,10 +50,21 @@ export function App() {
   }, [locale]);
 
   let content;
+
   if (checking || !localeReady) {
     content = <Spinner fullscreen />;
   } else if (!session) {
-    content = <LoginPage onSignedIn={setSession} />;
+    // 未登录时没有 router，注册页靠路径切换。地址栏跟着变，链接才发得出去。
+    const goto = (view: 'login' | 'register') => {
+      history.pushState(null, '', view === 'register' ? '/_admin/register' : '/_admin/login');
+      setAuthView(view);
+    };
+    content =
+      authView === 'register' ? (
+        <RegisterPage onBackToLogin={() => goto('login')} />
+      ) : (
+        <LoginPage onSignedIn={setSession} onRegister={() => goto('register')} />
+      );
   } else {
     const landing = landingPath(session);
     content = (
@@ -66,6 +82,7 @@ export function App() {
                 <Route path="users" element={<UsersPage />} />
                 <Route path="users/:userId/profiles" element={<ProfilesPage />} />
                 <Route path="profiles/:profileId" element={<EditorPage />} />
+                <Route path="regions" element={<RegionsPage />} />
                 <Route path="admins" element={<AdminsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />

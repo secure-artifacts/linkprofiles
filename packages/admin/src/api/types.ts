@@ -14,9 +14,10 @@ export interface UserSummary {
   id: string;
   account: string;
   label: string;
-  owningAdminId: string | null;
-  /** 归属管理员的显示名。服务端直接给，因为 `/admins` 清单里没有超级管理员。 */
-  owningAdminLabel: string | null;
+  regionId: string | null;
+  regionName: string | null;
+  /** 所在区域的归属管理员。为空即无归属区域，只有超级管理员看得到。 */
+  regionOwnerAdminId: string | null;
   createdAt: string;
   /** 名下个人页数量。具体是哪些要走 `/users/:id/profiles`。 */
   profileCount: number;
@@ -48,6 +49,8 @@ export interface AdminSummary {
   account: string;
   label: string;
   createdAt: string;
+  /** 名下区域数。管理员至少有一个默认区域。 */
+  regionCount: number;
 }
 
 export type EntryKind = 'link' | 'social';
@@ -118,6 +121,7 @@ export interface SocialPlatformInfo {
 export interface AnalyticsResponse {
   scope:
     | { kind: 'portfolio' }
+    | { kind: 'region'; regionId: string; regionName: string }
     | { kind: 'account'; userId: string; account: string; label: string }
     | {
         kind: 'profile';
@@ -168,7 +172,22 @@ export interface AnalyticsResponse {
   performance: {
     accounts: AccountPerformance[];
     profiles: ProfilePerformance[];
+    regions: RegionPerformance[];
   };
+  /** 区域筛选器的可选项。用户角色拿到空数组。 */
+  regions: { id: string; name: string }[];
+}
+
+export interface RegionPerformance {
+  id: string | null;
+  name: string | null;
+  pageViews: number;
+  clicks: number;
+  leads: number;
+  ctr: number;
+  leadRate: number;
+  accountCount: number;
+  profileCount: number;
 }
 
 export interface CountryDailyBreakdown {
@@ -202,6 +221,8 @@ export interface PerformanceTotals {
 }
 
 export interface AccountPerformance extends PerformanceTotals {
+  regionId: string | null;
+  regionName: string | null;
   id: string;
   account: string;
   label: string;
@@ -259,6 +280,22 @@ export interface DimensionRow {
 }
 
 export interface AppSettings {
+  /** 自助注册总闸。关掉只挡新注册，不影响已有用户。 */
+  registrationEnabled: boolean;
   sourcePassthroughDefault: boolean;
   sourcePassthroughCaveat: string;
+}
+
+/** 区域列表里的一行。归属管理员由区域推导，见 ADR-0017。 */
+export interface RegionSummary {
+  id: string;
+  name: string;
+  ownerAdminId: string | null;
+  ownerAdminLabel: string | null;
+  ownerAdminAccount: string | null;
+  isDefault: boolean;
+  createdAt: string;
+  memberCount: number;
+  /** 当前有效的那一个邀请码。区域先于邀请码表存在时为 null。 */
+  inviteCode: string | null;
 }

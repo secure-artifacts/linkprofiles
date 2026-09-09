@@ -1,6 +1,6 @@
 import { accountNameSchema } from '@link-profile/shared';
-import { users } from '@link-profile/shared/schema';
-import { and, eq } from 'drizzle-orm';
+import { inviteCodes, regions, users } from '@link-profile/shared/schema';
+import { and, count, eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireCapability } from '../auth/guards.js';
@@ -9,6 +9,7 @@ import { deleteSessionsForUser } from '../auth/sessions.js';
 import { renameAccount } from '../users/rename-account.js';
 import { findUserConflict } from '../users/conflicts.js';
 import { fail, forbidden } from '../http/errors.js';
+import { createDefaultRegion } from '../regions/default-region.js';
 
 const createAdminBody = z.object({
   account: accountNameSchema,
@@ -30,9 +31,12 @@ export async function adminRoutes(app: FastifyInstance) {
         account: users.account,
         label: users.label,
         createdAt: users.createdAt,
+        regionCount: count(regions.id),
       })
       .from(users)
+      .leftJoin(regions, eq(regions.ownerAdminId, users.id))
       .where(eq(users.role, 'admin'))
+      .groupBy(users.id)
       .orderBy(users.createdAt);
     return { admins: rows };
   });
@@ -47,16 +51,23 @@ export async function adminRoutes(app: FastifyInstance) {
       return fail(reply, 409, 'account_taken');
     }
 
-    const [row] = await app.db
-      .insert(users)
-      .values({
-        role: 'admin',
-        account: parsed.data.account,
-        passwordHash: await hashPassword(parsed.data.password),
-        label: parsed.data.label,
-        uiLanguage: req.currentUser!.uiLanguage,
-      })
-      .returning({ id: users.id, account: users.account, label: users.label });
+    // 账号与它的默认区域同一个事务：管理员一被创建就该有一个区域可用，
+    // 否则他建的第一个用户没有地方落，见 ADR-0017。
+    const row = await app.db.transaction(async (tx) => {
+      const [admin] = await tx
+        .insert(users)
+        .values({
+          role: 'admin',
+          account: parsed.data.account,
+          passwordHash: await hashPassword(parsed.data.password),
+          label: parsed.data.label,
+          uiLanguage: req.currentUser!.uiLanguage,
+        })
+        .returning({ id: users.id, account: users.account, label: users.label });
+
+      await createDefaultRegion(tx, admin!.id, admin!.label || admin!.account);
+      return admin!;
+    });
 
     return reply.code(201).send(row);
   });
@@ -122,8 +133,29 @@ export async function adminRoutes(app: FastifyInstance) {
       if (!target) return forbidden(reply);
 
       await deleteSessionsForUser(app.db, target.id);
-      // 管理员没有 short_name，走普通删除即可；名下用户由外键置空转为无归属
-      await app.db.delete(users).where(eq(users.id, target.id));
+
+      await app.db.transaction(async (tx) => {
+        // 名下区域的邀请码立刻停掉：没人管的区域不该继续进人，见 ADR-0017。
+        // 外键的 set null 只管归属，动不到邀请码，所以在这里显式作废。
+        await tx
+          .update(inviteCodes)
+          .set({ isActive: false, revokedAt: new Date() })
+          .where(
+            and(
+              eq(inviteCodes.isActive, true),
+              inArray(
+                inviteCodes.regionId,
+                tx
+                  .select({ id: regions.id })
+                  .from(regions)
+                  .where(eq(regions.ownerAdminId, target.id)),
+              ),
+            ),
+          );
+
+        // 管理员没有 short_name，走普通删除即可；名下区域由外键置空转为无归属
+        await tx.delete(users).where(eq(users.id, target.id));
+      });
 
       return reply.code(204).send();
     },

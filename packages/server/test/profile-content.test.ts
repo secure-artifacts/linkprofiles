@@ -36,7 +36,7 @@ beforeEach(async () => {
     account: 'mimnz',
     shortName: 'mimnz',
     displayName: 'mimnz',
-    owningAdminId: admin.id,
+    ownedBy: admin.id,
   });
   userId = user.id;
   profileId = user.profileId!;

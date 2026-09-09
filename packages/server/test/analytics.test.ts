@@ -44,13 +44,13 @@ beforeEach(async () => {
     role: 'user',
     account: 'mimnz',
     shortName: 'mimnz',
-    owningAdminId: admin.id,
+    ownedBy: admin.id,
   });
   const other = await createLoginableUser(ctx.db, 'other-pass', {
     role: 'user',
     account: 'other',
     shortName: 'other',
-    owningAdminId: stranger.id,
+    ownedBy: stranger.id,
   });
   userId = user.id;
   profileId = user.profileId!;

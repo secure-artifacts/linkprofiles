@@ -68,6 +68,7 @@ export function AdminsPage() {
               <tr className="border-b border-border bg-surface-hover text-muted">
                 <th className="px-4 py-2.5 font-medium">{t('common.field.label')}</th>
                 <th className="px-4 py-2.5 font-medium">{t('common.field.account')}</th>
+                <th className="px-4 py-2.5 font-medium">{t('admins.regionCount')}</th>
                 <th className="px-4 py-2.5 font-medium">{t('common.actions')}</th>
               </tr>
             </thead>
@@ -79,6 +80,9 @@ export function AdminsPage() {
                 >
                   <td className="px-4 py-3 text-fg">{admin.label || '—'}</td>
                   <td className="px-4 py-3 font-mono text-fg">{admin.account}</td>
+                  <td className="px-4 py-3 text-fg">
+                    {t('admins.regionCountValue', { count: admin.regionCount })}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Button variant="default" size="sm" onClick={() => setEditing(admin)}>

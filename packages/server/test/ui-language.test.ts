@@ -33,12 +33,12 @@ beforeEach(async () => {
   });
   const user = await createLoginableUser(ctx.db, 'user-pass', {
     account: 'user',
-    owningAdminId: admin.id,
+    ownedBy: admin.id,
     uiLanguage: 'zh-Hans',
   });
   const outsider = await createLoginableUser(ctx.db, 'outsider-pass', {
     account: 'outsider',
-    owningAdminId: otherAdmin.id,
+    ownedBy: otherAdmin.id,
   });
   userId = user.id;
   outsiderId = outsider.id;

@@ -16,4 +16,9 @@ export const adminPluralsEs: Record<string, string> = {
   'analytics.visitsCount_one': '{{count}} visita',
   'analytics.leadsCount_one': '{{count}} contacto',
   'country.clicksShare_one': '{{count}} clic · {{percent}}',
+  'regions.membersCount_one': '{{count}} usuario',
+  'admins.regionCountValue_one': '{{count}} región',
+  'users.selected_one': '{{count}} seleccionado',
+  'regions.unowned.count_one': '{{count}} región no tiene administrador responsable',
+  'analytics.regions.title_one': 'Por región · {{count}} región',
 };

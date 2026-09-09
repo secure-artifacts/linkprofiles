@@ -4,7 +4,7 @@ import { validateAccountName } from '@link-profile/shared';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { request } from '../api/client.js';
-import type { AdminSummary, ProfileSummary, UserSummary } from '../api/types.js';
+import type { ProfileSummary, RegionSummary, UserSummary } from '../api/types.js';
 import { useBreadcrumb } from '../nav/breadcrumb.js';
 import { useSession } from '../session.js';
 import { Alert } from '../ui/Alert.js';
@@ -19,11 +19,14 @@ import { useAdminT } from '../i18n/runtime.js';
 
 const PAGE_SIZE = 20;
 
+/** 「全部区域」在下拉里得有个真值：Radix 的 Select 不接受空串当选项值。 */
+const ALL_REGIONS = 'all';
+
 /**
  * 用户管理。
  *
- * 管理员在这里只看得到归属于自己的用户（服务端过滤，不是前端藏起来）。
- * 超级管理员额外看得到「无归属」——归属管理员被删除后留下的账号，
+ * 管理员在这里只看得到自己名下区域里的用户（服务端过滤，不是前端藏起来）。
+ * 超级管理员额外看得到无归属区域里的账号——归属管理员被删除后留下的那些，
  * 做成显眼的红色标记，避免它们长期没人管理。
  */
 export function UsersPage() {
@@ -32,12 +35,15 @@ export function UsersPage() {
   const navigate = useNavigate();
   useBreadcrumb([{ label: t('nav.users') }]);
   const [users, setUsers] = useState<UserSummary[]>([]);
-  const [admins, setAdmins] = useState<AdminSummary[]>([]);
+  const [regions, setRegions] = useState<RegionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState<UserSummary | null>(null);
   const [page, setPage] = useState(1);
+  const [regionFilter, setRegionFilter] = useState<string | undefined>(undefined);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [moving, setMoving] = useState(false);
   const toast = useToast();
   const { confirm, dialog: confirmDialog } = useConfirm();
 
@@ -46,24 +52,25 @@ export function UsersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await request<{ users: UserSummary[] }>('/users');
+      const query = regionFilter ? `?region=${regionFilter}` : '';
+      const list = await request<{ users: UserSummary[] }>(`/users${query}`);
       setUsers(list.users);
-      if (isSuperadmin) {
-        setAdmins((await request<{ admins: AdminSummary[] }>('/admins')).admins);
-      }
+      setSelected(new Set());
+      setRegions((await request<{ regions: RegionSummary[] }>('/regions')).regions);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSuperadmin]);
+  }, [isSuperadmin, regionFilter]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const unownedCount = users.filter((u) => u.owningAdminId === null).length;
+  const unownedCount = users.filter((u) => u.regionOwnerAdminId === null).length;
+  const ownedRegions = regions.filter((r) => r.ownerAdminId !== null);
   const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
   const pageUsers = users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -89,17 +96,45 @@ export function UsersPage() {
     await load();
   };
 
-  const assign = async (user: UserSummary, owningAdminId: string | null) => {
-    await request(`/users/${user.id}/owner`, { method: 'PUT', body: { owningAdminId } });
-    toast.success(t('users.reassigned'));
+  const moveToRegion = async (userIds: string[], regionId: string) => {
+    await request('/users/region', { method: 'PUT', body: { userIds, regionId } });
+    toast.success(t('users.move.done'));
     await load();
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-fg">{t('nav.users')}</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="w-48">
+            <Select
+              placeholder={t('users.filter.region')}
+              value={regionFilter ?? ALL_REGIONS}
+              options={[
+                { value: ALL_REGIONS, label: t('users.filter.region') },
+                ...regions.map((r) => ({ value: r.id, label: r.name })),
+              ]}
+              onChange={(value) => {
+                setRegionFilter(value === ALL_REGIONS ? undefined : value);
+                setPage(1);
+              }}
+            />
+          </div>
+          {selected.size > 0 ? (
+            <Button variant="default" onClick={() => setMoving(true)}>
+              {t('users.move.action')} · {t('users.selected', { count: selected.size })}
+            </Button>
+          ) : null}
           <Button variant="default" onClick={() => setBulkOpen(true)}>
             {t('users.bulk.title')}
           </Button>
@@ -121,23 +156,35 @@ export function UsersPage() {
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-bg text-left text-[12px] font-medium text-muted">
+              <th className="w-10 px-4 py-2.5">
+                <input
+                  type="checkbox"
+                  aria-label={t('users.selectAll')}
+                  checked={pageUsers.length > 0 && pageUsers.every((u) => selected.has(u.id))}
+                  onChange={(event) =>
+                    setSelected(
+                      event.target.checked ? new Set(pageUsers.map((u) => u.id)) : new Set(),
+                    )
+                  }
+                />
+              </th>
               <th className="px-4 py-2.5">{t('common.field.label')}</th>
               <th className="px-4 py-2.5">{t('common.field.account')}</th>
               <th className="px-4 py-2.5">{t('users.pages')}</th>
-              {isSuperadmin ? <th className="px-4 py-2.5">{t('users.owningAdmin')}</th> : null}
+              <th className="px-4 py-2.5">{t('users.region')}</th>
               <th className="px-4 py-2.5">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={isSuperadmin ? 5 : 4} className="px-4 py-8 text-center text-muted">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted">
                   {t('common.loading')}
                 </td>
               </tr>
             ) : pageUsers.length === 0 ? (
               <tr>
-                <td colSpan={isSuperadmin ? 5 : 4} className="px-4 py-8 text-center text-muted">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted">
                   {t('users.empty')}
                 </td>
               </tr>
@@ -147,6 +194,14 @@ export function UsersPage() {
                   key={user.id}
                   className="h-[52px] border-b border-border last:border-b-0 hover:bg-surface-hover"
                 >
+                  <td className="px-4 py-2">
+                    <input
+                      type="checkbox"
+                      aria-label={user.label || user.account}
+                      checked={selected.has(user.id)}
+                      onChange={() => toggleSelected(user.id)}
+                    />
+                  </td>
                   <td className="px-4 py-2 text-fg">
                     {user.label || <span className="text-muted">—</span>}
                   </td>
@@ -160,29 +215,24 @@ export function UsersPage() {
                       {t('users.pagesCount', { count: user.profileCount })}
                     </button>
                   </td>
-                  {isSuperadmin ? (
-                    <td className="px-4 py-2">
-                      {user.owningAdminId === null ? (
-                        <div className="flex items-center gap-2">
-                          <Tag tone="danger">{t('users.unowned')}</Tag>
-                          <div className="w-36">
-                            <Select
-                              size="sm"
-                              placeholder={t('users.assignTo')}
-                              value={undefined}
-                              options={admins.map((a) => ({
-                                value: a.id,
-                                label: a.label || a.account,
-                              }))}
-                              onChange={(value) => void assign(user, value)}
-                            />
-                          </div>
+                  <td className="px-4 py-2">
+                    {isSuperadmin && user.regionOwnerAdminId === null ? (
+                      <div className="flex items-center gap-2">
+                        <Tag tone="danger">{t('users.unowned')}</Tag>
+                        <div className="w-36">
+                          <Select
+                            size="sm"
+                            placeholder={t('users.assignTo')}
+                            value={undefined}
+                            options={ownedRegions.map((r) => ({ value: r.id, label: r.name }))}
+                            onChange={(value) => void moveToRegion([user.id], value)}
+                          />
                         </div>
-                      ) : (
-                        (user.owningAdminLabel ?? '—')
-                      )}
-                    </td>
-                  ) : null}
+                      </div>
+                    ) : (
+                      (user.regionName ?? '—')
+                    )}
+                  </td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <Button
@@ -242,10 +292,104 @@ export function UsersPage() {
       </div>
 
       <AccountSettingsModal user={editing} onClose={() => setEditing(null)} onDone={load} />
-      <CreateUserModal open={creating} onClose={() => setCreating(false)} onDone={load} />
-      <BulkCreateModal open={bulkOpen} onClose={() => setBulkOpen(false)} onDone={load} />
+      <CreateUserModal
+        open={creating}
+        onClose={() => setCreating(false)}
+        onDone={load}
+        regions={ownedRegions}
+      />
+      <BulkCreateModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onDone={load}
+        regions={ownedRegions}
+      />
+      <MoveRegionDialog
+        open={moving}
+        count={selected.size}
+        regions={regions}
+        onClose={() => setMoving(false)}
+        onConfirm={async (regionId) => {
+          await moveToRegion([...selected], regionId);
+          setMoving(false);
+        }}
+      />
       {confirmDialog}
     </div>
+  );
+}
+
+function MoveRegionDialog({
+  open,
+  count,
+  regions,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  count: number;
+  regions: RegionSummary[];
+  onClose: () => void;
+  onConfirm: (regionId: string) => Promise<void>;
+}) {
+  const t = useAdminT();
+  const toast = useToast();
+  const [regionId, setRegionId] = useState<string | undefined>(undefined);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setRegionId(undefined);
+  }, [open]);
+
+  if (!open) return null;
+
+  const submit = async () => {
+    if (!regionId) return;
+    setSaving(true);
+    try {
+      await onConfirm(regionId);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(value) => !value && onClose()}
+      title={t('users.move.title')}
+      footer={
+        <>
+          <Button variant="default" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="primary"
+            loading={saving}
+            disabled={!regionId}
+            onClick={() => void submit()}
+          >
+            {t('users.move.action')}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <p className="text-[13px] text-fg">{t('users.selected', { count })}</p>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-medium text-fg">{t('users.move.target')}</label>
+          <Select
+            value={regionId}
+            options={regions.map((r) => ({ value: r.id, label: r.name }))}
+            onChange={(value) => setRegionId(value)}
+          />
+        </div>
+        {/* 移区会改变历史报表的区域数字，见 ADR-0019 */}
+        <p className="text-[12px] text-muted">{t('users.move.note')}</p>
+      </div>
+    </Dialog>
   );
 }
 
@@ -447,12 +591,18 @@ interface ModalProps {
   onDone: () => Promise<void> | void;
 }
 
-function CreateUserModal({ open, onClose, onDone }: ModalProps) {
+function CreateUserModal({
+  open,
+  onClose,
+  onDone,
+  regions,
+}: ModalProps & { regions: RegionSummary[] }) {
   const t = useAdminT();
   const [label, setLabel] = useState('');
   const [account, setAccount] = useState('');
   const [shortName, setShortName] = useState('');
   const [password, setPassword] = useState('');
+  const [regionId, setRegionId] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
@@ -463,6 +613,7 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
       setAccount('');
       setShortName('');
       setPassword('');
+      setRegionId(undefined);
       setError(null);
     }
   }, [open]);
@@ -487,7 +638,13 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
     try {
       await request('/users', {
         method: 'POST',
-        body: { label, account: parsedAccount.value, shortName, password },
+        body: {
+          label,
+          account: parsedAccount.value,
+          shortName,
+          password,
+          ...(regionId ? { regionId } : {}),
+        },
       });
       toast.success(t('common.created'));
       onClose();
@@ -525,6 +682,16 @@ function CreateUserModal({ open, onClose, onDone }: ModalProps) {
             placeholder={t('users.label.example')}
           />
         </Field>
+        {regions.length > 0 ? (
+          <Field label={t('users.create.region')} hint={t('users.create.region.hint')}>
+            <Select
+              value={regionId}
+              placeholder={t('users.create.region.hint')}
+              options={regions.map((r) => ({ value: r.id, label: r.name }))}
+              onChange={(value) => setRegionId(value)}
+            />
+          </Field>
+        ) : null}
         <Field label={t('common.field.account')} hint={t('users.account.rule')}>
           <Input
             value={account}
@@ -561,9 +728,15 @@ interface BulkResult {
 
 const BULK_PLACEHOLDER = 'Lisa Reyes\tlisa.usa\tlisa-usa\tpassword-1234';
 
-function BulkCreateModal({ open, onClose, onDone }: ModalProps) {
+function BulkCreateModal({
+  open,
+  onClose,
+  onDone,
+  regions,
+}: ModalProps & { regions: RegionSummary[] }) {
   const t = useAdminT();
   const [text, setText] = useState('');
+  const [regionId, setRegionId] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<BulkResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
@@ -576,7 +749,10 @@ function BulkCreateModal({ open, onClose, onDone }: ModalProps) {
   const submit = async () => {
     setSubmitting(true);
     try {
-      const res = await request<BulkResult>('/users/bulk', { method: 'POST', body: { text } });
+      const res = await request<BulkResult>('/users/bulk', {
+        method: 'POST',
+        body: { text, ...(regionId ? { regionId } : {}) },
+      });
       setResult(res);
       if (res.createdCount > 0) await onDone();
     } catch (err) {
@@ -669,6 +845,16 @@ function BulkCreateModal({ open, onClose, onDone }: ModalProps) {
             <br />
             {t('users.bulk.partial')}
           </p>
+          {regions.length > 0 ? (
+            <Field label={t('users.create.region')} hint={t('users.create.region.hint')}>
+              <Select
+                value={regionId}
+                placeholder={t('users.create.region.hint')}
+                options={regions.map((r) => ({ value: r.id, label: r.name }))}
+                onChange={(value) => setRegionId(value)}
+              />
+            </Field>
+          ) : null}
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}

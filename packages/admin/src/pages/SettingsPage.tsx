@@ -29,6 +29,36 @@ export function SettingsPage() {
       <h1 className="font-display text-xl font-semibold text-fg">{t('settings.title')}</h1>
 
       <div className="rounded-[var(--radius-panel)] border border-border bg-surface p-5">
+        <h2 className="mb-4 text-sm font-semibold text-fg">{t('settings.registration.title')}</h2>
+        <div className="flex flex-col gap-4">
+          <Checkbox
+            checked={settings.registrationEnabled}
+            onChange={async (checked) => {
+              try {
+                setSettings(
+                  await request<AppSettings>('/settings', {
+                    method: 'PATCH',
+                    body: { registrationEnabled: checked },
+                  }),
+                );
+                toast.success(t('common.saved'));
+              } catch (err) {
+                toast.error((err as Error).message);
+              }
+            }}
+          >
+            {t('settings.registration.label')}
+          </Checkbox>
+
+          <Alert
+            tone="warning"
+            message={t('settings.knownTradeoffs')}
+            description={t('settings.registration.caveat')}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-[var(--radius-panel)] border border-border bg-surface p-5">
         <h2 className="mb-4 text-sm font-semibold text-fg">{t('settings.passthrough')}</h2>
         <div className="flex flex-col gap-4">
           <Checkbox

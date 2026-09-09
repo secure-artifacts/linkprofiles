@@ -7,6 +7,7 @@ import { fail, unauthorized } from '../http/errors.js';
 
 const settingsBody = z.object({
   sourcePassthroughDefault: z.boolean().optional(),
+  registrationEnabled: z.boolean().optional(),
 });
 
 export async function settingsRoutes(app: FastifyInstance) {

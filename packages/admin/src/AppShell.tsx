@@ -46,6 +46,7 @@ export function AppShell({
         ]
       : [
           { to: '/users', label: t('nav.users'), alsoActive: inEditor },
+          { to: '/regions', label: t('nav.regions'), alsoActive: false },
           ...(session.role === 'superadmin'
             ? [
                 { to: '/admins', label: t('nav.admins'), alsoActive: false },

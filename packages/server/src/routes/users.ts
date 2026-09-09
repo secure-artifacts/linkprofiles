@@ -1,6 +1,6 @@
-import { profiles, users } from '@link-profile/shared/schema';
+import { profiles, regions, users } from '@link-profile/shared/schema';
 import { accountNameSchema, shortNameSchema } from '@link-profile/shared';
-import { and, count, eq, isNull, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -10,8 +10,10 @@ import { hashPassword } from '../auth/passwords.js';
 import { deleteSessionsForUser } from '../auth/sessions.js';
 import { deleteUserAccount } from '../profiles/deletion.js';
 import { findUserConflict } from '../users/conflicts.js';
-import { visibleUsersFilter } from '../auth/policy.js';
+import { visibleRegionsFilter, visibleUsersFilter } from '../auth/policy.js';
 import { renameAccount } from '../users/rename-account.js';
+import { defaultRegionFor } from '../regions/default-region.js';
+import type { CurrentUser } from '../auth/sessions.js';
 import { fail, forbidden, unauthorized } from '../http/errors.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -22,6 +24,8 @@ const createUserBody = z.object({
   /** 用户名称：后台中文备注，可重复，不做唯一约束 */
   label: z.string().trim().default(''),
   shortName: shortNameSchema,
+  /** 落进哪个区域。不传就用创建者的默认区域。 */
+  regionId: z.string().uuid().optional(),
   /** 显示名：个人页上给访客看的名字，可重复。留空时先跟 short_name 一致 */
   displayName: z.string().trim().optional(),
 });
@@ -30,9 +34,9 @@ const resetPasswordBody = z.object({
   newPassword: z.string().min(8, 'field.password.min'),
 });
 
-const assignOwnerBody = z.object({
-  /** null 表示置为无归属 */
-  owningAdminId: z.string().uuid().nullable(),
+const moveRegionBody = z.object({
+  userIds: z.array(z.string().uuid()).min(1).max(500),
+  regionId: z.string().uuid(),
 });
 
 const updateUserBody = z.object({
@@ -52,39 +56,61 @@ const publicColumns = {
   account: users.account,
   label: users.label,
   uiLanguage: users.uiLanguage,
-  owningAdminId: users.owningAdminId,
+  regionId: users.regionId,
   createdAt: users.createdAt,
 };
 
+/**
+ * 定下新用户落哪个区域：显式指定的必须在操作者可见范围内，不指定就用他的
+ * 默认区域。返回 null 表示指定了一个碰不到的区域。
+ */
+async function resolveTargetRegion(
+  app: FastifyInstance,
+  actor: CurrentUser,
+  requested: string | undefined,
+): Promise<string | null> {
+  if (requested === undefined) return defaultRegionFor(app.db, actor, actor.account);
+
+  const scope = visibleRegionsFilter(actor);
+  const [row] = await app.db
+    .select({ id: regions.id })
+    .from(regions)
+    .where(scope ? and(eq(regions.id, requested), scope) : eq(regions.id, requested))
+    .limit(1);
+  return row?.id ?? null;
+}
+
 export async function userRoutes(app: FastifyInstance) {
-  app.get<{ Querystring: { owner?: string } }>(
+  app.get<{ Querystring: { region?: string } }>(
     '/users',
     { onRequest: [requireCapability('user:list')] },
     async (req) => {
       const scope = visibleUsersFilter(req.currentUser!);
-      // `?owner=none` 单列无归属用户。可见范围仍然叠在上面，
-      // 因此只有超级管理员真的取得到东西。
-      const unowned = req.query.owner === 'none' ? isNull(users.owningAdminId) : undefined;
+      // 别名避开 `visibleUsersFilter` 子查询里未加别名的 regions。
+      const region = alias(regions, 'member_region');
 
-      // 归属人的名字在这里一并取出来。前端拿 `/admins` 自己对照是不行的 ——
-      // 那个清单只含 role='admin'，归属给超级管理员的用户会对不上，显示成
-      // 「—」，与真正需要处理的「无归属」混为一谈。
-      const owner = alias(users, 'owner');
+      // `?region=unowned` 单列无归属区域里的用户。可见范围仍然叠在上面，
+      // 因此只有超级管理员真的取得到东西。具体某个区域用它的 id 筛。
+      const regionFilter =
+        req.query.region === 'unowned'
+          ? isNull(region.ownerAdminId)
+          : req.query.region && UUID.test(req.query.region)
+            ? eq(users.regionId, req.query.region)
+            : undefined;
 
       // count(profiles.id) 对没有个人页的账号得 0，正是想要的
       const rows = await app.db
         .select({
           ...publicColumns,
-          owningAdminLabel: sql<
-            string | null
-          >`coalesce(nullif(${owner.label}, ''), ${owner.account})`,
+          regionName: region.name,
+          regionOwnerAdminId: region.ownerAdminId,
           profileCount: count(profiles.id),
         })
         .from(users)
         .leftJoin(profiles, eq(profiles.userId, users.id))
-        .leftJoin(owner, eq(owner.id, users.owningAdminId))
-        .where(and(eq(users.role, 'user'), scope, unowned))
-        .groupBy(users.id, owner.label, owner.account)
+        .leftJoin(region, eq(region.id, users.regionId))
+        .where(and(eq(users.role, 'user'), scope, regionFilter))
+        .groupBy(users.id, region.name, region.ownerAdminId)
         .orderBy(users.createdAt);
       return { users: rows };
     },
@@ -113,6 +139,10 @@ export async function userRoutes(app: FastifyInstance) {
     }
     const { account, password, label, shortName, displayName } = parsed.data;
 
+    // 指定了区域就必须是自己看得见的那些，否则等于借建号把人塞进别人的地盘。
+    const targetRegionId = await resolveTargetRegion(app, req.currentUser!, parsed.data.regionId);
+    if (targetRegionId === null) return fail(reply, 400, 'region_not_found');
+
     const conflict = await findUserConflict(app.db, { account, shortName });
     if (conflict) return fail(reply, 409, conflict);
 
@@ -129,8 +159,8 @@ export async function userRoutes(app: FastifyInstance) {
           label,
           // 新账号继承创建者的界面语言：菲律宾管理员开的号天然是菲律宾语。
           uiLanguage: req.currentUser!.uiLanguage,
-          // 创建者自动成为归属管理员，见 ADR-0005。
-          owningAdminId: req.currentUser!.id,
+          // 归属管理员由区域推导，见 ADR-0017。
+          regionId: targetRegionId,
         })
         .returning(publicColumns);
 
@@ -208,46 +238,47 @@ export async function userRoutes(app: FastifyInstance) {
   });
 
   /**
-   * 重新指派归属管理员。只有超级管理员做得了，因此不走 loadTargetUser 的
-   * 可见范围过滤 —— 那条路径按定义看不见无归属用户，而这里要的正是它们。
+   * 把一个或多个用户移到另一个区域。
+   *
+   * 管理员也做得了，但两头都受限：源用户要在他名下（`loadTargetUser` 裁定），
+   * 目标区域也要归属于他。「跨管理员移动只有超级管理员做得了」由此自然成立。
+   *
+   * 移区会改变历史报表的区域数字，见 ADR-0019。
    */
-  app.put<{ Params: { id: string } }>(
-    '/users/:id/owner',
-    { onRequest: [requireCapability('user:assign')] },
-    async (req, reply) => {
-      if (!UUID.test(req.params.id)) return forbidden(reply);
+  app.put('/users/region', { onRequest: [requireCapability('user:move')] }, async (req, reply) => {
+    const parsed = moveRegionBody.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
+    }
 
-      const parsed = assignOwnerBody.safeParse(req.body);
-      if (!parsed.success) {
-        return fail(reply, 400, 'invalid_body', { issues: parsed.error.issues });
-      }
+    const actor = req.currentUser!;
+    const regionScope = visibleRegionsFilter(actor);
+    const [region] = await app.db
+      .select({ id: regions.id })
+      .from(regions)
+      .where(
+        regionScope
+          ? and(eq(regions.id, parsed.data.regionId), regionScope)
+          : eq(regions.id, parsed.data.regionId),
+      )
+      .limit(1);
+    if (!region) return fail(reply, 400, 'region_not_found');
 
-      const [target] = await app.db
-        .select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.id, req.params.id), eq(users.role, 'user')))
-        .limit(1);
-      if (!target) return forbidden(reply);
+    // 逐个过授权检查点。有一个碰不了就整批不动，避免搬了一半的中间态。
+    const targets: string[] = [];
+    for (const id of parsed.data.userIds) {
+      const target = await loadTargetUser(app.db, actor, id, 'update');
+      if (!target || target.role !== 'user') return forbidden(reply);
+      targets.push(target.id);
+    }
 
-      // 只能指派给真正的管理员，不能塞一个用户或超级管理员的 id 进去。
-      if (parsed.data.owningAdminId !== null) {
-        const [admin] = await app.db
-          .select({ id: users.id })
-          .from(users)
-          .where(and(eq(users.id, parsed.data.owningAdminId), eq(users.role, 'admin')))
-          .limit(1);
-        if (!admin) return fail(reply, 400, 'not_an_admin');
-      }
+    await app.db
+      .update(users)
+      .set({ regionId: region.id, updatedAt: new Date() })
+      .where(inArray(users.id, targets));
 
-      const [row] = await app.db
-        .update(users)
-        .set({ owningAdminId: parsed.data.owningAdminId, updatedAt: new Date() })
-        .where(eq(users.id, target.id))
-        .returning(publicColumns);
-
-      return row;
-    },
-  );
+    return { moved: targets.length, regionId: region.id };
+  });
 
   /**
    * 重置名下用户的密码。

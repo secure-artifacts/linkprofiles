@@ -60,11 +60,15 @@ type Preset = 'today' | '7d' | '30d' | 'custom';
  * 合计、都不给就是可见范围内的全部。放在 URL 里而不是组件状态里，前进后退
  * 才回得到刚才那个范围。
  */
+/** 「全部区域」在下拉里得有个真值：Radix 的 Select 不接受空串当选项值。 */
+const ALL_REGIONS = 'all';
+
 export function AnalyticsPage() {
   const t = useAdminT();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const session = useSession();
+  const regionId = searchParams.get('regionId');
   const userId = searchParams.get('userId');
   const profileId = searchParams.get('profileId');
   const [preset, setPreset] = useState<Preset>('7d');
@@ -78,7 +82,9 @@ export function AnalyticsPage() {
       ? scope.displayName || scope.shortName
       : scope?.kind === 'account'
         ? scope.label || scope.account
-        : t('analytics.title.overview');
+        : scope?.kind === 'region'
+          ? scope.regionName
+          : t('analytics.title.overview');
   useBreadcrumb(
     scope?.kind === 'profile'
       ? [
@@ -101,6 +107,7 @@ export function AnalyticsPage() {
     } else {
       params.set('preset', preset);
     }
+    if (regionId) params.set('regionId', regionId);
     if (profileId) params.set('profileId', profileId);
     else if (userId) params.set('userId', userId);
 
@@ -108,7 +115,7 @@ export function AnalyticsPage() {
     request<AnalyticsResponse>(`/analytics?${params}`)
       .then(setData)
       .catch((err: Error) => setError(err.message));
-  }, [preset, customRange, timeZone, userId, profileId]);
+  }, [preset, customRange, timeZone, regionId, userId, profileId]);
 
   if (error) return <Alert tone="danger" message={t('analytics.loadFailed')} description={error} />;
 
@@ -116,7 +123,9 @@ export function AnalyticsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
-          {scope?.kind === 'profile' || (scope?.kind === 'account' && session.role !== 'user') ? (
+          {scope?.kind === 'region' ||
+          scope?.kind === 'profile' ||
+          (scope?.kind === 'account' && session.role !== 'user') ? (
             <Button
               variant="ghost"
               size="sm"
@@ -199,6 +208,20 @@ export function AnalyticsPage() {
               />
             </div>
           ) : null}
+          {data && data.regions.length > 0 ? (
+            <Select
+              value={regionId ?? ALL_REGIONS}
+              placeholder={t('analytics.allRegions')}
+              onChange={(value) =>
+                navigate(value === ALL_REGIONS ? '/analytics' : `/analytics?regionId=${value}`)
+              }
+              options={[
+                { value: ALL_REGIONS, label: t('analytics.allRegions') },
+                ...data.regions.map((r) => ({ value: r.id, label: r.name })),
+              ]}
+              aria-label={t('users.region')}
+            />
+          ) : null}
           <Select
             value={timeZone}
             onChange={setTimeZone}
@@ -214,13 +237,19 @@ export function AnalyticsPage() {
         description={t('analytics.counts.body')}
       />
 
+      {/* 区域口径按用户当前所属区域计算，见 ADR-0019 */}
+      {scope?.kind === 'region' ? (
+        <Alert tone="warning" message={t('analytics.regionCaveat')} />
+      ) : null}
+
       {data ? (
-        data.scope.kind === 'portfolio' ? (
+        data.scope.kind === 'portfolio' || data.scope.kind === 'region' ? (
           <PortfolioResults
             data={data}
             timeZone={timeZone}
             onOpenProfile={(id) => navigate(`/analytics?profileId=${id}`)}
             onOpenAccount={(id) => navigate(`/analytics?userId=${id}`)}
+            onOpenRegion={(id) => navigate(`/analytics?regionId=${id}`)}
           />
         ) : data.scope.kind === 'account' ? (
           <AccountResults
@@ -243,10 +272,12 @@ function PortfolioResults({
   timeZone,
   onOpenProfile,
   onOpenAccount,
+  onOpenRegion,
 }: {
   data: AnalyticsResponse;
   timeZone: string;
   onOpenProfile: (id: string) => void;
+  onOpenRegion: (id: string) => void;
   onOpenAccount: (id: string) => void;
 }) {
   const locale = useLocale();
@@ -316,6 +347,45 @@ function PortfolioResults({
       </Panel>
 
       <AggregateAnalysis data={data} timeZone={timeZone} showGlobalCountry={false} />
+
+      {/* 区域行由账号行折叠而来，因此这张表的每一列都恒等于下面那张表的分组和 */}
+      {data.regions.length > 1 ? (
+        <Panel title={t('analytics.regions.title', { count: data.performance.regions.length })}>
+          <p className="mb-3 text-[12px] text-muted">{t('analytics.regions.hint')}</p>
+          <ResponsiveTable
+            headers={[
+              t('users.region'),
+              t('analytics.account'),
+              t('analytics.pageViews'),
+              t('analytics.entryClicks'),
+              t('analytics.leads'),
+              t('analytics.leadsPerView'),
+            ]}
+          >
+            {data.performance.regions.map((row) => (
+              <tr
+                key={row.id ?? 'unowned'}
+                className={`border-b border-border last:border-0 ${
+                  row.id ? 'cursor-pointer hover:bg-surface-hover' : ''
+                }`}
+                onClick={() => row.id && onOpenRegion(row.id)}
+              >
+                <td className="py-3 pr-4">
+                  <div className="font-medium text-fg">{row.name ?? t('regions.unowned')}</div>
+                </td>
+                <NumberCell value={row.accountCount} />
+                <NumberCell value={row.pageViews} />
+                <NumberCell value={row.clicks} />
+                <NumberCell value={row.leads} />
+                <td className="py-3 pl-4 text-right font-mono font-medium text-accent">
+                  {percent(locale, row.leadRate)}
+                </td>
+              </tr>
+            ))}
+          </ResponsiveTable>
+          {data.performance.regions.length === 0 ? <EmptyData /> : null}
+        </Panel>
+      ) : null}
 
       <Panel title={t('analytics.accounts.title', { count: data.performance.accounts.length })}>
         <p className="mb-3 text-[12px] text-muted">{t('analytics.accounts.hint')}</p>
