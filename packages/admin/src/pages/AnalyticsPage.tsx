@@ -566,7 +566,6 @@ function fillTrend(
   trend: AnalyticsResponse['trend'],
   range: AnalyticsResponse['range'],
 ): AnalyticsResponse['trend'] {
-  const t = useAdminT();
   const byBucket = new Map(trend.map((point) => [point.bucket, point]));
   const isHour = range.granularity === 'hour';
   const stepMs = isHour ? 3_600_000 : 86_400_000;
