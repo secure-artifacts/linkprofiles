@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "pnpm --filter @link-profile/server db:migrate"
+    "db:migrate": "pnpm --filter @link-profile/server db:migrate",
+    "deployToGitlab": "tsx deploy/deploy-to-gitlab.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

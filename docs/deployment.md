@@ -77,7 +77,9 @@ nginx -v
 | npm registry（`registry.npmjs.org`） | 装依赖 | 是 |
 | MaxMind（`download.maxmind.com`） | GeoIP 库更新 | 否 |
 
-> **完全隔离的内网服务器无法用这套流程**，需要改成构建产物离线分发。接手时先确认这一条。
+> 这张表说的是**本节这条流程**：服务器自己拉源码、自己构建。另有一条产物分发的路子，服务器不再
+> 需要访问 GitHub、也不再在本机编译，见第 9 节。要注意的是构建只是挪到了 GitLab runner 上，
+> npm registry 与 Docker Hub 那两项要求原样还在，只是换了台机器。
 
 ### 资源
 
@@ -118,6 +120,8 @@ git ls-remote https://github.com/secure-artifacts/linkprofiles.git HEAD
 ---
 
 ## 4. 首次部署
+
+> 这是服务器直连 GitHub 自己构建的路子。用内网 GitLab 分发产物见第 9 节。
 
 ```bash
 # 1. 拉代码，切到要部署的 tag
@@ -331,3 +335,93 @@ git describe --tags > .deployed-version
 - [ ] `docker compose restart app` 后日志显示 `bootstrap: "already-exists"`，不重复创建超管
 - [ ] 服务器重启后容器自动拉起
 - [ ] 运维已知悉：**无备份**，且**带迁移的版本无法回滚**（第 7 节）
+
+---
+
+## 9. 内网 GitLab 产物分发
+
+第 4 节到第 7 节讲的是「服务器直连 GitHub 拉源码、自己构建」。这一节是另一条并行的路，两条都能用。
+
+**为什么有这条路**：外包开发者进不了公司内网的 GitLab，只能往 GitHub 提交，所以源码留在 GitHub；
+而要上服务器的东西得进内网。中间这一步由源仓库里的 `pnpm deployToGitlab` 完成——它在内网人员的
+机器上构建，把跑得起来所需的文件作为**一个提交**推到内网 GitLab，那边的 CI 接手部署。
+
+### 两条路的差别
+
+| | 第 4 节：服务器直连 GitHub | 本节：内网 GitLab 产物分发 |
+| --- | --- | --- |
+| 服务器要出网到 | GitHub、Docker Hub、npm | Docker Hub、npm（或内网镜像源） |
+| 谁来编译 | 服务器 | 执行部署命令的那台机器 |
+| 服务器上有什么 | 整份源码 | 只有镜像 |
+| 上线操作 | 在服务器上敲命令 | 推一个提交，CI 接手 |
+
+服务器少掉 GitHub 一项，也不再需要 4 GB 内存来跑 vite 与 tsc。**但这不等于能离线部署**：
+镜像构建挪到了 GitLab runner 上，那台机器仍然要能装依赖、拉基础镜像。
+
+### 一次性准备
+
+产物仓库是一个**独立的空仓库**，不是源码仓库的镜像。在内网 GitLab 上新建一个（例如
+`group/link-profile-deploy`），然后在本地的源码仓库里配上：
+
+```bash
+git remote add gitlab git@your-gitlab:group/link-profile-deploy.git
+git ls-remote gitlab            # 通了就行
+```
+
+这个地址只存在于内网人员的本地 git 配置里，仓库中不含任何地址与凭据，外包开发者拉到的代码里
+也没有。他们执行部署命令会停在「没有 gitlab remote」那一步。
+
+### 每次部署
+
+```bash
+pnpm deployToGitlab
+```
+
+它会依次做：查 remote（顺带挡住写成 github.com 的手滑）→ 查工作区干净、HEAD 已推到 origin →
+装依赖 → **类型检查** → 版本号一致性 → 构建 → 再查一次工作区干净 → 核对产物的依赖清单 → 冒烟 →
+拉取产物仓库当前状态 → 覆盖受管文件 → 列出改动等你确认 → 提交并推送。
+
+类型检查这一步不能省：`pnpm build` 是 tsup 加 vite，两者都不做类型检查。
+
+确认那一步会明确告诉你**这一版带不带新迁移**。带了就意味着上线后回不去，判断依据与第 7 节一致。
+
+可用的开关：
+
+| 开关 | 用途 |
+| --- | --- |
+| `--branch <名字>` | 推到指定分支，默认取远端的默认分支 |
+| `--yes` | 跳过确认，给自动化用 |
+| `--allow-unpushed` | HEAD 还没推到 GitHub 时放行（紧急修复） |
+| `--adopt` | 目标分支有内容但不像产物仓库时，确认就是要用它 |
+
+### 产物仓库里有什么
+
+只有跑起来需要的东西：`dist/`、`public/_admin/`、`fonts/`、`drizzle/*.sql`、依赖清单
+（`package.json` 与 `pnpm-lock.yaml` 等）、`Dockerfile`、`deploy-manifest.json`。
+
+**没有源码，也没有 sourcemap**。sourcemap 里嵌着完整的 TypeScript，带过去等于把源码推进内网仓库。
+要看生产栈就拿 `deploy-manifest.json` 里的 `commit` 在源仓库重新构建，产物是一样的。
+
+`drizzle/meta/` 也不带——那是 drizzle-kit 生成迁移时用的快照，运行时只读 `*.sql`。
+
+依赖清单带的是整份 `pnpm-lock.yaml` 而不是一张钉死版本的依赖表：钉死直接依赖锁不住传递依赖，
+同一个提交隔一周构建出来就不是同一个镜像。`pnpm-workspace.yaml` 也必须带，它里面的 `allowBuilds`
+决定 `argon2` 与 `sharp` 能不能编译出二进制——漏了它镜像照样构建成功，第一次有人登录时才崩。
+
+`.gitlab-ci.yml` 与 `docker-compose.yml` 只在**第一次**写入模板，之后随便改，部署命令不会碰。
+其余你自己往产物仓库里加的文件也都保留。
+
+### 回滚
+
+挑一个旧的部署提交重新触发流水线。**先确认这两版之间有没有新迁移**：
+
+```bash
+git diff --stat <旧提交>..<当前> -- drizzle/
+```
+
+有输出就回不去——迁移单向、无 down 脚本、无自动备份，与第 7 节讲的是同一件事。
+
+### 仓库会长大
+
+每次约 2 MB，后台静态资源带内容哈希、每次都是全新文件，delta 压不动。周更一年两三百兆。
+嫌大就截断历史，产物仓库的历史没有考古价值。

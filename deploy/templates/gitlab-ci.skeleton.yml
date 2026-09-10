@@ -1,0 +1,31 @@
+# 骨架，等内网补全。只在产物仓库还没有 .gitlab-ci.yml 时写入一次，
+# 之后 `pnpm deployToGitlab` 不会再碰它 —— 这里怎么改都不会被覆盖。
+#
+# 仓库里已经有什么：dist/、public/_admin/、fonts/、drizzle/、依赖清单与 Dockerfile。
+# 不需要编译，docker build 就能出镜像。
+#
+# runner 要能访问 npm registry 与 Docker Hub（或内网镜像源）。这不是新增要求：
+# 以前是服务器自己构建，同样要这两样。
+#
+# 服务器与 runner 架构不一致时记得指定平台，sharp 会按构建机的架构取二进制。
+
+stages:
+  - build
+  - deploy
+
+build-image:
+  stage: build
+  script:
+    - echo "TODO: docker build -t $IMAGE:$CI_COMMIT_SHORT_SHA . && docker push"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+deploy:
+  stage: deploy
+  script:
+    # 迁移随应用启动执行且没有分布式锁，必须先停旧再起新，不能双实例并存。
+    - echo "TODO: 在目标服务器上 docker compose down && docker compose up -d"
+    - echo "TODO: curl --fail http://127.0.0.1:3000/_api/health"
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

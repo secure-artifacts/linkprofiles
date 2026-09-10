@@ -1,0 +1,6 @@
+# 生产密码写在这里，绝不能进仓库
+.env
+.env.*
+!.env.example
+
+geoip/

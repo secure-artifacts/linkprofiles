@@ -2,7 +2,12 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['packages/*/test/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
+    include: [
+      'packages/*/test/**/*.test.ts',
+      'packages/*/src/**/*.test.ts',
+      // 部署脚本不属于任何一个包，但它的纯逻辑同样要有测试兜着
+      'deploy/**/*.test.ts',
+    ],
     // 每个测试文件一个独立 schema，因此文件之间可以并行。
     pool: 'forks',
     testTimeout: 20_000,
