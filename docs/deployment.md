@@ -461,6 +461,9 @@ pnpm deployToGitlab
 只有跑起来需要的东西：`dist/`、`public/_admin/`、`fonts/`、`drizzle/*.sql`、依赖清单
 （`package.json` 与 `pnpm-lock.yaml` 等）、`Dockerfile`、`deploy-manifest.json`。
 
+另外带着 `deploy.sh` 与 `运维部署手册.md`：运维在服务器上只跑那个脚本，它构建、切换、等健康检查、记录
+`.deployed-commit`，任何一步失败即停，版本记录只在健康检查通过后才写 —— 手工敲一串命令做不到这一点。
+
 **没有源码，也没有 sourcemap**。sourcemap 里嵌着完整的 TypeScript，带过去等于把源码推进内网仓库。
 要看生产栈就拿 `deploy-manifest.json` 里的 `commit` 在源仓库重新构建，产物是一样的。
 

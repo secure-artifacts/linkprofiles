@@ -227,6 +227,7 @@ function copyArtifacts(work: string) {
   cpSync(join(TEMPLATES, 'gitignore'), join(work, '.gitignore'));
   cpSync(join(TEMPLATES, 'README.md'), join(work, 'README.md'));
   cpSync(join(TEMPLATES, '运维部署手册.md'), join(work, '运维部署手册.md'));
+  cpSync(join(TEMPLATES, 'deploy.sh'), join(work, 'deploy.sh'));
   // 产物仓库的 .env.example 要讲 APP_IMAGE，与源仓库那份不是一回事
   cpSync(join(TEMPLATES, 'env.example'), join(work, '.env.example'));
 

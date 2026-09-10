@@ -19,6 +19,7 @@
 | `package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`、`packages/*/package.json` | 依赖清单。锁的是整棵依赖树，同一个提交任何时候构建出来都一样 |
 | `Dockerfile` | 不编译，只装依赖再拷产物 |
 | `deploy-manifest.json` | 这一版是什么：版本号、源仓库 sha、打包时间与打包人 |
+| `deploy.sh` | 服务器上的部署脚本：首次部署、升级、回滚都用它，失败即停，只在健康检查通过后记录版本 |
 
 没有源码，也没有 sourcemap。要看栈请拿 `deploy-manifest.json` 里的 `commit` 在源仓库重新构建，
 产物是一样的。

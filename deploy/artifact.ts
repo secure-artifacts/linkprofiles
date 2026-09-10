@@ -23,6 +23,7 @@ export const MANAGED_PATHS = [
   '.env.example',
   'README.md',
   '运维部署手册.md',
+  'deploy.sh',
 ] as const;
 
 /**
