@@ -22,6 +22,7 @@ export const MANAGED_PATHS = [
   'pnpm-workspace.yaml',
   '.env.example',
   'README.md',
+  '运维部署手册.md',
 ] as const;
 
 /**

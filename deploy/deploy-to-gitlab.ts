@@ -212,7 +212,7 @@ function copyArtifacts(work: string) {
   }
 
   // 依赖清单：锁的是整棵树，同一个提交任何时候构建出来都一样
-  for (const name of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', '.env.example']) {
+  for (const name of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
     cpSync(join(REPO, name), join(work, name));
   }
   for (const pkg of readdirSync(join(REPO, 'packages'))) {
@@ -226,6 +226,9 @@ function copyArtifacts(work: string) {
   cpSync(join(TEMPLATES, 'dockerignore'), join(work, '.dockerignore'));
   cpSync(join(TEMPLATES, 'gitignore'), join(work, '.gitignore'));
   cpSync(join(TEMPLATES, 'README.md'), join(work, 'README.md'));
+  cpSync(join(TEMPLATES, '运维部署手册.md'), join(work, '运维部署手册.md'));
+  // 产物仓库的 .env.example 要讲 APP_IMAGE，与源仓库那份不是一回事
+  cpSync(join(TEMPLATES, 'env.example'), join(work, '.env.example'));
 
   // 只写一次：流水线与 compose 是内网团队按现场改的，覆盖会把他们的活抹掉
   const seeds: Record<string, string> = {
