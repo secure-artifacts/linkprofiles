@@ -1,3 +1,9 @@
+# 生产密码在 .env 里，绝不能进构建上下文
+.env
+.env.*
+!.env.example
+
 .git
 .gitlab-ci.yml
-README.md
+geoip/
+*.md
