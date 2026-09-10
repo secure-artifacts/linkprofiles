@@ -95,7 +95,9 @@ function checkRemote(): string {
   if (!url) {
     fail(
       `没有名为 ${REMOTE} 的 remote。先配上内网地址再来：\n\n` +
-        `    git remote add ${REMOTE} git@your-gitlab:group/link-profile-deploy.git\n\n` +
+        `    git remote add ${REMOTE} git@your-gitlab:group/link-profile-deploy.git\n` +
+        `    git ls-remote ${REMOTE}\n\n` +
+        `完整步骤见 docs/deployment.md 第 9 节「一次性准备：绑定 gitlab remote」。\n` +
         `这一步只有内网人员做得了，外包开发者不需要也不应该有这个地址。`,
     );
   }

@@ -358,18 +358,78 @@ git describe --tags > .deployed-version
 服务器少掉 GitHub 一项，也不再需要 4 GB 内存来跑 vite 与 tsc。**但这不等于能离线部署**：
 镜像构建挪到了 GitLab runner 上，那台机器仍然要能装依赖、拉基础镜像。
 
-### 一次性准备
+### 一次性准备：绑定 gitlab remote
 
-产物仓库是一个**独立的空仓库**，不是源码仓库的镜像。在内网 GitLab 上新建一个（例如
-`group/link-profile-deploy`），然后在本地的源码仓库里配上：
+部署命令只认一个名叫 `gitlab` 的 git remote。地址与凭据都只存在于**执行部署那台机器的本地 git
+配置**里，仓库中一个字都没有，所以外包开发者拉到的代码里也没有——他们跑部署命令会停在
+「没有 gitlab remote」那一步。
+
+#### 第 1 步：在内网 GitLab 上建产物仓库
+
+**新建一个空仓库**，例如 `group/link-profile-deploy`。注意几点：
+
+- 它**不是**源码仓库的镜像或 fork，两者没有任何血缘关系，也不要做镜像同步。
+- 建的时候**不要勾选** README、.gitignore、LICENSE 这类初始化文件。第一次部署会把产物完整写进去，
+  预置文件只会变成第一次提交里的一堆冲突。真勾了也不致命，脚本会覆盖受管文件，但没必要。
+- 仓库可见性按内网规矩来。里面有编译产物与依赖清单，没有源码。
+
+#### 第 2 步：确认自己推得上去
+
+推荐 SSH。**不要把 token 写进 remote 地址**——它会进 shell 历史，还会被 git 明文写进
+`.git/config`，第 3 节的整改记录里专门记过这条。
 
 ```bash
-git remote add gitlab git@your-gitlab:group/link-profile-deploy.git
-git ls-remote gitlab            # 通了就行
+# 没有 key 就先生成一把，已有可跳过
+ssh-keygen -t ed25519 -C "link-profile deploy"
+
+# 公钥贴到 GitLab：右上角头像 → Preferences → SSH Keys
+cat ~/.ssh/id_ed25519.pub
+
+# 验通
+ssh -T git@your-gitlab
 ```
 
-这个地址只存在于内网人员的本地 git 配置里，仓库中不含任何地址与凭据，外包开发者拉到的代码里
-也没有。他们执行部署命令会停在「没有 gitlab remote」那一步。
+自签证书或非标端口的内网 GitLab，地址形如 `ssh://git@your-gitlab:2222/group/link-profile-deploy.git`，
+具体端口问运维。
+
+#### 第 3 步：加 remote
+
+在**源码仓库**的目录下执行（不是在产物仓库里）：
+
+```bash
+cd /path/to/linkprofiles
+git remote add gitlab git@your-gitlab:group/link-profile-deploy.git
+```
+
+地址从 GitLab 项目页的 **Clone → Clone with SSH** 直接复制，别手打。
+
+#### 第 4 步：验证
+
+```bash
+git remote -v                   # 应当看到 origin 与 gitlab 两个，地址不同
+git ls-remote gitlab            # 能连上就有输出；空仓库输出为空但不报错，也算通过
+```
+
+第二条报 `Permission denied (publickey)` 就是第 2 步的 key 没配好；报 `Could not resolve hostname`
+就是不在内网或域名不对。
+
+配好之后跑一次部署命令，它会自己再查一遍：remote 存不存在、是不是与 `origin` 同址、是不是指到了
+github.com。这三条任何一条不对都会直接停下，不会误推。
+
+#### 换地址、删掉、多台机器
+
+```bash
+git remote set-url gitlab git@your-gitlab:group/新地址.git   # 换
+git remote remove gitlab                                      # 删
+```
+
+每台要执行部署的机器都得各自配一遍，这个配置不会跟着 git 仓库走。
+
+#### 一句话版本
+
+```bash
+git remote add gitlab <从 GitLab 复制的 SSH 地址> && git ls-remote gitlab && pnpm deployToGitlab
+```
 
 ### 每次部署
 
