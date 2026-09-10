@@ -4,3 +4,7 @@
 !.env.example
 
 geoip/
+
+# 现场配置与部署记录，升级时的 reset --hard 不会碰它们
+docker-compose.override.yml
+.deployed-commit

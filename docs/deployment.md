@@ -196,8 +196,8 @@ server {
     ssl_certificate     /etc/ssl/certs/links.example.com.pem;
     ssl_certificate_key /etc/ssl/private/links.example.com.key;
 
-    # 图片上限 12 MB，multipart 编码后还会涨；默认 1m 会让上传直接 413
-    client_max_body_size 16m;
+    # 视频头像是「视频 10 MB + 封面 12 MB」同一个 multipart 请求，再算编码开销；默认 1m 会让上传直接 413
+    client_max_body_size 24m;
 
     location = /_api/auth/login {
         limit_req zone=lp_login burst=3 nodelay;
