@@ -28,6 +28,15 @@ HEALTH_TIMEOUT=180
 say() { printf '\n▸ %s\n' "$*"; }
 die() { printf '\n✗ %s\n' "$*" >&2; exit 1; }
 
+# 应用容器此刻是不是健康地跑着。「无事可做」只能建立在这个事实上，不能只看版本记录：
+# 升级失败时旧容器已经停了、记录里还是旧版，这时按旧版回滚必须真的执行。
+app_healthy() {
+  local id
+  id=$(docker compose ps -q app 2>/dev/null) || return 1
+  [ -n "${id}" ] || return 1
+  [ "$(docker inspect --format '{{.State.Health.Status}}' "${id}" 2>/dev/null)" = "healthy" ]
+}
+
 [ -f .env ] || die ".env 不存在。先照手册 2.2 从 .env.example 复制并填好。"
 
 say "拉取远端"
@@ -39,12 +48,18 @@ if [ -f "$RECORD" ]; then
   CUR=$(cat "$RECORD")
   say "当前在跑 ${CUR:0:7}，目标 ${NEW:0:7}"
   if [ "$CUR" = "$NEW" ]; then
-    echo "目标与当前一致，无事可做。"
-    exit 0
+    if app_healthy; then
+      echo "目标与当前一致，应用正常运行中，无事可做。"
+      exit 0
+    fi
+    echo "记录是这一版，但应用现在没有健康运行 —— 重新部署它。"
+    SAME=1
   fi
-  echo "本次改动："
-  git log --oneline "$CUR..$NEW" | sed 's/^/    /' || true
-  if git merge-base --is-ancestor "$NEW" "$CUR"; then
+  [ "${SAME:-0}" = 1 ] || echo "本次改动："
+  [ "${SAME:-0}" = 1 ] || git log --oneline "$CUR..$NEW" | sed 's/^/    /' || true
+  if [ "${SAME:-0}" = 1 ]; then
+    :
+  elif git merge-base --is-ancestor "$NEW" "$CUR"; then
     echo "（这是回滚：目标比当前旧）"
     MIG=$(git diff --name-only "$NEW..$CUR" -- drizzle/ || true)
     if [ -n "$MIG" ]; then
