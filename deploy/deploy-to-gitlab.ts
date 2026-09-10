@@ -7,7 +7,7 @@
  * 地址与凭据全靠一个预先配好的名为 `gitlab` 的 remote，脚本本身不含任何秘密，
  * 外包开发者跑它会停在「没有 gitlab remote」那一步，正是想要的结果。
  *
- * 用法：pnpm deployToGitlab [--branch <名字>] [--yes] [--allow-unpushed] [--adopt] [--force]
+ * 用法：pnpm deployToGitlab [--branch <名字>] [--yes] [--allow-unpushed] [--adopt] [--force] [--reseed]
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { builtinModules } from 'node:module';
@@ -328,8 +328,12 @@ async function main() {
     // 只写一次的文件要保住内网团队写好的那份，但**只在远端确实是产物仓库时**。
     // 强推一个还不是产物仓库的地方（比如旧的源码仓库），它那份 docker-compose.yml
     // 是源码时代的遗物而不是运维的成果 —— 保留它等于把一份跑不起来的配置交给运维。
+    // --reseed 明确要求把只写一次的文件按模板重写。用于远端那份本来就是错的：
+    // 比如它是从旧源码仓库带过来的，之后又被当成运维成果一路保留了下来。
     const preserved = new Map<string, string>();
-    if (previous !== null || !force) {
+    if (flag('reseed')) {
+      step('按模板重写只写一次的文件');
+    } else if (previous !== null || !force) {
       for (const path of SEED_ONCE_PATHS) {
         const content = remoteFile(path);
         if (content !== null) preserved.set(path, content);
