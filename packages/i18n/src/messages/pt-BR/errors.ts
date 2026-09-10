@@ -5,9 +5,9 @@ export const errorsPtBR: ErrorMessages = {
   'code.forbidden': 'Você não tem permissão para fazer isso',
   'code.invalid_credentials': 'Conta ou senha incorreta',
   'code.account_taken': 'Essa conta já está em uso',
-  'code.short_name_taken': 'Esse short_name já está em uso',
+  'code.short_name_taken': 'Esse endereço da página já está em uso',
   'code.short_name_retired':
-    'Esse short_name pertence a uma página de perfil excluída e nunca é reatribuído',
+    'Esse endereço da página pertence a uma página de perfil excluída e nunca é reatribuído',
   'code.region_not_found': 'Essa região não existe',
   'code.invite_code_taken': 'Esse código de convite já está em uso',
   'code.region_unowned': 'Esta região ainda não tem administrador responsável; designe um antes',
@@ -53,9 +53,9 @@ export const errorsPtBR: ErrorMessages = {
   'adminDist.missing':
     'A build do painel não está em {{root}}. Rode pnpm --filter @link-profile/admin build e reinicie.',
   'conflict.accountTaken': 'A conta {{account}} já existe',
-  'conflict.shortNameTaken': 'O short_name {{shortName}} já está em uso',
+  'conflict.shortNameTaken': 'O endereço da página {{shortName}} já está em uso',
   'conflict.shortNameRetired':
-    'O short_name {{shortName}} pertence a uma página de perfil excluída e nunca é reatribuído',
+    'O endereço da página {{shortName}} pertence a uma página de perfil excluída e nunca é reatribuído',
   'field.atLeastOne': 'Envie pelo menos um campo para atualizar',
 
   'field.account.min': 'A conta precisa ter pelo menos {{accountMin}} caracteres',
@@ -64,11 +64,11 @@ export const errorsPtBR: ErrorMessages = {
     'Só minúsculas, dígitos, pontos, sublinhados e hífens, começando e terminando com letra ou dígito',
   'field.account.consecutive': 'Pontos, sublinhados e hífens não podem vir seguidos',
   'field.account.invalid': 'Essa conta não está num formato válido',
-  'field.shortName.required': 'O short_name não pode ficar vazio',
+  'field.shortName.required': 'O endereço da página não pode ficar vazio',
   'field.shortName.length':
-    'O short_name precisa ter de {{shortNameMin}} a {{shortNameMax}} caracteres',
+    'O endereço da página precisa ter de {{shortNameMin}} a {{shortNameMax}} caracteres',
   'field.shortName.charset':
-    'O short_name só aceita minúsculas, dígitos e hífens, e não pode começar nem terminar com hífen',
+    'O endereço da página só aceita minúsculas, dígitos e hífens, e não pode começar nem terminar com hífen',
   'field.social.phone': 'Digite um número de 7 a 15 dígitos, opcionalmente com o código + do país',
   'field.social.instagram':
     'O usuário do Instagram não é válido (de 1 a 30 letras, dígitos, pontos ou sublinhados)',

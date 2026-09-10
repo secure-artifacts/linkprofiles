@@ -54,9 +54,31 @@ export function currentLocale(): Locale {
   return normalizeLocale(instance.language) ?? DEFAULT_LOCALE;
 }
 
-/** 还没登录时只有浏览器语言这一个线索。 */
-export function browserLocale(): Locale {
+const LOCALE_STORAGE_KEY = 'link-profile.ui-language';
+
+/**
+ * 还没登录时的界面语言：先看这台设备上次选了什么，再退回浏览器语言。
+ *
+ * 不记住的话，在登录页选完语言刷一次就被打回浏览器语言，切换器等于白给。
+ * 登录之后一律以账号上的界面语言为准，不再读这里。
+ */
+export function preferredLocale(): Locale {
+  try {
+    const saved = normalizeLocale(localStorage.getItem(LOCALE_STORAGE_KEY));
+    if (saved) return saved;
+  } catch {
+    // 无痕窗口与禁用站点数据时读写都会抛，语言偏好不值得为它挡住整个后台
+  }
   return negotiateLocale(navigator.languages?.join(',') ?? navigator.language);
+}
+
+/** 记住这台设备选过的界面语言，下次登录页直接用它。 */
+export function rememberLocale(locale: Locale): void {
+  try {
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  } catch {
+    // 同上，存不下就只是下次回到浏览器语言
+  }
 }
 
 export function useAdminT(): Translate<AdminKey> {

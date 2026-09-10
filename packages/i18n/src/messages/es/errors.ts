@@ -5,9 +5,9 @@ export const errorsEs: ErrorMessages = {
   'code.forbidden': 'No tienes permiso para hacer eso',
   'code.invalid_credentials': 'Cuenta o contraseña incorrecta',
   'code.account_taken': 'Esa cuenta ya está ocupada',
-  'code.short_name_taken': 'Ese short_name ya está ocupado',
+  'code.short_name_taken': 'Esa dirección de la página ya está ocupada',
   'code.short_name_retired':
-    'Ese short_name pertenece a una página de perfil eliminada y nunca se reasigna',
+    'Esa dirección de la página pertenece a una página de perfil eliminada y nunca se reasigna',
   'code.region_not_found': 'Esa región no existe',
   'code.invite_code_taken': 'Ese código de invitación ya está en uso',
   'code.region_unowned':
@@ -54,9 +54,9 @@ export const errorsEs: ErrorMessages = {
   'adminDist.missing':
     'Falta la compilación del panel en {{root}}. Ejecuta pnpm --filter @link-profile/admin build y reinicia.',
   'conflict.accountTaken': 'La cuenta {{account}} ya existe',
-  'conflict.shortNameTaken': 'El short_name {{shortName}} ya está ocupado',
+  'conflict.shortNameTaken': 'La dirección de la página {{shortName}} ya está ocupada',
   'conflict.shortNameRetired':
-    'El short_name {{shortName}} pertenece a una página de perfil eliminada y nunca se reasigna',
+    'La dirección de la página {{shortName}} pertenece a una página de perfil eliminada y nunca se reasigna',
   'field.atLeastOne': 'Envía al menos un campo para actualizar',
 
   'field.account.min': 'La cuenta debe tener al menos {{accountMin}} caracteres',
@@ -65,11 +65,11 @@ export const errorsEs: ErrorMessages = {
     'Solo minúsculas, dígitos, puntos, guiones bajos y guiones, empezando y terminando por letra o dígito',
   'field.account.consecutive': 'Los puntos, guiones bajos y guiones no pueden ir seguidos',
   'field.account.invalid': 'Esa cuenta no tiene un formato válido',
-  'field.shortName.required': 'El short_name no puede estar vacío',
+  'field.shortName.required': 'La dirección de la página no puede estar vacía',
   'field.shortName.length':
-    'El short_name debe tener entre {{shortNameMin}} y {{shortNameMax}} caracteres',
+    'La dirección de la página debe tener entre {{shortNameMin}} y {{shortNameMax}} caracteres',
   'field.shortName.charset':
-    'El short_name solo admite minúsculas, dígitos y guiones, y no puede empezar ni terminar por guion',
+    'La dirección de la página solo admite minúsculas, dígitos y guiones, y no puede empezar ni terminar por guion',
   'field.social.phone': 'Escribe un número de 7 a 15 dígitos, opcionalmente con el prefijo +',
   'field.social.instagram':
     'El usuario de Instagram no es válido (de 1 a 30 letras, dígitos, puntos o guiones bajos)',

@@ -87,7 +87,7 @@ test('个别行出错不影响其余行，结果带行号与原因', async () =>
 
   expect(body.failed).toEqual([
     { line: 2, error: 'The account mimnz already exists' },
-    { line: 3, error: 'short_name must be 3 to 30 characters' },
+    { line: 3, error: 'Page address must be 3 to 30 characters' },
     { line: 4, error: 'Password cannot be empty' },
     {
       line: 5,
@@ -123,7 +123,7 @@ test('同一批里的重复也被挡住，先到先得', async () => {
   expect(body.createdCount).toBe(1);
   expect(body.failed).toEqual([
     { line: 2, error: 'The account samename already exists' },
-    { line: 3, error: 'The short_name first-one is already taken' },
+    { line: 3, error: 'The page address first-one is already taken' },
   ]);
 });
 
@@ -186,7 +186,8 @@ test('批量创建同样抢不到墓碑里的 short_name', async () => {
   expect(res.json().failed).toEqual([
     {
       line: 1,
-      error: 'The short_name taken-name belongs to a deleted profile page and is never reassigned',
+      error:
+        'The page address taken-name belongs to a deleted profile page and is never reassigned',
     },
   ]);
 });

@@ -638,7 +638,7 @@ export const adminVi: AdminMessages = {
   'register.subtitle': 'Nhập mã mời quản trị viên đã đưa cho bạn',
   'register.field.code': 'Mã mời',
   'register.field.shortName': 'Địa chỉ trang',
-  'register.field.shortName.hint': 'Trang của bạn sẽ ở {{origin}}/dia-chi-cua-ban',
+  'register.field.shortName.hint': 'Chữ thường, chữ số và gạch nối, ví dụ north-manila',
   'register.joining': 'Bạn sẽ vào {{region}}',
   'register.submit': 'Tạo tài khoản',
   'register.done': 'Đã tạo tài khoản. Hãy đăng nhập để bắt đầu.',
@@ -647,6 +647,9 @@ export const adminVi: AdminMessages = {
   'register.link': 'Có mã mời? Tạo tài khoản',
   'register.shortName.taken': 'Địa chỉ đó đã có người dùng',
   'register.shortName.free': 'Địa chỉ đó còn trống',
+  'register.shortName.retired':
+    'Địa chỉ đó thuộc về một trang đã xoá và không bao giờ được cấp lại',
+  'register.shortName.checking': 'Đang kiểm tra',
   'settings.registration.title': 'Tự đăng ký',
   'settings.registration.label': 'Cho phép mọi người đăng ký bằng mã mời',
   'settings.registration.caveat':

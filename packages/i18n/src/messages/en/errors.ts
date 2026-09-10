@@ -7,9 +7,9 @@ export const errorsEn = {
   'code.forbidden': 'You do not have permission to do that',
   'code.invalid_credentials': 'Wrong account or password',
   'code.account_taken': 'That account is already taken',
-  'code.short_name_taken': 'That short_name is already taken',
+  'code.short_name_taken': 'That page address is already taken',
   'code.short_name_retired':
-    'That short_name belongs to a deleted profile page and is never reassigned',
+    'That page address belongs to a deleted profile page and is never reassigned',
   'code.region_not_found': 'That region does not exist',
   'code.invite_code_taken': 'That invite code is already in use',
   'code.region_unowned': 'This region has no owning admin yet; assign one first',
@@ -60,9 +60,9 @@ export const errorsEn = {
     'Admin build output is missing at {{root}}. Run pnpm --filter @link-profile/admin build, then restart.',
 
   'conflict.accountTaken': 'The account {{account}} already exists',
-  'conflict.shortNameTaken': 'The short_name {{shortName}} is already taken',
+  'conflict.shortNameTaken': 'The page address {{shortName}} is already taken',
   'conflict.shortNameRetired':
-    'The short_name {{shortName}} belongs to a deleted profile page and is never reassigned',
+    'The page address {{shortName}} belongs to a deleted profile page and is never reassigned',
   'field.atLeastOne': 'Submit at least one field to update',
 
   'field.account.min': 'Account must be at least {{accountMin}} characters',
@@ -71,10 +71,10 @@ export const errorsEn = {
     'Only lowercase letters, digits, dots, underscores and hyphens, starting and ending with a letter or digit',
   'field.account.consecutive': 'Dots, underscores and hyphens cannot appear back to back',
   'field.account.invalid': 'That account is not in a valid format',
-  'field.shortName.required': 'short_name cannot be empty',
-  'field.shortName.length': 'short_name must be {{shortNameMin}} to {{shortNameMax}} characters',
+  'field.shortName.required': 'Page address cannot be empty',
+  'field.shortName.length': 'Page address must be {{shortNameMin}} to {{shortNameMax}} characters',
   'field.shortName.charset':
-    'short_name may only use lowercase letters, digits and hyphens, and cannot start or end with a hyphen',
+    'Page address may only use lowercase letters, digits and hyphens, and cannot start or end with a hyphen',
   'field.social.phone': 'Enter a 7 to 15 digit phone number, optionally with a + country code',
   'field.social.instagram':
     'Instagram username is not valid (1 to 30 letters, digits, dots or underscores)',

@@ -15,7 +15,7 @@ import { LoginPage } from './pages/LoginPage.js';
 import { ProfilesPage } from './pages/ProfilesPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
 import { UsersPage } from './pages/UsersPage.js';
-import { applyLocale, browserLocale } from './i18n/runtime.js';
+import { applyLocale, preferredLocale, rememberLocale } from './i18n/runtime.js';
 import { landingPath, SessionProvider } from './session.js';
 import { canOpen, type Section } from './nav/sections.js';
 import { Spinner } from './ui/Spinner.js';
@@ -28,8 +28,8 @@ export function App() {
   const [authView, setAuthView] = useState<'login' | 'register'>(
     location.pathname.endsWith('/register') ? 'register' : 'login',
   );
-  // 登录前只有浏览器语言这一个线索；登录后一律以账号上的界面语言为准。
-  const [locale, setLocale] = useState<Locale>(browserLocale);
+  // 登录前用这台设备上次选的语言；登录后一律以账号上的界面语言为准。
+  const [locale, setLocale] = useState<Locale>(preferredLocale);
   const [localeReady, setLocaleReady] = useState(false);
 
   useEffect(() => {
@@ -44,6 +44,12 @@ export function App() {
   useEffect(() => {
     if (session) setLocale(normalizeLocale(session.uiLanguage) ?? DEFAULT_LOCALE);
   }, [session]);
+
+  // 换语言的地方有三处：登录页、注册页、顶栏。都记到设备上，下次开局就对。
+  const pickLocale = (next: Locale) => {
+    rememberLocale(next);
+    setLocale(next);
+  };
 
   // 等译文到位再渲染，否则非英语用户会先看到一帧英文。
   useEffect(() => {
@@ -63,9 +69,18 @@ export function App() {
     };
     content =
       authView === 'register' ? (
-        <RegisterPage onBackToLogin={() => goto('login')} />
+        <RegisterPage
+          locale={locale}
+          onLocaleChange={pickLocale}
+          onBackToLogin={() => goto('login')}
+        />
       ) : (
-        <LoginPage onSignedIn={setSession} onRegister={() => goto('register')} />
+        <LoginPage
+          locale={locale}
+          onLocaleChange={pickLocale}
+          onSignedIn={setSession}
+          onRegister={() => goto('register')}
+        />
       );
   } else {
     const landing = landingPath(session);
@@ -79,7 +94,7 @@ export function App() {
             <Routes>
               <Route
                 element={
-                  <AppShell onSignedOut={() => setSession(null)} onLanguageChanged={setLocale} />
+                  <AppShell onSignedOut={() => setSession(null)} onLanguageChanged={pickLocale} />
                 }
               >
                 <Route index element={<Navigate to={landing} replace />} />

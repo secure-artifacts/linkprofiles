@@ -5,9 +5,9 @@ export const errorsId: ErrorMessages = {
   'code.forbidden': 'Kamu tidak punya izin untuk melakukan itu',
   'code.invalid_credentials': 'Akun atau kata sandi salah',
   'code.account_taken': 'Akun itu sudah dipakai',
-  'code.short_name_taken': 'short_name itu sudah dipakai',
+  'code.short_name_taken': 'Alamat halaman itu sudah dipakai',
   'code.short_name_retired':
-    'short_name itu milik halaman profil yang sudah dihapus dan tidak pernah dipakai lagi',
+    'Alamat halaman itu milik halaman profil yang sudah dihapus dan tidak pernah dipakai lagi',
   'code.region_not_found': 'Wilayah itu tidak ada',
   'code.invite_code_taken': 'Kode undangan itu sudah dipakai',
   'code.region_unowned': 'Wilayah ini belum punya admin penanggung jawab; tugaskan dulu',
@@ -53,9 +53,9 @@ export const errorsId: ErrorMessages = {
   'adminDist.missing':
     'Hasil build panel tidak ada di {{root}}. Jalankan pnpm --filter @link-profile/admin build lalu mulai ulang.',
   'conflict.accountTaken': 'Akun {{account}} sudah ada',
-  'conflict.shortNameTaken': 'short_name {{shortName}} sudah dipakai',
+  'conflict.shortNameTaken': 'Alamat halaman {{shortName}} sudah dipakai',
   'conflict.shortNameRetired':
-    'short_name {{shortName}} milik halaman profil yang sudah dihapus dan tidak pernah dipakai lagi',
+    'Alamat halaman {{shortName}} milik halaman profil yang sudah dihapus dan tidak pernah dipakai lagi',
   'field.atLeastOne': 'Kirim setidaknya satu kolom untuk diperbarui',
 
   'field.account.min': 'Akun minimal {{accountMin}} karakter',
@@ -64,10 +64,11 @@ export const errorsId: ErrorMessages = {
     'Hanya huruf kecil, angka, titik, garis bawah, dan tanda hubung, serta harus diawali dan diakhiri huruf atau angka',
   'field.account.consecutive': 'Titik, garis bawah, dan tanda hubung tidak boleh berurutan',
   'field.account.invalid': 'Format akun itu tidak valid',
-  'field.shortName.required': 'short_name tidak boleh kosong',
-  'field.shortName.length': 'short_name harus {{shortNameMin}} sampai {{shortNameMax}} karakter',
+  'field.shortName.required': 'Alamat halaman tidak boleh kosong',
+  'field.shortName.length':
+    'Alamat halaman harus {{shortNameMin}} sampai {{shortNameMax}} karakter',
   'field.shortName.charset':
-    'short_name hanya boleh huruf kecil, angka, dan tanda hubung, serta tidak boleh diawali atau diakhiri tanda hubung',
+    'Alamat halaman hanya boleh huruf kecil, angka, dan tanda hubung, serta tidak boleh diawali atau diakhiri tanda hubung',
   'field.social.phone': 'Masukkan nomor 7 sampai 15 digit, boleh dengan kode negara +',
   'field.social.instagram':
     'Username Instagram tidak valid (1 sampai 30 huruf, angka, titik, atau garis bawah)',

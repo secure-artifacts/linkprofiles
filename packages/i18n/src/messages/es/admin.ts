@@ -647,7 +647,7 @@ export const adminEs: AdminMessages = {
   'register.subtitle': 'Introduce el código de invitación que te dio tu administrador',
   'register.field.code': 'Código de invitación',
   'register.field.shortName': 'Dirección de la página',
-  'register.field.shortName.hint': 'Tu página estará en {{origin}}/tu-direccion',
+  'register.field.shortName.hint': 'Minúsculas, dígitos y guiones, por ejemplo north-manila',
   'register.joining': 'Te unirás a {{region}}',
   'register.submit': 'Crear cuenta',
   'register.done': 'Cuenta creada. Inicia sesión para empezar.',
@@ -656,6 +656,9 @@ export const adminEs: AdminMessages = {
   'register.link': '¿Tienes un código de invitación? Crea una cuenta',
   'register.shortName.taken': 'Esa dirección está ocupada',
   'register.shortName.free': 'Esa dirección está libre',
+  'register.shortName.retired':
+    'Esa dirección pertenecía a una página eliminada y nunca se reasigna',
+  'register.shortName.checking': 'Comprobando disponibilidad',
   'settings.registration.title': 'Registro autoservicio',
   'settings.registration.label': 'Permitir que la gente se registre con un código de invitación',
   'settings.registration.caveat':

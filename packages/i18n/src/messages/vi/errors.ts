@@ -5,9 +5,9 @@ export const errorsVi: ErrorMessages = {
   'code.forbidden': 'Bạn không có quyền làm việc đó',
   'code.invalid_credentials': 'Sai tài khoản hoặc mật khẩu',
   'code.account_taken': 'Tài khoản đó đã có người dùng',
-  'code.short_name_taken': 'short_name đó đã có người dùng',
+  'code.short_name_taken': 'Địa chỉ trang đó đã có người dùng',
   'code.short_name_retired':
-    'short_name đó thuộc về một trang hồ sơ đã xoá và không bao giờ được cấp lại',
+    'Địa chỉ trang đó thuộc về một trang hồ sơ đã xoá và không bao giờ được cấp lại',
   'code.region_not_found': 'Khu vực đó không tồn tại',
   'code.invite_code_taken': 'Mã mời đó đã được dùng',
   'code.region_unowned': 'Khu vực này chưa có quản trị viên phụ trách; hãy phân công trước',
@@ -50,9 +50,9 @@ export const errorsVi: ErrorMessages = {
   'adminDist.missing':
     'Không thấy bản build của trang quản trị ở {{root}}. Chạy pnpm --filter @link-profile/admin build rồi khởi động lại.',
   'conflict.accountTaken': 'Tài khoản {{account}} đã tồn tại',
-  'conflict.shortNameTaken': 'short_name {{shortName}} đã có người dùng',
+  'conflict.shortNameTaken': 'Địa chỉ trang {{shortName}} đã có người dùng',
   'conflict.shortNameRetired':
-    'short_name {{shortName}} thuộc về một trang hồ sơ đã xoá và không bao giờ được cấp lại',
+    'Địa chỉ trang {{shortName}} thuộc về một trang hồ sơ đã xoá và không bao giờ được cấp lại',
   'field.atLeastOne': 'Hãy gửi ít nhất một trường cần cập nhật',
 
   'field.account.min': 'Tài khoản phải có ít nhất {{accountMin}} ký tự',
@@ -61,10 +61,10 @@ export const errorsVi: ErrorMessages = {
     'Chỉ dùng chữ thường, chữ số, dấu chấm, gạch dưới và gạch nối, đầu và cuối phải là chữ hoặc số',
   'field.account.consecutive': 'Dấu chấm, gạch dưới và gạch nối không được đứng liền nhau',
   'field.account.invalid': 'Tài khoản đó sai định dạng',
-  'field.shortName.required': 'short_name không được để trống',
-  'field.shortName.length': 'short_name phải có từ {{shortNameMin}} đến {{shortNameMax}} ký tự',
+  'field.shortName.required': 'Địa chỉ trang không được để trống',
+  'field.shortName.length': 'Địa chỉ trang phải có từ {{shortNameMin}} đến {{shortNameMax}} ký tự',
   'field.shortName.charset':
-    'short_name chỉ dùng chữ thường, chữ số và gạch nối, không được bắt đầu hay kết thúc bằng gạch nối',
+    'Địa chỉ trang chỉ dùng chữ thường, chữ số và gạch nối, không được bắt đầu hay kết thúc bằng gạch nối',
   'field.social.phone': 'Nhập số điện thoại 7 đến 15 chữ số, có thể kèm mã quốc gia +',
   'field.social.instagram':
     'Tên người dùng Instagram không hợp lệ (1 đến 30 chữ cái, chữ số, dấu chấm hoặc gạch dưới)',

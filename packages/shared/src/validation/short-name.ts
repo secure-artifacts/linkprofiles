@@ -43,3 +43,20 @@ export const shortNameSchema = z
       ctx.addIssue({ code: 'custom', message: result.error });
     }
   });
+
+/**
+ * 把用户粘进来的东西压成 short_name。
+ *
+ * 输入框旁边印着域名，照样有人把整条 `https://域名/名字` 贴进去。直接拿去
+ * 校验只会报「只能包含小写字母」，看不出问题在哪，所以先剥掉协议、域名、
+ * 查询串再校验。含斜杠的一定是整条地址 —— short_name 本身不含斜杠。
+ */
+export function extractShortName(raw: string): string {
+  const withoutScheme = raw
+    .trim()
+    .toLowerCase()
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//, '');
+  const path = withoutScheme.split(/[?#]/, 1)[0] ?? '';
+  if (!path.includes('/')) return path;
+  return path.split('/').find((part, index) => index > 0 && part !== '') ?? '';
+}

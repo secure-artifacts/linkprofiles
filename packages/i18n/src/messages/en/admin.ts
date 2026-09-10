@@ -657,7 +657,8 @@ export const adminEn = {
   'register.subtitle': 'Enter the invite code your admin gave you',
   'register.field.code': 'Invite code',
   'register.field.shortName': 'Page address',
-  'register.field.shortName.hint': 'Your page will live at {{origin}}/your-address',
+  'register.field.shortName.hint':
+    'Lowercase letters, digits and hyphens, for example north-manila',
   'register.joining': 'You will join {{region}}',
   'register.submit': 'Create account',
   'register.done': 'Account created. Sign in to get started.',
@@ -666,6 +667,8 @@ export const adminEn = {
   'register.link': 'Have an invite code? Create an account',
   'register.shortName.taken': 'That address is taken',
   'register.shortName.free': 'That address is available',
+  'register.shortName.retired': 'That address belonged to a deleted page and is never reassigned',
+  'register.shortName.checking': 'Checking availability',
   'settings.registration.title': 'Self-serve sign-up',
   'settings.registration.label': 'Let people sign up with an invite code',
   'settings.registration.caveat':

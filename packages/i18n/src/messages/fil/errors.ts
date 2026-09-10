@@ -5,9 +5,9 @@ export const errorsFil: ErrorMessages = {
   'code.forbidden': 'Wala kang pahintulot para dito',
   'code.invalid_credentials': 'Mali ang account o password',
   'code.account_taken': 'Ginagamit na ang account na iyan',
-  'code.short_name_taken': 'Ginagamit na ang short_name na iyan',
+  'code.short_name_taken': 'Ginagamit na ang address ng pahina na iyan',
   'code.short_name_retired':
-    'Ang short_name na iyan ay pag-aari ng isang binurang profile page at hindi na muling ibibigay',
+    'Ang address ng pahina na iyan ay pag-aari ng isang binurang profile page at hindi na muling ibibigay',
   'code.region_not_found': 'Wala ang rehiyong iyon',
   'code.invite_code_taken': 'Ginagamit na ang invite code na iyon',
   'code.region_unowned': 'Wala pang owning admin ang rehiyong ito; magtalaga muna',
@@ -59,9 +59,9 @@ export const errorsFil: ErrorMessages = {
     'Wala ang admin build output sa {{root}}. Patakbuhin ang pnpm --filter @link-profile/admin build, tapos i-restart.',
 
   'conflict.accountTaken': 'Umiiral na ang account na {{account}}',
-  'conflict.shortNameTaken': 'Ginagamit na ang short_name na {{shortName}}',
+  'conflict.shortNameTaken': 'Ginagamit na ang address ng pahina na {{shortName}}',
   'conflict.shortNameRetired':
-    'Ang short_name na {{shortName}} ay pag-aari ng binurang profile page at hindi na muling ibibigay',
+    'Ang address ng pahina na {{shortName}} ay pag-aari ng binurang profile page at hindi na muling ibibigay',
   'field.atLeastOne': 'Magsumite ng kahit isang field na ia-update',
 
   'field.account.min': 'Kailangang hindi bababa sa {{accountMin}} karakter ang account',
@@ -70,11 +70,11 @@ export const errorsFil: ErrorMessages = {
     'Maliliit na titik, numero, tuldok, underscore at gitling lang, at kailangang titik o numero ang simula at dulo',
   'field.account.consecutive': 'Hindi puwedeng magkasunod ang tuldok, underscore at gitling',
   'field.account.invalid': 'Hindi tama ang format ng account na iyan',
-  'field.shortName.required': 'Hindi puwedeng walang laman ang short_name',
+  'field.shortName.required': 'Hindi puwedeng walang laman ang address ng pahina',
   'field.shortName.length':
-    'Kailangang {{shortNameMin}} hanggang {{shortNameMax}} karakter ang short_name',
+    'Kailangang {{shortNameMin}} hanggang {{shortNameMax}} karakter ang address ng pahina',
   'field.shortName.charset':
-    'Maliliit na titik, numero at gitling lang ang puwede sa short_name, at hindi ito puwedeng magsimula o magtapos sa gitling',
+    'Maliliit na titik, numero at gitling lang ang puwede sa address ng pahina, at hindi ito puwedeng magsimula o magtapos sa gitling',
   'field.social.phone': 'Maglagay ng 7 hanggang 15 digit na numero, puwedeng may + country code',
   'field.social.instagram':
     'Hindi tama ang Instagram username (1 hanggang 30 titik, numero, tuldok o underscore)',

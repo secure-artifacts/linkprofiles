@@ -600,7 +600,7 @@ export const adminZhHans: AdminMessages = {
   'register.subtitle': '填入管理员给你的邀请码',
   'register.field.code': '邀请码',
   'register.field.shortName': '页面地址',
-  'register.field.shortName.hint': '你的页面将位于 {{origin}}/你的地址',
+  'register.field.shortName.hint': '小写字母、数字与连字符，例如 north-manila',
   'register.joining': '你将加入「{{region}}」',
   'register.submit': '创建账号',
   'register.done': '账号已创建，登录即可开始。',
@@ -609,6 +609,8 @@ export const adminZhHans: AdminMessages = {
   'register.link': '有邀请码？创建账号',
   'register.shortName.taken': '这个地址已被占用',
   'register.shortName.free': '这个地址可以用',
+  'register.shortName.retired': '这个地址属于已删除的个人页，永不再分配',
+  'register.shortName.checking': '正在检查这个地址',
   'settings.registration.title': '自助注册',
   'settings.registration.label': '允许凭邀请码自助注册',
   'settings.registration.caveat':

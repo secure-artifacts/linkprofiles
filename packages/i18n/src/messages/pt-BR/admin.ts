@@ -644,7 +644,7 @@ export const adminPtBR: AdminMessages = {
   'register.subtitle': 'Digite o código de convite que seu administrador deu',
   'register.field.code': 'Código de convite',
   'register.field.shortName': 'Endereço da página',
-  'register.field.shortName.hint': 'Sua página ficará em {{origin}}/seu-endereco',
+  'register.field.shortName.hint': 'Minúsculas, dígitos e hífens, por exemplo north-manila',
   'register.joining': 'Você vai entrar em {{region}}',
   'register.submit': 'Criar conta',
   'register.done': 'Conta criada. Entre para começar.',
@@ -653,6 +653,9 @@ export const adminPtBR: AdminMessages = {
   'register.link': 'Tem um código de convite? Crie uma conta',
   'register.shortName.taken': 'Esse endereço já está ocupado',
   'register.shortName.free': 'Esse endereço está livre',
+  'register.shortName.retired':
+    'Esse endereço pertencia a uma página excluída e nunca é reatribuído',
+  'register.shortName.checking': 'Verificando disponibilidade',
   'settings.registration.title': 'Cadastro autosserviço',
   'settings.registration.label': 'Deixar as pessoas se cadastrarem com um código de convite',
   'settings.registration.caveat':

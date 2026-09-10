@@ -668,7 +668,7 @@ export const adminFil: AdminMessages = {
   'register.subtitle': 'Ilagay ang invite code na binigay ng admin mo',
   'register.field.code': 'Invite code',
   'register.field.shortName': 'Address ng pahina',
-  'register.field.shortName.hint': 'Nasa {{origin}}/iyong-address ang pahina mo',
+  'register.field.shortName.hint': 'Maliliit na titik, numero at gitling, halimbawa north-manila',
   'register.joining': 'Sasali ka sa {{region}}',
   'register.submit': 'Gumawa ng account',
   'register.done': 'Nagawa na ang account. Mag-sign in para magsimula.',
@@ -677,6 +677,9 @@ export const adminFil: AdminMessages = {
   'register.link': 'May invite code? Gumawa ng account',
   'register.shortName.taken': 'Kuha na ang address na iyon',
   'register.shortName.free': 'Puwede ang address na iyon',
+  'register.shortName.retired':
+    'Pag-aari ng binurang pahina ang address na iyon at hindi na muling ibibigay',
+  'register.shortName.checking': 'Tinitingnan kung puwede',
   'settings.registration.title': 'Self-serve na pag-sign up',
   'settings.registration.label': 'Payagan ang pag-sign up gamit ang invite code',
   'settings.registration.caveat':

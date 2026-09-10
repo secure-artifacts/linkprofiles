@@ -644,7 +644,7 @@ export const adminId: AdminMessages = {
   'register.subtitle': 'Masukkan kode undangan dari adminmu',
   'register.field.code': 'Kode undangan',
   'register.field.shortName': 'Alamat halaman',
-  'register.field.shortName.hint': 'Halamanmu ada di {{origin}}/alamat-kamu',
+  'register.field.shortName.hint': 'Huruf kecil, angka, dan tanda hubung, misalnya north-manila',
   'register.joining': 'Kamu akan bergabung ke {{region}}',
   'register.submit': 'Buat akun',
   'register.done': 'Akun dibuat. Masuk untuk mulai.',
@@ -653,6 +653,9 @@ export const adminId: AdminMessages = {
   'register.link': 'Punya kode undangan? Buat akun',
   'register.shortName.taken': 'Alamat itu sudah dipakai',
   'register.shortName.free': 'Alamat itu tersedia',
+  'register.shortName.retired':
+    'Alamat itu milik halaman yang sudah dihapus dan tidak pernah dipakai lagi',
+  'register.shortName.checking': 'Memeriksa ketersediaan',
   'settings.registration.title': 'Pendaftaran mandiri',
   'settings.registration.label': 'Izinkan orang mendaftar dengan kode undangan',
   'settings.registration.caveat':

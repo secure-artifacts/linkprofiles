@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { validateShortName } from './short-name.js';
+import { extractShortName, validateShortName } from './short-name.js';
 
 const ok = (raw: string) => validateShortName(raw);
 
@@ -52,5 +52,34 @@ describe('validateShortName', () => {
   test('空串给出专门的提示', () => {
     expect(ok('')).toEqual({ ok: false, error: 'field.shortName.required' });
     expect(ok('   ')).toEqual({ ok: false, error: 'field.shortName.required' });
+  });
+});
+
+describe('extractShortName', () => {
+  test('整条地址被剥成标识', () => {
+    expect(extractShortName('https://m.usrele.com/north-manila')).toBe('north-manila');
+    expect(extractShortName('http://m.usrele.com/north-manila')).toBe('north-manila');
+    expect(extractShortName('m.usrele.com/north-manila')).toBe('north-manila');
+  });
+
+  test('只粘了域名时留空，让「不能为空」而不是字符集报错说话', () => {
+    expect(extractShortName('https://m.usrele.com/')).toBe('');
+    expect(extractShortName('https://m.usrele.com')).toBe('m.usrele.com');
+  });
+
+  test('查询串与锚点被切掉', () => {
+    expect(extractShortName('https://m.usrele.com/joy?src=tiktok')).toBe('joy');
+    expect(extractShortName('https://m.usrele.com/joy#top')).toBe('joy');
+  });
+
+  test('已经是标识时只压平大小写与空白', () => {
+    expect(extractShortName('North-Manila')).toBe('north-manila');
+    expect(extractShortName('  joy  ')).toBe('joy');
+    expect(extractShortName('')).toBe('');
+  });
+
+  test('前导斜杠与多余斜杠不影响取值', () => {
+    expect(extractShortName('/joy')).toBe('joy');
+    expect(extractShortName('m.usrele.com//joy')).toBe('joy');
   });
 });
