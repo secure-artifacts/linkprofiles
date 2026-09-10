@@ -7,7 +7,7 @@
  * 地址与凭据全靠一个预先配好的名为 `gitlab` 的 remote，脚本本身不含任何秘密，
  * 外包开发者跑它会停在「没有 gitlab remote」那一步，正是想要的结果。
  *
- * 用法：pnpm deployToGitlab [--branch <名字>] [--yes] [--allow-unpushed] [--adopt]
+ * 用法：pnpm deployToGitlab [--branch <名字>] [--yes] [--allow-unpushed] [--adopt] [--force]
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { builtinModules } from 'node:module';
@@ -286,28 +286,51 @@ async function main() {
 
   const work = mkdtempSync(join(tmpdir(), 'link-profile-deploy-'));
   try {
+    const force = flag('force');
     step(`拉取 ${REMOTE}/${branch}`);
     run('git', ['init', '--quiet', '--initial-branch', branch], work);
     run('git', ['remote', 'add', REMOTE, url], work);
     const fetched = tryRun('git', ['fetch', '--depth', '1', REMOTE, branch], work) !== null;
-    if (fetched) {
+
+    // 强制模式不继承远端历史：目标仓库里若原本是源码，继承过来之后
+    // 那些不在受管清单里的文件（docs/、CONTEXT.md 之类）会一直留着，
+    // 得到一个半源码半产物的仓库。要干净就得从孤儿提交重建。
+    if (fetched && !force) {
       run('git', ['reset', '--hard', `${REMOTE}/${branch}`], work);
-    } else {
+    } else if (!fetched) {
       step('远端还是空的，这是第一次部署');
+    } else {
+      step('强制模式：丢弃远端历史，以孤儿提交重建');
     }
 
-    if (fetched && !existsSync(join(work, 'deploy-manifest.json')) && !flag('adopt')) {
+    /** 强制模式下工作区是空的，远端的文件只能从 FETCH_HEAD 里翻。 */
+    const remoteFile = (path: string): string | null =>
+      force
+        ? fetched
+          ? tryRun('git', ['show', `FETCH_HEAD:${path}`], work)
+          : null
+        : existsSync(join(work, path))
+          ? readFileSync(join(work, path), 'utf8')
+          : null;
+
+    const previousRaw = remoteFile(MANIFEST_PATH);
+    if (fetched && previousRaw === null && !flag('adopt') && !force) {
       fail(
-        `${REMOTE}/${branch} 上有内容但没有 deploy-manifest.json，不像是产物仓库。\n` +
+        `${REMOTE}/${branch} 上有内容但没有 ${MANIFEST_PATH}，不像是产物仓库。\n` +
           `确认地址没写错。确实要用这个仓库就加 --adopt。`,
       );
     }
+    const previous = previousRaw ? (JSON.parse(previousRaw) as DeployManifest) : null;
 
-    const previous = existsSync(join(work, 'deploy-manifest.json'))
-      ? readJson<DeployManifest>(join(work, 'deploy-manifest.json'))
-      : null;
+    // 只写一次的文件即使在强制模式下也要保住：内网团队写好的流水线不能因为重建而丢
+    const preserved = new Map<string, string>();
+    for (const path of SEED_ONCE_PATHS) {
+      const content = remoteFile(path);
+      if (content !== null) preserved.set(path, content);
+    }
 
     copyArtifacts(work);
+    for (const [path, content] of preserved) writeFileSync(join(work, path), content);
 
     // 先只比产物。清单带打包时间，每次都不同，跟着一起比的话永远判不出「没有变化」。
     run('git', ['add', '-A'], work);
@@ -328,6 +351,9 @@ async function main() {
       .filter(Boolean);
 
     console.log('\n─────────── 即将推送 ───────────');
+    if (force) {
+      console.log('模式      强制：丢弃远端全部历史，这次提交成为新的根提交');
+    }
     console.log(`目标      ${REMOTE}/${branch}  ${url}`);
     console.log(
       `版本      v${manifest.version}${manifest.describe ? `  (${manifest.describe})` : ''}`,
@@ -359,7 +385,11 @@ async function main() {
 
     run('git', ['commit', '--quiet', '-m', commitMessage(manifest)], work);
     step(`推送到 ${REMOTE}/${branch}`);
-    const pushed = tryRun('git', ['push', REMOTE, `HEAD:${branch}`], work);
+    const pushed = tryRun(
+      'git',
+      ['push', ...(force ? ['--force'] : []), REMOTE, `HEAD:${branch}`],
+      work,
+    );
     if (pushed === null) {
       // 别人先推了一版。产物是幂等的，重来一次即可，但要让人自己确认覆盖的是什么。
       fail(
