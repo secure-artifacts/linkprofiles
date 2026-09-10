@@ -325,11 +325,17 @@ async function main() {
     }
     const previous = previousRaw ? (JSON.parse(previousRaw) as DeployManifest) : null;
 
-    // 只写一次的文件即使在强制模式下也要保住：内网团队写好的流水线不能因为重建而丢
+    // 只写一次的文件要保住内网团队写好的那份，但**只在远端确实是产物仓库时**。
+    // 强推一个还不是产物仓库的地方（比如旧的源码仓库），它那份 docker-compose.yml
+    // 是源码时代的遗物而不是运维的成果 —— 保留它等于把一份跑不起来的配置交给运维。
     const preserved = new Map<string, string>();
-    for (const path of SEED_ONCE_PATHS) {
-      const content = remoteFile(path);
-      if (content !== null) preserved.set(path, content);
+    if (previous !== null || !force) {
+      for (const path of SEED_ONCE_PATHS) {
+        const content = remoteFile(path);
+        if (content !== null) preserved.set(path, content);
+      }
+    } else {
+      step('远端不是产物仓库，只写一次的文件按模板重写');
     }
 
     copyArtifacts(work);
