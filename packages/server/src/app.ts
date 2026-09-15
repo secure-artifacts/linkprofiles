@@ -12,6 +12,7 @@ import { adminRoutes } from './routes/admins.js';
 import { analyticsRoutes } from './routes/analytics.js';
 import { authRoutes } from './routes/auth.js';
 import { bulkUserRoutes } from './routes/bulk-users.js';
+import { debugQueryRoutes } from './routes/debug-query.js';
 import { healthRoutes } from './routes/health.js';
 import { fontRoutes } from './routes/fonts.js';
 import { mediaRoutes } from './routes/media.js';
@@ -100,6 +101,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(trackRoutes, { prefix: '/_api' });
   await app.register(settingsRoutes, { prefix: '/_api' });
   await app.register(analyticsRoutes, { prefix: '/_api' });
+  await app.register(debugQueryRoutes, { prefix: '/_api' });
   await app.register(fontRoutes, { prefix: '/_static' });
   await app.register(ogImageRoutes, { prefix: '/_static' });
   await app.register(adminAppRoutes);
