@@ -22,7 +22,9 @@ GitLab 出现新提交不等于服务器已上线；当前附带的 CI 模板不
 
 ## 哪些文件不会被覆盖
 
-服务器上的 `.env`、`geoip/`、`docker-compose.override.yml` 和 `.deployed-commit` 不归 Git 管理，升级时保留。
+服务器上的 `.env`、`docker-compose.override.yml` 和 `.deployed-commit` 不归 Git 管理，用 `deploy.sh` 升级时保留。
+改用 `rsync --delete` 之类的方式同步部署目录时，必须把这三个排除掉，否则每次部署都会被删。
+地域库放在部署目录之外（手册 2.2 末尾），不受部署方式影响。
 现场网段调整写入 `docker-compose.override.yml`，不要直接修改 `docker-compose.yml`。
 
 开发的产物发布命令只在第一次写入 `.gitlab-ci.yml` 与 `docker-compose.yml`；

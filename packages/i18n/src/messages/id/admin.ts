@@ -677,4 +677,21 @@ export const adminId: AdminMessages = {
   'settings.recaptcha.keepSecret': 'Kosongkan untuk mempertahankan secret key saat ini',
   'settings.recaptcha.testKey':
     'Ini kunci uji publik dari Google. Semua token diloloskan, jadi pendaftaran praktis tanpa perlindungan. Ganti dengan milikmu sebelum live.',
+  'settings.geo.title': 'Database lokasi IP',
+  'settings.geo.loaded': 'Termuat',
+  'settings.geo.unavailable': 'Tidak terbaca',
+  'settings.geo.unconfigured': 'Belum dikonfigurasi',
+  'settings.geo.builtAt': 'Dibuat {{date}}',
+  'settings.geo.unavailableHint':
+    'Aplikasi tidak bisa membaca {{path}}. Kunjungan baru tidak mendapat negara sampai file tersedia.',
+  'settings.geo.unconfiguredHint':
+    'GEOLITE2_CITY_PATH belum diatur, jadi tidak ada kunjungan yang mendapat negara. Lihat panduan deployment.',
+  'settings.geo.unresolved':
+    'Data dengan negara tidak diketahui yang bisa dideteksi ulang: pembukaan {{views}} · klik {{clicks}}',
+  'settings.geo.explain':
+    'Kunjungan yang tercatat saat database belum ada tidak memiliki negara. Deteksi ulang mencari IP yang tersimpan di tiap data (bagian terakhir dinolkan) di database saat ini. Negara cukup akurat, kota kurang presisi. Yang tetap tidak cocok tetap tidak diketahui.',
+  'settings.geo.run': 'Deteksi ulang negara',
+  'settings.geo.progress': '{{ips}} IP diperiksa · {{rows}} data terisi',
+  'settings.geo.done': 'Selesai. Terisi: pembukaan {{views}} · klik {{clicks}}',
+  'settings.geo.nothing': 'Tidak ada yang perlu dideteksi ulang',
 };

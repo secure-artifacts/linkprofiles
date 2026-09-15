@@ -671,4 +671,21 @@ export const adminVi: AdminMessages = {
   'settings.recaptcha.keepSecret': 'Để trống để giữ khóa bí mật hiện tại',
   'settings.recaptcha.testKey':
     'Đây là khóa thử nghiệm công khai của Google. Chúng cho mọi token đi qua, nên đăng ký coi như không được bảo vệ. Hãy thay bằng khóa của bạn trước khi lên production.',
+  'settings.geo.title': 'Cơ sở dữ liệu vị trí IP',
+  'settings.geo.loaded': 'Đã tải',
+  'settings.geo.unavailable': 'Không đọc được',
+  'settings.geo.unconfigured': 'Chưa cấu hình',
+  'settings.geo.builtAt': 'Tạo ngày {{date}}',
+  'settings.geo.unavailableHint':
+    'Ứng dụng không đọc được {{path}}. Lượt truy cập mới sẽ không có quốc gia cho đến khi có tệp.',
+  'settings.geo.unconfiguredHint':
+    'Chưa đặt GEOLITE2_CITY_PATH nên không lượt truy cập nào có quốc gia. Xem sổ tay triển khai.',
+  'settings.geo.unresolved':
+    'Bản ghi có quốc gia không rõ có thể nhận diện lại: lượt mở {{views}} · lượt nhấp {{clicks}}',
+  'settings.geo.explain':
+    'Các lượt truy cập ghi nhận khi thiếu cơ sở dữ liệu không có quốc gia. Nhận diện lại sẽ tra IP lưu trong từng bản ghi (phần cuối đã về 0) bằng cơ sở dữ liệu hiện tại. Quốc gia khá chính xác, thành phố kém chính xác hơn. Những bản ghi vẫn không khớp giữ nguyên là không rõ.',
+  'settings.geo.run': 'Nhận diện lại quốc gia',
+  'settings.geo.progress': 'Đã kiểm tra {{ips}} IP · đã bổ sung {{rows}} bản ghi',
+  'settings.geo.done': 'Xong. Đã bổ sung: lượt mở {{views}} · lượt nhấp {{clicks}}',
+  'settings.geo.nothing': 'Không còn gì cần nhận diện lại',
 };

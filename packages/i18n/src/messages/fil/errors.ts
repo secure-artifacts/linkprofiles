@@ -9,6 +9,8 @@ export const errorsFil: ErrorMessages = {
   'code.short_name_retired':
     'Ang address ng pahina na iyan ay pag-aari ng isang binurang profile page at hindi na muling ibibigay',
   'code.region_not_found': 'Wala ang rehiyong iyon',
+  'code.geo_unavailable':
+    'Hindi naka-load ang database ng lokasyon ng IP, kaya hindi matukoy muli ang mga bansa',
   'code.invite_code_taken': 'Ginagamit na ang invite code na iyon',
   'code.region_unowned': 'Wala pang owning admin ang rehiyong ito; magtalaga muna',
   'code.registration_closed': 'Sarado muna ang pag-sign up',

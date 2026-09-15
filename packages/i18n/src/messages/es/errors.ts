@@ -9,6 +9,8 @@ export const errorsEs: ErrorMessages = {
   'code.short_name_retired':
     'Esa dirección de la página pertenece a una página de perfil eliminada y nunca se reasigna',
   'code.region_not_found': 'Esa región no existe',
+  'code.geo_unavailable':
+    'La base de ubicación por IP no está cargada, así que no se pueden volver a detectar países',
   'code.invite_code_taken': 'Ese código de invitación ya está en uso',
   'code.region_unowned':
     'Esta región todavía no tiene administrador responsable; asigna uno primero',

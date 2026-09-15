@@ -9,6 +9,8 @@ export const errorsVi: ErrorMessages = {
   'code.short_name_retired':
     'Địa chỉ trang đó thuộc về một trang hồ sơ đã xoá và không bao giờ được cấp lại',
   'code.region_not_found': 'Khu vực đó không tồn tại',
+  'code.geo_unavailable':
+    'Cơ sở dữ liệu vị trí IP chưa được tải nên chưa thể nhận diện lại quốc gia',
   'code.invite_code_taken': 'Mã mời đó đã được dùng',
   'code.region_unowned': 'Khu vực này chưa có quản trị viên phụ trách; hãy phân công trước',
   'code.registration_closed': 'Hiện đã đóng đăng ký',

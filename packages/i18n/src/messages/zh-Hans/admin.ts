@@ -631,4 +631,19 @@ export const adminZhHans: AdminMessages = {
   'settings.recaptcha.keepSecret': '留空则保留当前私钥',
   'settings.recaptcha.testKey':
     '这是 Google 的公开测试密钥，对任何令牌都放行，等于注册没有人机验证。上线前换成你自己的密钥。',
+  'settings.geo.title': '地域库',
+  'settings.geo.loaded': '已加载',
+  'settings.geo.unavailable': '读不到',
+  'settings.geo.unconfigured': '未配置',
+  'settings.geo.builtAt': '构建于 {{date}}',
+  'settings.geo.unavailableHint': '应用读不到 {{path}}，文件放好之前，新的访问也不会记下国家。',
+  'settings.geo.unconfiguredHint':
+    '没有设置 GEOLITE2_CITY_PATH，所有访问都不会记下国家。放法见运维部署手册。',
+  'settings.geo.unresolved': '国家未知、可以重新识别的记录：打开 {{views}} · 点击 {{clicks}}',
+  'settings.geo.explain':
+    '地域库缺失期间的访问没有记下国家。重新识别会用当前地域库查每条记录里存的 IP（最后一段已抹零）：国家基本准确，城市精度略差，仍查不出的保持未知。',
+  'settings.geo.run': '重新识别国家',
+  'settings.geo.progress': '已查 {{ips}} 个 IP，补上 {{rows}} 条记录',
+  'settings.geo.done': '识别完成，补上打开 {{views}} · 点击 {{clicks}}',
+  'settings.geo.nothing': '没有需要重新识别的记录',
 };

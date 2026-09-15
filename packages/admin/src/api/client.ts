@@ -89,6 +89,7 @@ const ERROR_CODE_KEYS: Record<string, ErrorKey> = {
   region_not_empty: 'code.region_not_empty',
   region_is_default: 'code.region_is_default',
   region_not_found: 'code.region_not_found',
+  geo_unavailable: 'code.geo_unavailable',
   duplicate_platform: 'code.duplicate_platform',
   unknown_platform: 'code.unknown_platform',
   invalid_body: 'code.invalid_body',

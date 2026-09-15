@@ -8,6 +8,7 @@ export const errorsZhHans: ErrorMessages = {
   'code.short_name_taken': '这个页面地址已经被占用了',
   'code.short_name_retired': '这个页面地址属于一个已删除的个人页，永不再分配',
   'code.region_not_found': '这个区域不存在',
+  'code.geo_unavailable': '地域库没有加载，暂时无法重新识别国家',
   'code.invite_code_taken': '这个邀请码已经被占用',
   'code.region_unowned': '这个区域还没有归属管理员，先指派再发码',
   'code.registration_closed': '注册暂时关闭',

@@ -690,4 +690,21 @@ export const adminEn = {
   'settings.recaptcha.keepSecret': 'Leave empty to keep the current secret key',
   'settings.recaptcha.testKey':
     "These are Google's public test keys. They let every token through, so sign-up is effectively unprotected. Replace them with your own before going live.",
+  'settings.geo.title': 'IP location database',
+  'settings.geo.loaded': 'Loaded',
+  'settings.geo.unavailable': 'Cannot read',
+  'settings.geo.unconfigured': 'Not configured',
+  'settings.geo.builtAt': 'Built {{date}}',
+  'settings.geo.unavailableHint':
+    'The app cannot read {{path}}. New visits get no country until the file is in place.',
+  'settings.geo.unconfiguredHint':
+    'GEOLITE2_CITY_PATH is not set, so no visit gets a country. See the deployment handbook.',
+  'settings.geo.unresolved':
+    'Records with an unknown country that can be re-detected: opens {{views}} · clicks {{clicks}}',
+  'settings.geo.explain':
+    'Visits recorded while the database was missing have no country. Re-detecting looks up the IP stored on each record (last part zeroed) in the current database. Countries come out reliable, cities less precise. Anything still unmatched stays unknown.',
+  'settings.geo.run': 'Re-detect countries',
+  'settings.geo.progress': 'Checked {{ips}} IPs · filled in {{rows}} records',
+  'settings.geo.done': 'Done. Filled in opens {{views}} · clicks {{clicks}}',
+  'settings.geo.nothing': 'Nothing left to re-detect',
 } as const;

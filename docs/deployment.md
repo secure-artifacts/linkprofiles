@@ -75,7 +75,7 @@ nginx -v
 | GitHub（`github.com`，HTTPS 443 或 SSH 22） | 拉源码 | 是 |
 | Docker Hub（`registry-1.docker.io`、`auth.docker.io`、`production.cloudflare.docker.com`） | 拉 `node:22-bookworm-slim`、`postgres:18-alpine` | 是 |
 | npm registry（`registry.npmjs.org`） | 装依赖 | 是 |
-| MaxMind（`download.maxmind.com`） | GeoIP 库更新 | 否 |
+| DB-IP（`download.db-ip.com`）或 MaxMind（`download.maxmind.com`） | 地域库下载与更新 | 否，不配则国家和城市为空 |
 
 > 这张表说的是**本节这条流程**：服务器自己拉源码、自己构建。另有一条产物分发的路子，服务器不再
 > 需要访问 GitHub、也不再在本机编译，见第 9 节。要注意的是构建只是挪到了 GitLab runner 上，

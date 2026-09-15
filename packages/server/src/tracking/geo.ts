@@ -15,26 +15,83 @@ export interface GeoResult {
   city: string | null;
 }
 
-export type GeoLookup = (ip: string | null) => Promise<GeoResult>;
+export type GeoStatus =
+  | { state: 'loaded'; path: string; type: string; builtAt: string }
+  | { state: 'unavailable'; path: string; error: string | null }
+  | { state: 'unconfigured' };
+
+export interface GeoLookup {
+  (ip: string | null): Promise<GeoResult>;
+  /** 测试注入的假解析器可以不带，调用方视为可用。 */
+  status?: () => Promise<GeoStatus>;
+}
+
+export interface GeoLogger {
+  info(obj: object, msg: string): void;
+  warn(obj: object, msg: string): void;
+}
 
 const EMPTY: GeoResult = { country: null, city: null };
 
-export const noGeoLookup: GeoLookup = async () => EMPTY;
+export const GEO_RETRY_MS = 60_000;
+
+export const noGeoLookup: GeoLookup = Object.assign(async () => EMPTY, {
+  status: async (): Promise<GeoStatus> => ({ state: 'unconfigured' }),
+});
 
 /**
- * 建一个查库的解析器。库打不开就退化成「不解析」，启动不受影响。
- * 库文件在进程生命周期内只打开一次。
+ * 库打不开不影响启动，隔 `GEO_RETRY_MS` 重试：先起容器、后放库文件时，缓存住失败结果
+ * 会让此后每条记录都没有地域，日志里也看不出来。加载成功后不再重读，换库仍要重启。
  */
-export function createGeoLookup(dbPath = process.env.GEOLITE2_CITY_PATH): GeoLookup {
-  if (!dbPath) return noGeoLookup;
+export function createGeoLookup(
+  dbPath = process.env.GEOLITE2_CITY_PATH,
+  log?: GeoLogger,
+): GeoLookup {
+  if (!dbPath) {
+    log?.warn({}, '未设置 GEOLITE2_CITY_PATH，国家和城市不会记录');
+    return noGeoLookup;
+  }
 
-  let reader: Promise<Reader<CityResponse> | null> | null = null;
+  let reader: Promise<Reader<CityResponse> | null>;
+  let failedAt: number | null = null;
+  let lastError: string | null = null;
 
-  return async (ip) => {
+  const load = () => {
+    failedAt = null;
+    reader = open<CityResponse>(dbPath).then(
+      (db) => {
+        lastError = null;
+        log?.info(
+          { path: dbPath, type: db.metadata.databaseType, builtAt: db.metadata.buildEpoch },
+          '地域库已加载',
+        );
+        return db;
+      },
+      (err: unknown) => {
+        failedAt = Date.now();
+        const message = err instanceof Error ? err.message : String(err);
+        if (message !== lastError) {
+          log?.warn(
+            { path: dbPath, err },
+            `地域库打不开，国家和城市不会记录，每 ${GEO_RETRY_MS / 1000} 秒重试`,
+          );
+        }
+        lastError = message;
+        return null;
+      },
+    );
+  };
+  load();
+
+  const current = () => {
+    if (failedAt !== null && Date.now() - failedAt >= GEO_RETRY_MS) load();
+    return reader;
+  };
+
+  const lookup: GeoLookup = async (ip) => {
     if (!ip) return EMPTY;
 
-    reader ??= open<CityResponse>(dbPath).catch(() => null);
-    const db = await reader;
+    const db = await current();
     if (!db) return EMPTY;
 
     try {
@@ -49,4 +106,18 @@ export function createGeoLookup(dbPath = process.env.GEOLITE2_CITY_PATH): GeoLoo
       return EMPTY;
     }
   };
+
+  lookup.status = async () => {
+    const db = await current();
+    return db
+      ? {
+          state: 'loaded',
+          path: dbPath,
+          type: db.metadata.databaseType,
+          builtAt: db.metadata.buildEpoch.toISOString(),
+        }
+      : { state: 'unavailable', path: dbPath, error: lastError };
+  };
+
+  return lookup;
 }

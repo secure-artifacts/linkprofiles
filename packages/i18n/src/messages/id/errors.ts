@@ -9,6 +9,8 @@ export const errorsId: ErrorMessages = {
   'code.short_name_retired':
     'Alamat halaman itu milik halaman profil yang sudah dihapus dan tidak pernah dipakai lagi',
   'code.region_not_found': 'Wilayah itu tidak ada',
+  'code.geo_unavailable':
+    'Database lokasi IP belum termuat, jadi negara tidak bisa dideteksi ulang',
   'code.invite_code_taken': 'Kode undangan itu sudah dipakai',
   'code.region_unowned': 'Wilayah ini belum punya admin penanggung jawab; tugaskan dulu',
   'code.registration_closed': 'Pendaftaran sedang ditutup',

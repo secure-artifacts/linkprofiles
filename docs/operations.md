@@ -109,7 +109,7 @@ docker builder prune          # 清构建缓存
 | 频率 | 事项 |
 | --- | --- |
 | 每周 | `uploads` 卷与磁盘水位；`docker builder prune` |
-| 每周二 | GeoLite2 库更新（若启用），见第 5 节 |
+| 每月 / 每周 | 地域库更新（DB-IP 每月、MaxMind 每周），见第 5 节 |
 | 按证书周期 | TLS 续期后 `nginx -t && systemctl reload nginx` |
 
 ---
@@ -127,7 +127,7 @@ docker builder prune          # 清构建缓存
 | 上传报错 / 存不下 | uploads 属主不对，或磁盘满 | `docker compose exec app ls -ld /app/uploads` 应为 `node node`；`df -h` |
 | 上传大图 413 | 反代请求体上限太小 | Nginx `client_max_body_size` ≥ 16m |
 | **埋点 IP 全是内网地址** | `TRUST_PROXY` 与网关不一致 | 见第 6 节 |
-| 分析页地域全空 | 没配 GeoLite2，或 IP 是内网地址 | 分别核对，见第 5、6 节 |
+| 分析页地域全空 | 地域库没加载，或 IP 是内网地址 | `logs app \| grep 地域库`；见第 5、6 节 |
 | 分享卡片域名/协议不对 | `PUBLIC_ORIGIN` 没配或配错 | 改 `.env` 后 `docker compose up -d` |
 | 视频头像不播 / 拖动卡 | 反代缓冲了 206 分段响应 | Nginx 加 `proxy_buffering off` |
 | 日志 `bootstrap: "skipped"` | 库里没超管且没给 `SUPERADMIN_*` | 补环境变量重启 |
@@ -135,19 +135,33 @@ docker builder prune          # 清构建缓存
 
 ---
 
-## 5. GeoIP
+## 5. 地域库
 
-可选。不配时地域维度为空，其余埋点照常写入，服务正常启动。
+国家和城市靠离线地域库从访客 IP 查出。应用不会自动下载，没放库时国家和城市一律为空，其余埋点照常写入，
+服务正常启动，**不报错**。应用在创建时打开库并写日志，`docker compose logs app | grep 地域库` 看状态：
 
-1. 在 <https://www.maxmind.com/en/geolite2/signup> 注册拿 license key
-2. 下载 `GeoLite2-City.mmdb` 放到宿主机，如 `/srv/link-profile/geoip/`
-3. `.env` 设 `GEOLITE2_HOST_DIR=/srv/link-profile/geoip`、
-   `GEOLITE2_CITY_PATH=/app/geoip/GeoLite2-City.mmdb`
-4. 取消 `docker-compose.yml` 里那条 geoip volume 的注释
-5. `docker compose up -d`
+- `地域库已加载`：带 `path`、`type`、`builtAt`，可以顺便确认库有多旧
+- `未设置 GEOLITE2_CITY_PATH`：`.env` 没配
+- `地域库打不开`：文件不存在或损坏；有访问时每 60 秒重试，补放文件后不用重启
 
-MaxMind 每周二更新。配 `geoipupdate` 定时任务，**更新后要重启 app 容器**——库文件在进程生命周期内
-只打开一次。
+来源二选一，读取代码对两者通用（MaxMind DB 格式、字段一致）：
+
+| 来源 | 注册 | 更新 | 下载地址 |
+| --- | --- | --- | --- |
+| DB-IP City Lite | 不用 | 每月初 | `https://download.db-ip.com/free/dbip-city-lite-YYYY-MM.mmdb.gz` |
+| MaxMind GeoLite2 City | 要 license key | 每周二 | `geoipupdate` |
+
+两者协议都要求署名，后台分析页底部的署名要跟实际来源一致。
+
+1. 库放在**部署目录之外**，如 `/var/lib/link-profile/geoip/city.mmdb`。放在部署目录里，一旦部署方式
+   换成 `rsync --delete` 之类，每次部署都会删掉它
+2. `.env` 设 `GEOLITE2_HOST_DIR=/var/lib/link-profile/geoip`、`GEOLITE2_CITY_PATH=/app/geoip/city.mmdb`
+3. `docker compose up -d`
+
+库文件加载成功后在进程生命周期内不再重读，**更新后要重启 app 容器**。crontab 写法见运维部署手册「日常维护」。
+
+库缺失期间的记录国家为空。库恢复后由超级管理员在「全站设置 → 地域库」点「重新识别国家」，按记录里的截断 IP
+分批补上国家与城市，查不出的保持为空。
 
 ---
 

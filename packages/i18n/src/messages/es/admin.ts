@@ -680,4 +680,21 @@ export const adminEs: AdminMessages = {
   'settings.recaptcha.keepSecret': 'Déjalo vacío para conservar la clave secreta actual',
   'settings.recaptcha.testKey':
     'Estas son las claves públicas de prueba de Google. Dejan pasar cualquier token, así que el registro está desprotegido. Cámbialas por las tuyas antes de publicar.',
+  'settings.geo.title': 'Base de ubicación por IP',
+  'settings.geo.loaded': 'Cargada',
+  'settings.geo.unavailable': 'No se puede leer',
+  'settings.geo.unconfigured': 'Sin configurar',
+  'settings.geo.builtAt': 'Generada el {{date}}',
+  'settings.geo.unavailableHint':
+    'La app no puede leer {{path}}. Las visitas nuevas no tendrán país hasta que el archivo esté en su sitio.',
+  'settings.geo.unconfiguredHint':
+    'GEOLITE2_CITY_PATH no está definido, así que ninguna visita registra país. Consulta el manual de despliegue.',
+  'settings.geo.unresolved':
+    'Registros con país desconocido que se pueden volver a detectar: aperturas {{views}} · clics {{clicks}}',
+  'settings.geo.explain':
+    'Las visitas registradas mientras faltaba la base no tienen país. Volver a detectar busca la IP guardada en cada registro (con el último bloque en cero) en la base actual. El país sale fiable y la ciudad menos precisa. Lo que siga sin coincidir se queda como desconocido.',
+  'settings.geo.run': 'Volver a detectar países',
+  'settings.geo.progress': '{{ips}} IP revisadas · {{rows}} registros completados',
+  'settings.geo.done': 'Listo. Completados: aperturas {{views}} · clics {{clicks}}',
+  'settings.geo.nothing': 'No queda nada por volver a detectar',
 };

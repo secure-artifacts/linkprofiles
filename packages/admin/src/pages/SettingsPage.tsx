@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { request } from '../api/client.js';
-import type { AppSettings } from '../api/types.js';
+import type { AppSettings, GeoBackfillBatch, GeoOverview } from '../api/types.js';
 import { Alert } from '../ui/Alert.js';
 import { Spinner } from '../ui/Spinner.js';
 import { Button } from '../ui/Button.js';
@@ -9,7 +9,8 @@ import { Input, PasswordInput } from '../ui/Input.js';
 import { Tag } from '../ui/Tag.js';
 import { useToast } from '../ui/Toast.js';
 import { useBreadcrumb } from '../nav/breadcrumb.js';
-import { useAdminT } from '../i18n/runtime.js';
+import { useAdminT, useLocale } from '../i18n/runtime.js';
+import { formatNumber, isoDate } from '../format.js';
 
 /** 全站设置。只有超级管理员进得来。 */
 export function SettingsPage() {
@@ -98,6 +99,128 @@ export function SettingsPage() {
             message={t('settings.knownTradeoffs')}
             description={t('common.passthrough.caveat')}
           />
+        </div>
+      </div>
+
+      <GeoLibrary />
+    </div>
+  );
+}
+
+/**
+ * 补识别一次请求只处理一批 IP，这里循环到服务端说查完为止；积压多时一次性补完
+ * 会超过反向代理的超时。
+ */
+function GeoLibrary() {
+  const t = useAdminT();
+  const locale = useLocale();
+  const toast = useToast();
+  const [overview, setOverview] = useState<GeoOverview | null>(null);
+  const [progress, setProgress] = useState<{ ips: number; rows: number } | null>(null);
+
+  const load = () =>
+    request<GeoOverview>('/geo')
+      .then(setOverview)
+      .catch((err: Error) => toast.error(err.message));
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const run = async () => {
+    const totals = { ips: 0, pageViews: 0, clicks: 0 };
+    setProgress({ ips: 0, rows: 0 });
+    try {
+      let after: string | null = null;
+      do {
+        const batch: GeoBackfillBatch = await request<GeoBackfillBatch>('/geo/backfill', {
+          method: 'POST',
+          body: after ? { after } : {},
+        });
+        totals.ips += batch.scanned;
+        totals.pageViews += batch.pageViews;
+        totals.clicks += batch.clicks;
+        setProgress({ ips: totals.ips, rows: totals.pageViews + totals.clicks });
+        after = batch.next;
+      } while (after !== null);
+      toast.success(
+        t('settings.geo.done', {
+          views: formatNumber(totals.pageViews, locale),
+          clicks: formatNumber(totals.clicks, locale),
+        }),
+      );
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setProgress(null);
+      void load();
+    }
+  };
+
+  if (!overview) return null;
+
+  const { library, unresolved } = overview;
+  const pending = unresolved.pageViews + unresolved.clicks;
+
+  return (
+    <div className="rounded-[var(--radius-panel)] border border-border bg-surface p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-fg">{t('settings.geo.title')}</h2>
+        {library.state === 'loaded' ? (
+          <Tag tone="neutral">{t('settings.geo.loaded')}</Tag>
+        ) : (
+          <Tag tone="danger">
+            {library.state === 'unavailable'
+              ? t('settings.geo.unavailable')
+              : t('settings.geo.unconfigured')}
+          </Tag>
+        )}
+      </div>
+      <div className="flex flex-col gap-4">
+        {library.state === 'loaded' ? (
+          <p className="text-[12px] text-muted">
+            {library.type} · {t('settings.geo.builtAt', { date: isoDate(library.builtAt) })}
+          </p>
+        ) : (
+          <Alert
+            tone="danger"
+            message={
+              library.state === 'unavailable'
+                ? t('settings.geo.unavailableHint', { path: library.path })
+                : t('settings.geo.unconfiguredHint')
+            }
+            description={library.state === 'unavailable' ? (library.error ?? undefined) : undefined}
+          />
+        )}
+
+        <p className="text-[13px] text-fg">
+          {t('settings.geo.unresolved', {
+            views: formatNumber(unresolved.pageViews, locale),
+            clicks: formatNumber(unresolved.clicks, locale),
+          })}
+        </p>
+        <p className="text-[12px] text-muted">{t('settings.geo.explain')}</p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="primary"
+            loading={progress !== null}
+            disabled={library.state !== 'loaded' || pending === 0}
+            onClick={() => void run()}
+          >
+            {t('settings.geo.run')}
+          </Button>
+          {progress ? (
+            <span className="text-[12px] text-muted">
+              {t('settings.geo.progress', {
+                ips: formatNumber(progress.ips, locale),
+                rows: formatNumber(progress.rows, locale),
+              })}
+            </span>
+          ) : pending === 0 ? (
+            <span className="text-[12px] text-muted">{t('settings.geo.nothing')}</span>
+          ) : null}
         </div>
       </div>
     </div>

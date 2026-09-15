@@ -15,6 +15,7 @@ import { bulkUserRoutes } from './routes/bulk-users.js';
 import { debugQueryRoutes } from './routes/debug-query.js';
 import { healthRoutes } from './routes/health.js';
 import { fontRoutes } from './routes/fonts.js';
+import { geoRoutes } from './routes/geo.js';
 import { mediaRoutes } from './routes/media.js';
 import { ogImageRoutes } from './routes/og-image.js';
 import { profileContentRoutes } from './routes/profile-content.js';
@@ -66,7 +67,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   app.decorate('db', deps.db);
   app.decorate('sql', deps.sql);
-  app.decorate('geo', deps.geo ?? createGeoLookup());
+  app.decorate('geo', deps.geo ?? createGeoLookup(undefined, app.log));
   app.decorate('recaptcha', deps.recaptcha ?? verifyWithGoogle);
 
   await app.register(multipart, {
@@ -101,6 +102,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(trackRoutes, { prefix: '/_api' });
   await app.register(settingsRoutes, { prefix: '/_api' });
   await app.register(analyticsRoutes, { prefix: '/_api' });
+  await app.register(geoRoutes, { prefix: '/_api' });
   await app.register(debugQueryRoutes, { prefix: '/_api' });
   await app.register(fontRoutes, { prefix: '/_static' });
   await app.register(ogImageRoutes, { prefix: '/_static' });

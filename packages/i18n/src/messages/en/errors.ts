@@ -11,6 +11,8 @@ export const errorsEn = {
   'code.short_name_retired':
     'That page address belongs to a deleted profile page and is never reassigned',
   'code.region_not_found': 'That region does not exist',
+  'code.geo_unavailable':
+    'The IP location database is not loaded, so countries cannot be re-detected',
   'code.invite_code_taken': 'That invite code is already in use',
   'code.region_unowned': 'This region has no owning admin yet; assign one first',
   'code.registration_closed': 'Sign-up is closed right now',

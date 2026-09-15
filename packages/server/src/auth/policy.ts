@@ -32,7 +32,8 @@ export type Capability =
   | 'region:delete'
   /** 建区域时指定归属给别的管理员，只有超级管理员做得了 */
   | 'region:assignOwner'
-  | 'settings:write';
+  | 'settings:write'
+  | 'geo:backfill';
 
 /** 与「能对某个具体用户做什么」无关的能力，只看角色。 */
 const CAPABILITIES: Record<CurrentUser['role'], readonly Capability[]> = {
@@ -50,6 +51,7 @@ const CAPABILITIES: Record<CurrentUser['role'], readonly Capability[]> = {
     'region:delete',
     'region:assignOwner',
     'settings:write',
+    'geo:backfill',
   ],
   admin: [
     'user:create',

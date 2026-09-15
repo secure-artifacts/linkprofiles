@@ -701,4 +701,21 @@ export const adminFil: AdminMessages = {
   'settings.recaptcha.keepSecret': 'Iwang blangko para panatilihin ang kasalukuyang secret key',
   'settings.recaptcha.testKey':
     'Ito ang pampublikong test keys ng Google. Pinapayagan nila ang lahat ng token, kaya walang proteksyon ang pag-sign up. Palitan ng sarili mo bago mag-live.',
+  'settings.geo.title': 'Database ng lokasyon ng IP',
+  'settings.geo.loaded': 'Naka-load',
+  'settings.geo.unavailable': 'Hindi mabasa',
+  'settings.geo.unconfigured': 'Hindi naka-configure',
+  'settings.geo.builtAt': 'Ginawa noong {{date}}',
+  'settings.geo.unavailableHint':
+    'Hindi mabasa ng app ang {{path}}. Walang bansa ang mga bagong pagbisita hangga’t hindi naroon ang file.',
+  'settings.geo.unconfiguredHint':
+    'Hindi naka-set ang GEOLITE2_CITY_PATH, kaya walang bansa ang anumang pagbisita. Tingnan ang deployment handbook.',
+  'settings.geo.unresolved':
+    'Mga record na hindi kilalang bansa na maaaring tukuying muli: pagbukas {{views}} · click {{clicks}}',
+  'settings.geo.explain':
+    'Walang bansa ang mga pagbisitang naitala noong nawawala ang database. Ang muling pagtukoy ay hinahanap ang IP na nakatala sa bawat record (naka-zero ang huling bahagi) sa kasalukuyang database. Mapagkakatiwalaan ang bansa, hindi gaanong tumpak ang lungsod. Ang hindi natukoy ay manatiling hindi kilala.',
+  'settings.geo.run': 'Tukuying muli ang mga bansa',
+  'settings.geo.progress': 'Nasuri ang {{ips}} IP · napunan ang {{rows}} record',
+  'settings.geo.done': 'Tapos. Napunan: pagbukas {{views}} · click {{clicks}}',
+  'settings.geo.nothing': 'Walang natitirang kailangang tukuyin muli',
 };

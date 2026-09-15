@@ -9,6 +9,8 @@ export const errorsPtBR: ErrorMessages = {
   'code.short_name_retired':
     'Esse endereço da página pertence a uma página de perfil excluída e nunca é reatribuído',
   'code.region_not_found': 'Essa região não existe',
+  'code.geo_unavailable':
+    'A base de localização por IP não está carregada, então não é possível detectar países de novo',
   'code.invite_code_taken': 'Esse código de convite já está em uso',
   'code.region_unowned': 'Esta região ainda não tem administrador responsável; designe um antes',
   'code.registration_closed': 'O cadastro está fechado no momento',

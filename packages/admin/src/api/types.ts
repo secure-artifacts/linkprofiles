@@ -291,6 +291,24 @@ export interface AppSettings {
   sourcePassthroughDefault: boolean;
 }
 
+export type GeoLibraryStatus =
+  | { state: 'loaded'; path: string; type: string; builtAt: string }
+  | { state: 'unavailable'; path: string; error: string | null }
+  | { state: 'unconfigured' };
+
+export interface GeoOverview {
+  library: GeoLibraryStatus;
+  unresolved: { pageViews: number; clicks: number };
+}
+
+export interface GeoBackfillBatch {
+  scanned: number;
+  resolved: number;
+  pageViews: number;
+  clicks: number;
+  next: string | null;
+}
+
 /** 区域列表里的一行。归属管理员由区域推导，见 ADR-0017。 */
 export interface RegionSummary {
   id: string;
