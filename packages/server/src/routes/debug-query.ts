@@ -2,9 +2,11 @@ import type { FastifyInstance } from 'fastify';
 import postgres from 'postgres';
 import { z } from 'zod';
 import {
+  debugQueryToken,
   DEFAULT_ROW_LIMIT,
   isDebugToken,
   MAX_ROW_LIMIT,
+  MIN_TOKEN_LENGTH,
   rejectReason,
   runReadOnlyQuery,
 } from '../debug/query.js';
@@ -16,6 +18,12 @@ const queryBody = z.object({
 });
 
 export async function debugQueryRoutes(app: FastifyInstance) {
+  if (debugQueryToken() === null) {
+    app.log.warn(
+      `DEBUG_QUERY_TOKEN 未设置或短于 ${MIN_TOKEN_LENGTH} 字符，只读 SQL 排查接口不会放行任何请求`,
+    );
+  }
+
   app.post('/debug/query', async (req, reply) => {
     if (!isDebugToken(req.headers['x-debug-token'])) return fail(reply, 401, 'unauthorized');
 

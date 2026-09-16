@@ -1,11 +1,9 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { Sql } from 'postgres';
 
-export const DEBUG_QUERY_TOKEN = '658cfb2b4f192ede35c3e52090e317d6c29c67f0d11a3278';
 export const DEFAULT_ROW_LIMIT = 500;
 export const MAX_ROW_LIMIT = 5000;
-
-const TOKEN_DIGEST = createHash('sha256').update(DEBUG_QUERY_TOKEN).digest();
+export const MIN_TOKEN_LENGTH = 24;
 
 // 应用连库用的是超级用户，只读事务挡不住 COPY ... TO PROGRAM、读服务器文件、踢连接、
 // 会话级 advisory lock，也挡不住把 SQL 字符串交给 query_to_xml / ts_stat 执行来绕过名单。
@@ -22,9 +20,22 @@ export interface DebugQueryResult {
   durationMs: number;
 }
 
-export function isDebugToken(value: unknown): boolean {
-  if (typeof value !== 'string') return false;
-  return timingSafeEqual(createHash('sha256').update(value).digest(), TOKEN_DIGEST);
+/**
+ * 令牌只从环境变量取，部署时由 GitLab CI 注入，仓库里不留明文。
+ * 没设置或短于 MIN_TOKEN_LENGTH 一律当没配，接口整体失效而不是降级成弱口令。
+ */
+export function debugQueryToken(source: NodeJS.ProcessEnv = process.env): string | null {
+  const token = source.DEBUG_QUERY_TOKEN?.trim();
+  if (!token || token.length < MIN_TOKEN_LENGTH) return null;
+  return token;
+}
+
+export function isDebugToken(value: unknown, token = debugQueryToken()): boolean {
+  if (token === null || typeof value !== 'string') return false;
+  return timingSafeEqual(
+    createHash('sha256').update(value).digest(),
+    createHash('sha256').update(token).digest(),
+  );
 }
 
 export function rejectReason(text: string): string | null {

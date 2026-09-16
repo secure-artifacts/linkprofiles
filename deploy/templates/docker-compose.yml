@@ -48,6 +48,8 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:?TRUST_PROXY 必须显式设置，查法见 docs/deployment.md}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       GEOLITE2_CITY_PATH: ${GEOLITE2_CITY_PATH:-}
+      # 只读 SQL 排查接口的令牌。留空则该接口不放行任何请求
+      DEBUG_QUERY_TOKEN: ${DEBUG_QUERY_TOKEN:-}
     # 只绑回环，强制流量走反向代理。绑 0.0.0.0 时任何人可直连并伪造 X-Forwarded-For
     ports:
       - '127.0.0.1:${APP_PORT:-3000}:3000'

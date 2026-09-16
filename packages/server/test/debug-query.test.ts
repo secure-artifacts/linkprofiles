@@ -1,21 +1,24 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { DEBUG_QUERY_TOKEN } from '../src/debug/query.js';
 import { createTestContext, type TestContext } from './helpers/context.js';
 import { createUser } from './helpers/factories.js';
+
+const TOKEN = 'test-debug-token-0123456789abcdef';
 
 let ctx: TestContext;
 
 beforeAll(async () => {
+  process.env.DEBUG_QUERY_TOKEN = TOKEN;
   ctx = await createTestContext();
   await createUser(ctx.db, { account: 'debug-user', shortName: 'debug-user' });
 });
 
 afterAll(async () => {
+  delete process.env.DEBUG_QUERY_TOKEN;
   await ctx.close();
 });
 
 function query(sql: string, extra: { limit?: number; token?: string | null } = {}) {
-  const token = extra.token === undefined ? DEBUG_QUERY_TOKEN : extra.token;
+  const token = extra.token === undefined ? TOKEN : extra.token;
   return ctx.app.inject({
     method: 'POST',
     url: '/_api/debug/query',
@@ -32,6 +35,25 @@ async function userCount(): Promise<number> {
 test('缺少或写错令牌一律 401', async () => {
   expect((await query('select 1', { token: null })).statusCode).toBe(401);
   expect((await query('select 1', { token: 'wrong' })).statusCode).toBe(401);
+});
+
+test('环境变量没配令牌时任何请求都不放行', async () => {
+  delete process.env.DEBUG_QUERY_TOKEN;
+  try {
+    expect((await query('select 1')).statusCode).toBe(401);
+    expect((await query('select 1', { token: '' })).statusCode).toBe(401);
+  } finally {
+    process.env.DEBUG_QUERY_TOKEN = TOKEN;
+  }
+});
+
+test('令牌短于下限按没配处理，不降级成弱口令', async () => {
+  process.env.DEBUG_QUERY_TOKEN = 'short-token';
+  try {
+    expect((await query('select 1', { token: 'short-token' })).statusCode).toBe(401);
+  } finally {
+    process.env.DEBUG_QUERY_TOKEN = TOKEN;
+  }
 });
 
 test('令牌正确时返回列名与数据行', async () => {

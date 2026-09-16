@@ -132,6 +132,7 @@ docker builder prune          # 清构建缓存
 | 视频头像不播 / 拖动卡 | 反代缓冲了 206 分段响应 | Nginx 加 `proxy_buffering off` |
 | 日志 `bootstrap: "skipped"` | 库里没超管且没给 `SUPERADMIN_*` | 补环境变量重启 |
 | 日志 `bootstrap: "already-exists"` | 正常。改 `.env` 不会重置线上密码 | 忘密码见第 7 节 |
+| 只读 SQL 排查接口一律 401 | `DEBUG_QUERY_TOKEN` 没注入到容器，或与调用方手里的不是同一个 | 见第 9 节 |
 
 ---
 
@@ -273,3 +274,26 @@ Nginx 会返回 502。要给访客一个像样的页面就在 Nginx 配 `error_p
 | 数据库单点 | 无主从、无 PITR |
 | 无邮件服务 | 忘记密码只能走第 7 节 |
 | 视频不转码 | 只做格式/大小/时长校验后原样落盘，镜像不需要 ffmpeg |
+
+---
+
+## 9. 只读 SQL 排查接口
+
+`POST /_api/debug/query` 靠请求头 `x-debug-token` 里的一条固定令牌鉴权，令牌只从环境变量
+`DEBUG_QUERY_TOKEN` 读，仓库里不存明文。接口的全部限制（只接受一条 select、只读事务、
+语句超时、函数黑名单）在 `packages/server/src/debug/query.ts`。
+
+**令牌从哪来。** 线上在 GitLab 项目里建一个 masked + protected 的 CI 变量 `DEBUG_QUERY_TOKEN`，
+deploy job 把它带进执行 `docker compose up -d` 的环境，compose 再转给容器。手工部署时填服务器
+`.env`；shell 环境里的值优先于 `.env`。生成用 `openssl rand -hex 32`。
+
+**没配会怎样。** 令牌缺失或短于 24 字符时，接口对任何请求都返回 401 —— 不会退化成弱口令，
+也不影响其他功能。启动日志里有一条 `DEBUG_QUERY_TOKEN 未设置或短于 24 字符` 的 warn：
+
+```bash
+docker compose logs app | grep DEBUG_QUERY_TOKEN
+docker compose exec app printenv DEBUG_QUERY_TOKEN     # 有输出才是注入成功
+```
+
+**换令牌。** 改 CI 变量（或服务器 `.env`）后重跑 deploy，即 `docker compose up -d`。
+`restart` 不会读新的环境变量。换完之后旧令牌立即失效，用它的人要同步拿到新值。
