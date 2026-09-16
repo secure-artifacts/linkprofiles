@@ -12,3 +12,9 @@
 重新克隆上游仓库，把 `skills/engineering/*` 与 `skills/productivity/*` 下对应目录覆盖到本目录（每个 skill 一个平铺目录），然后更新上面的提交号。
 
 本目录是仓库内的普通文件，可以直接改；改过的 skill 在更新时注意别被覆盖掉。
+
+## 项目自有 skill
+
+以下不来自上游，更新上游 skill 时保留：
+
+- `read_online_database`：通过线上只读 SQL 排查接口查生产数据库做 debug
